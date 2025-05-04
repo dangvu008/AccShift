@@ -19,6 +19,7 @@ import './types.js'
 import { AppProvider, AppContext } from './context/AppContext'
 import { createSampleNotes } from './utils/sampleNotes'
 import { STORAGE_KEYS } from './config/appConfig'
+import { COLORS } from './utils/theme'
 
 // Sử dụng DeviceEventEmitter có sẵn trong React Native để các component có thể giao tiếp với nhau
 console.log('Sử dụng DeviceEventEmitter cho giao tiếp giữa các component')
@@ -98,15 +99,15 @@ const Stack = createStackNavigator()
 // Home stack navigator
 function HomeStack() {
   // Import context to use t() function and theme
-  const { t, theme } = useContext(AppContext)
+  const { t, darkMode } = useContext(AppContext)
 
   return (
     <Stack.Navigator
       screenOptions={{
         headerStyle: {
-          backgroundColor: theme.headerBackgroundColor,
+          backgroundColor: darkMode ? COLORS.CARD_DARK : COLORS.CARD_LIGHT,
         },
-        headerTintColor: theme.headerTintColor,
+        headerTintColor: darkMode ? COLORS.TEXT_DARK : COLORS.TEXT_LIGHT,
         headerTitleStyle: {
           fontWeight: 'bold',
         },
@@ -168,15 +169,15 @@ function HomeStack() {
 // Shifts stack navigator
 function ShiftsStack() {
   // Import context to use t() function and theme
-  const { t, theme } = useContext(AppContext)
+  const { t, darkMode } = useContext(AppContext)
 
   return (
     <Stack.Navigator
       screenOptions={{
         headerStyle: {
-          backgroundColor: theme.headerBackgroundColor,
+          backgroundColor: darkMode ? COLORS.CARD_DARK : COLORS.CARD_LIGHT,
         },
-        headerTintColor: theme.headerTintColor,
+        headerTintColor: darkMode ? COLORS.TEXT_DARK : COLORS.TEXT_LIGHT,
         headerTitleStyle: {
           fontWeight: 'bold',
         },
@@ -203,15 +204,15 @@ function ShiftsStack() {
 // Statistics stack navigator
 function StatisticsStack() {
   // Import context to use t() function and theme
-  const { t, theme } = useContext(AppContext)
+  const { t, darkMode } = useContext(AppContext)
 
   return (
     <Stack.Navigator
       screenOptions={{
         headerStyle: {
-          backgroundColor: theme.headerBackgroundColor,
+          backgroundColor: darkMode ? COLORS.CARD_DARK : COLORS.CARD_LIGHT,
         },
-        headerTintColor: theme.headerTintColor,
+        headerTintColor: darkMode ? COLORS.TEXT_DARK : COLORS.TEXT_LIGHT,
         headerTitleStyle: {
           fontWeight: 'bold',
         },
@@ -254,7 +255,7 @@ function StatisticsStack() {
 // Settings stack navigator
 function SettingsStack() {
   // Import context to use t() function and theme
-  const { t, theme } = useContext(AppContext)
+  const { t, darkMode } = useContext(AppContext)
 
   // Log để debug
   console.log('SettingsStack được render')
@@ -263,9 +264,9 @@ function SettingsStack() {
     <Stack.Navigator
       screenOptions={{
         headerStyle: {
-          backgroundColor: theme.headerBackgroundColor,
+          backgroundColor: darkMode ? COLORS.CARD_DARK : COLORS.CARD_LIGHT,
         },
-        headerTintColor: theme.headerTintColor,
+        headerTintColor: darkMode ? COLORS.TEXT_DARK : COLORS.TEXT_LIGHT,
         headerTitleStyle: {
           fontWeight: 'bold',
         },

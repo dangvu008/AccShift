@@ -598,50 +598,156 @@ export const AppProvider = ({ children }) => {
   }
 
   const updateCurrentShift = async (shift) => {
-    // Lưu thông tin ca cũ trước khi cập nhật
-    const oldShift = currentShift
+    try {
+      // Lưu thông tin ca cũ trước khi cập nhật
+      const oldShift = currentShift
 
-    // Cập nhật state và AsyncStorage
-    setCurrentShift(shift)
-
-    if (shift) {
-      // Lưu ID ca mới vào AsyncStorage
-      await AsyncStorage.setItem(STORAGE_KEYS.CURRENT_SHIFT, shift.id)
-
-      // Cập nhật activeShiftId trong userSettings
-      await storage.updateUserSettings({ activeShiftId: shift.id })
-
-      // Nếu đang ở chế độ xoay ca tự động, cập nhật ngày áp dụng
-      const userSettings = await storage.getUserSettings()
-      if (userSettings && userSettings.changeShiftReminderMode === 'rotate') {
-        await updateMultipleSettings({
-          rotationLastAppliedDate: new Date().toISOString().split('T')[0],
-        })
+      // Kiểm tra nếu ca mới giống ca cũ, không cần cập nhật
+      if (oldShift && shift && oldShift.id === shift.id) {
+        // Chỉ cập nhật state nếu có thay đổi trong thông tin ca
+        const hasChanges = JSON.stringify(oldShift) !== JSON.stringify(shift)
+        if (hasChanges) {
+          console.log('Cập nhật thông tin ca làm việc hiện tại')
+          setCurrentShift(shift)
+        } else {
+          console.log('Không có thay đổi trong thông tin ca làm việc')
+          return // Không cần thực hiện các bước tiếp theo
+        }
+      } else {
+        // Cập nhật state với ca mới hoặc null
+        setCurrentShift(shift)
       }
 
-      // Hủy tất cả thông báo liên quan đến ca cũ
-      if (oldShift) {
-        console.log(`Hủy thông báo của ca cũ: ${oldShift.id}`)
-        await alarmManager.cancelAlarmsByPrefix(`shift_${oldShift.id}`)
-        await alarmManager.cancelAlarmsByPrefix(`check_in_${oldShift.id}`)
-        await alarmManager.cancelAlarmsByPrefix(`check_out_${oldShift.id}`)
+      if (shift) {
+        // Lưu ID ca mới vào AsyncStorage
+        await AsyncStorage.setItem(STORAGE_KEYS.CURRENT_SHIFT, shift.id)
+
+        // Cập nhật activeShiftId trong userSettings
+        await storage.updateUserSettings({ activeShiftId: shift.id })
+
+        // Nếu đang ở chế độ xoay ca tự động, cập nhật ngày áp dụng
+        const userSettings = await storage.getUserSettings()
+        if (userSettings && userSettings.changeShiftReminderMode === 'rotate') {
+          await updateMultipleSettings({
+            rotationLastAppliedDate: new Date().toISOString().split('T')[0],
+          })
+        }
+
+        // Hủy tất cả thông báo liên quan đến ca cũ nếu đổi ca
+        if (oldShift && oldShift.id !== shift.id) {
+          console.log(`Hủy thông báo của ca cũ: ${oldShift.id}`)
+          await alarmManager.cancelAlarmsByPrefix(`shift_${oldShift.id}`)
+          await alarmManager.cancelAlarmsByPrefix(`check_in_${oldShift.id}`)
+          await alarmManager.cancelAlarmsByPrefix(`check_out_${oldShift.id}`)
+          await alarmManager.cancelAlarmsByPrefix(`departure_${oldShift.id}`)
+          await alarmManager.cancelAlarmsByPrefix(`complete_${oldShift.id}`)
+        }
+
+        // Lên lịch thông báo mới cho ca mới
+        try {
+          console.log(`Lên lịch thông báo cho ca: ${shift.id}`)
+
+          // Hủy thông báo cũ của ca này nếu đang cập nhật thông tin ca
+          if (oldShift && oldShift.id === shift.id) {
+            console.log(`Hủy thông báo cũ của ca hiện tại: ${shift.id}`)
+            await alarmManager.cancelAlarmsByPrefix(`shift_${shift.id}`)
+            await alarmManager.cancelAlarmsByPrefix(`check_in_${shift.id}`)
+            await alarmManager.cancelAlarmsByPrefix(`check_out_${shift.id}`)
+            await alarmManager.cancelAlarmsByPrefix(`departure_${shift.id}`)
+            await alarmManager.cancelAlarmsByPrefix(`complete_${shift.id}`)
+          }
+
+          // Lên lịch thông báo xuất phát (departure) nếu có cấu hình
+          if (shift.departureTime && shift.remindBeforeStart > 0) {
+            const [depHour, depMinute] = shift.departureTime
+              .split(':')
+              .map(Number)
+            const now = new Date()
+            const today = new Date()
+            today.setHours(depHour, depMinute, 0, 0)
+
+            // Xử lý ca qua đêm
+            if (depHour < 12 && now.getHours() >= 12) {
+              // Nếu giờ xuất phát là buổi sáng và hiện tại là buổi chiều/tối
+              // thì đặt lịch cho ngày hôm sau
+              today.setDate(today.getDate() + 1)
+            }
+
+            // Tính thời gian nhắc nhở (trước khi xuất phát)
+            const reminderTime = new Date(today)
+            reminderTime.setMinutes(
+              reminderTime.getMinutes() - shift.remindBeforeStart
+            )
+
+            // Chỉ lên lịch nếu thời gian nhắc nhở còn trong tương lai
+            if (reminderTime > now) {
+              await alarmManager.scheduleAlarm({
+                title: shift.name,
+                body: `Sắp đến giờ xuất phát cho ca ${shift.name} (${shift.departureTime})`,
+                scheduledTime: reminderTime,
+                type: 'departure',
+                id: `departure_${shift.id}_${Date.now()}`,
+                data: { shiftId: shift.id, action: 'departure' },
+              })
+            }
+          }
+
+          // Lên lịch thông báo check-in nếu có cấu hình
+          if (shift.startTime && shift.remindBeforeStart > 0) {
+            const [startHour, startMinute] = shift.startTime
+              .split(':')
+              .map(Number)
+            const now = new Date()
+            const today = new Date()
+            today.setHours(startHour, startMinute, 0, 0)
+
+            // Xử lý ca qua đêm
+            if (startHour < 12 && now.getHours() >= 12) {
+              // Nếu giờ bắt đầu là buổi sáng và hiện tại là buổi chiều/tối
+              // thì đặt lịch cho ngày hôm sau
+              today.setDate(today.getDate() + 1)
+            }
+
+            // Tính thời gian nhắc nhở (trước khi bắt đầu ca)
+            const reminderTime = new Date(today)
+            reminderTime.setMinutes(
+              reminderTime.getMinutes() - shift.remindBeforeStart
+            )
+
+            // Chỉ lên lịch nếu thời gian nhắc nhở còn trong tương lai
+            if (reminderTime > now) {
+              await alarmManager.scheduleAlarm({
+                title: shift.name,
+                body: `Sắp đến giờ check-in ca ${shift.name} (${shift.startTime})`,
+                scheduledTime: reminderTime,
+                type: 'check_in',
+                id: `check_in_${shift.id}_${Date.now()}`,
+                data: { shiftId: shift.id, action: 'check_in' },
+              })
+            }
+          }
+
+          // Lên lịch kiểm tra thời tiết cho ca mới
+          await weatherAlertService.scheduleWeatherCheck(shift)
+
+          // Cập nhật lịch nhắc nhở ghi chú theo ca mới
+          await updateNotesForNewShift(shift)
+
+          // Cập nhật trạng thái nút nếu cần
+          await updateButtonStateForNewShift(shift)
+        } catch (error) {
+          console.error('Lỗi khi lên lịch thông báo cho ca mới:', error)
+        }
+      } else {
+        // Xóa thông tin ca hiện tại
+        await AsyncStorage.removeItem(STORAGE_KEYS.CURRENT_SHIFT)
+        await storage.updateUserSettings({ activeShiftId: null })
+
+        // Reset trạng thái nút về mặc định nếu không có ca nào được chọn
+        setButtonState(BUTTON_STATES.GO_WORK)
       }
-
-      // Lên lịch thông báo mới cho ca mới
-      try {
-        console.log(`Lên lịch thông báo cho ca mới: ${shift.id}`)
-
-        // Lên lịch kiểm tra thời tiết cho ca mới
-        await weatherAlertService.scheduleWeatherCheck(shift)
-
-        // Cập nhật lịch nhắc nhở ghi chú theo ca mới
-        await updateNotesForNewShift(shift)
-      } catch (error) {
-        console.error('Lỗi khi lên lịch thông báo cho ca mới:', error)
-      }
-    } else {
-      await AsyncStorage.removeItem(STORAGE_KEYS.CURRENT_SHIFT)
-      await storage.updateUserSettings({ activeShiftId: null })
+    } catch (error) {
+      console.error('Lỗi khi cập nhật ca làm việc:', error)
     }
   }
 
@@ -657,7 +763,7 @@ export const AppProvider = ({ children }) => {
       )
 
       console.log(
-        `Tìm thấy ${notesLinkedToNewShift.length} ghi chú liên kết với ca mới`
+        `Tìm thấy ${notesLinkedToNewShift.length} ghi chú liên kết với ca ${newShift.name}`
       )
 
       // Cập nhật lịch nhắc nhở cho từng ghi chú
@@ -669,10 +775,31 @@ export const AppProvider = ({ children }) => {
           // Lên lịch lại báo thức mới
           const [hours, minutes] = note.reminderTime.split(':').map(Number)
 
-          // Lên lịch nhắc nhở cho các ngày áp dụng của ca
-          for (const day of newShift.daysApplied) {
-            const dayOfWeek = getDayOfWeek(day)
-            if (dayOfWeek) {
+          // Kiểm tra nếu ca có ngày áp dụng
+          if (newShift.daysApplied && newShift.daysApplied.length > 0) {
+            // Lên lịch nhắc nhở cho các ngày áp dụng của ca
+            for (const day of newShift.daysApplied) {
+              const dayOfWeek = getDayOfWeek(day)
+              if (dayOfWeek !== undefined) {
+                const reminderTime = new Date()
+                reminderTime.setHours(hours, minutes, 0, 0)
+
+                await alarmManager.scheduleAlarm({
+                  title: note.title || t('Note Reminder'),
+                  body: note.content || '',
+                  scheduledTime: reminderTime,
+                  type: 'note',
+                  id: `note_${note.id}_${day}`,
+                  data: { noteId: note.id, shiftId: newShift.id },
+                  repeats: true,
+                  weekday: dayOfWeek,
+                })
+              }
+            }
+          } else {
+            // Nếu ca không có ngày áp dụng, lên lịch cho tất cả các ngày trong tuần
+            const allDays = [0, 1, 2, 3, 4, 5, 6] // 0: CN, 1-6: T2-CN
+            for (const dayOfWeek of allDays) {
               const reminderTime = new Date()
               reminderTime.setHours(hours, minutes, 0, 0)
 
@@ -681,7 +808,7 @@ export const AppProvider = ({ children }) => {
                 body: note.content || '',
                 scheduledTime: reminderTime,
                 type: 'note',
-                id: `note_${note.id}_${day}`,
+                id: `note_${note.id}_day${dayOfWeek}`,
                 data: { noteId: note.id, shiftId: newShift.id },
                 repeats: true,
                 weekday: dayOfWeek,
@@ -694,6 +821,83 @@ export const AppProvider = ({ children }) => {
       return true
     } catch (error) {
       console.error('Lỗi khi cập nhật lịch nhắc nhở ghi chú:', error)
+      return false
+    }
+  }
+
+  // Hàm cập nhật trạng thái nút khi thay đổi ca làm việc
+  const updateButtonStateForNewShift = async (shift) => {
+    try {
+      // Kiểm tra xem có log chấm công nào cho ngày hôm nay không
+      const today = formatDate(new Date())
+      const storedLogs = await AsyncStorage.getItem(`attendanceLogs_${today}`)
+
+      if (storedLogs) {
+        const logs = JSON.parse(storedLogs)
+
+        // Nếu có log, cập nhật shiftId cho tất cả các log
+        if (logs.length > 0) {
+          const updatedLogs = logs.map((log) => ({
+            ...log,
+            shiftId: shift.id,
+          }))
+
+          // Lưu lại logs đã cập nhật
+          await AsyncStorage.setItem(
+            `attendanceLogs_${today}`,
+            JSON.stringify(updatedLogs)
+          )
+
+          // Cập nhật state
+          setAttendanceLogs(updatedLogs)
+
+          // Cập nhật trạng thái nút dựa trên log cuối cùng
+          const lastLog = updatedLogs[updatedLogs.length - 1]
+          switch (lastLog.type) {
+            case 'go_work':
+              setButtonState(BUTTON_STATES.WAITING_CHECK_IN)
+              break
+            case 'check_in':
+              setButtonState(BUTTON_STATES.WORKING)
+              // Cập nhật trạng thái làm việc
+              setIsWorking(true)
+              setWorkStartTime(new Date(lastLog.timestamp))
+              await AsyncStorage.setItem('isWorking', 'true')
+              await AsyncStorage.setItem(
+                'workStartTime',
+                lastLog.timestamp.toString()
+              )
+              break
+            case 'check_out':
+              setButtonState(BUTTON_STATES.READY_COMPLETE)
+              break
+            case 'complete':
+              setButtonState(BUTTON_STATES.COMPLETED)
+              break
+            default:
+              setButtonState(BUTTON_STATES.GO_WORK)
+          }
+        }
+      }
+
+      // Cập nhật showPunchButton dựa trên cài đặt ca mới
+      if (shift.showCheckInButtonWhileWorking) {
+        setShowPunchButton(true)
+      } else {
+        setShowPunchButton(false)
+      }
+
+      // Kích hoạt tính toán lại trạng thái làm việc với ca mới
+      const {
+        calculateTodayWorkStatus,
+      } = require('../utils/workStatusCalculator')
+      const userSettings = await storage.getUserSettings()
+      const isSimpleMode = userSettings?.multiButtonMode === 'simple'
+      await calculateTodayWorkStatus(shift, isSimpleMode)
+
+      return true
+    } catch (error) {
+      console.error('Lỗi khi cập nhật trạng thái nút cho ca mới:', error)
       return false
     }
   }

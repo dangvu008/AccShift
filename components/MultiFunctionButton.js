@@ -30,6 +30,7 @@ const MultiFunctionButton = () => {
             icon: 'walk-outline',
             color: '#8a56ff',
             disabled: false,
+            description: t('Bắt đầu ca làm việc'),
           }
         case BUTTON_STATES.COMPLETE:
           return {
@@ -37,6 +38,7 @@ const MultiFunctionButton = () => {
             icon: 'checkmark-circle-outline',
             color: '#27ae60',
             disabled: false,
+            description: t('Xác nhận hoàn thành ca làm việc'),
           }
         case BUTTON_STATES.COMPLETED:
           return {
@@ -44,6 +46,7 @@ const MultiFunctionButton = () => {
             icon: 'checkmark-circle',
             color: '#95a5a6',
             disabled: true,
+            description: t('Ca làm việc đã được hoàn thành'),
           }
         default:
           // Nếu ở chế độ "Chỉ Đi Làm" nhưng trạng thái không phải là GO_WORK, COMPLETE hoặc COMPLETED,
@@ -53,6 +56,7 @@ const MultiFunctionButton = () => {
             icon: 'checkmark-circle-outline',
             color: '#27ae60',
             disabled: false,
+            description: t('Xác nhận hoàn thành ca làm việc'),
           }
       }
     }
@@ -65,13 +69,15 @@ const MultiFunctionButton = () => {
           icon: 'walk-outline',
           color: '#8a56ff',
           disabled: false,
+          description: t('Bắt đầu hành trình đi làm'),
         }
       case BUTTON_STATES.WAITING_CHECK_IN:
         return {
-          text: t('Waiting for Check-in'),
+          text: t('Check In'),
           icon: 'time-outline',
           color: '#f39c12',
           disabled: false,
+          description: t('Đã đến nơi làm việc, sẵn sàng check-in'),
         }
       case BUTTON_STATES.CHECK_IN:
         return {
@@ -79,13 +85,15 @@ const MultiFunctionButton = () => {
           icon: 'log-in-outline',
           color: '#8a56ff',
           disabled: false,
+          description: t('Bắt đầu giờ làm việc'),
         }
       case BUTTON_STATES.WORKING:
         return {
-          text: t('Working'),
+          text: t('Check Out'),
           icon: 'briefcase-outline',
           color: '#27ae60',
           disabled: false,
+          description: t('Đang làm việc, nhấn để check-out'),
         }
       case BUTTON_STATES.CHECK_OUT:
         return {
@@ -93,13 +101,15 @@ const MultiFunctionButton = () => {
           icon: 'log-out-outline',
           color: '#2c3e50',
           disabled: false,
+          description: t('Kết thúc giờ làm việc'),
         }
       case BUTTON_STATES.READY_COMPLETE:
         return {
-          text: t('Ready to Complete'),
+          text: t('Ký Công'),
           icon: 'checkmark-done-outline',
           color: '#3498db',
           disabled: false,
+          description: t('Đã check-out, sẵn sàng ký công'),
         }
       case BUTTON_STATES.COMPLETE:
         return {
@@ -107,6 +117,7 @@ const MultiFunctionButton = () => {
           icon: 'checkmark-circle-outline',
           color: '#27ae60',
           disabled: false,
+          description: t('Xác nhận hoàn thành ca làm việc'),
         }
       case BUTTON_STATES.COMPLETED:
         return {
@@ -114,6 +125,7 @@ const MultiFunctionButton = () => {
           icon: 'checkmark-circle',
           color: '#95a5a6',
           disabled: true,
+          description: t('Ca làm việc đã được hoàn thành'),
         }
       default:
         return {
@@ -121,6 +133,7 @@ const MultiFunctionButton = () => {
           icon: 'walk-outline',
           color: '#8a56ff',
           disabled: false,
+          description: t('Bắt đầu hành trình đi làm'),
         }
     }
   }
@@ -165,36 +178,42 @@ const MultiFunctionButton = () => {
           text: t('Go Work'),
           icon: 'walk',
           color: '#3498db',
+          description: t('Bắt đầu hành trình đi làm'),
         }
       case 'check_in':
         return {
           text: t('Check In'),
           icon: 'enter',
           color: '#2ecc71',
+          description: t('Bắt đầu giờ làm việc'),
         }
       case 'check_out':
         return {
           text: t('Check Out'),
           icon: 'exit',
           color: '#e74c3c',
+          description: t('Kết thúc giờ làm việc'),
         }
       case 'punch':
         return {
           text: t('Ký Công'),
           icon: 'finger-print',
           color: '#f39c12',
+          description: t('Xác nhận đang làm việc'),
         }
       case 'complete':
         return {
           text: t('Complete'),
           icon: 'checkmark-circle',
           color: '#9b59b6',
+          description: t('Hoàn thành ca làm việc'),
         }
       default:
         return {
           text: type,
           icon: 'alert-circle',
           color: '#95a5a6',
+          description: '',
         }
     }
   }
@@ -219,6 +238,13 @@ const MultiFunctionButton = () => {
         >
           <Ionicons name={buttonConfig.icon} size={32} color="#fff" />
           <Text style={styles.mainButtonText}>{buttonConfig.text}</Text>
+
+          {/* Button description */}
+          {buttonConfig.description && (
+            <Text style={styles.buttonDescription}>
+              {buttonConfig.description}
+            </Text>
+          )}
 
           {/* Reset button (only show if there are logs) */}
           {attendanceLogs.length > 0 && (
@@ -301,7 +327,12 @@ const MultiFunctionButton = () => {
                     </View>
 
                     {/* Log content */}
-                    <View style={styles.logContent}>
+                    <View
+                      style={[
+                        styles.logContent,
+                        { borderLeftColor: logInfo.color },
+                      ]}
+                    >
                       <View style={styles.logHeader}>
                         <Text
                           style={[styles.logType, darkMode && styles.darkText]}
@@ -317,6 +348,16 @@ const MultiFunctionButton = () => {
                           {formatTimestamp(log.timestamp)}
                         </Text>
                       </View>
+                      {logInfo.description && (
+                        <Text
+                          style={[
+                            styles.logDescription,
+                            darkMode && styles.darkSubtitle,
+                          ]}
+                        >
+                          {logInfo.description}
+                        </Text>
+                      )}
                     </View>
                   </View>
                 )
@@ -339,9 +380,9 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   mainButton: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 5,
@@ -349,6 +390,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
+    padding: 10,
   },
   darkButton: {
     shadowColor: '#fff',
@@ -358,10 +400,17 @@ const styles = StyleSheet.create({
   },
   mainButtonText: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: 'bold',
     marginTop: 8,
     textAlign: 'center',
+  },
+  buttonDescription: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 10,
+    textAlign: 'center',
+    marginTop: 4,
+    paddingHorizontal: 5,
   },
   resetButton: {
     position: 'absolute',
@@ -456,6 +505,12 @@ const styles = StyleSheet.create({
   logTime: {
     fontSize: 14,
     color: '#666',
+  },
+  logDescription: {
+    fontSize: 12,
+    color: '#888',
+    marginTop: 4,
+    fontStyle: 'italic',
   },
 })
 

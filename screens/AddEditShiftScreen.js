@@ -131,12 +131,45 @@ const AddEditShiftScreen = ({ route, navigation }) => {
 
           setEndTime(timeStringToDate(shift.endTime))
 
-          setBreakTime(shift.breakTime?.toString() || '60')
-          setRemindBeforeStart(shift.remindBeforeStart?.toString() || '15')
-          setRemindAfterEnd(shift.remindAfterEnd?.toString() || '15')
+          // Đảm bảo các giá trị số được xử lý đúng
+          setBreakTime(
+            shift.breakTime !== undefined && shift.breakTime !== null
+              ? shift.breakTime.toString()
+              : '60'
+          )
+
+          setRemindBeforeStart(
+            shift.remindBeforeStart !== undefined &&
+              shift.remindBeforeStart !== null
+              ? shift.remindBeforeStart.toString()
+              : '15'
+          )
+
+          setRemindAfterEnd(
+            shift.remindAfterEnd !== undefined && shift.remindAfterEnd !== null
+              ? shift.remindAfterEnd.toString()
+              : '15'
+          )
+
+          // Xử lý các trường boolean
           setIsActive(shift.isActive === true)
-          setShowPunch(shift.showPunch === true)
-          setDaysApplied(shift.daysApplied || ['T2', 'T3', 'T4', 'T5', 'T6'])
+
+          // Kiểm tra cả hai trường để đảm bảo tương thích ngược
+          setShowPunch(
+            shift.showCheckInButtonWhileWorking === true ||
+              shift.showPunch === true
+          )
+
+          // Đảm bảo daysApplied luôn là một mảng hợp lệ
+          if (
+            Array.isArray(shift.daysApplied) &&
+            shift.daysApplied.length > 0
+          ) {
+            setDaysApplied(shift.daysApplied)
+          } else {
+            // Mặc định là các ngày trong tuần (T2-T6)
+            setDaysApplied(['T2', 'T3', 'T4', 'T5', 'T6'])
+          }
         }
       }
     } catch (error) {
@@ -145,8 +178,13 @@ const AddEditShiftScreen = ({ route, navigation }) => {
     } finally {
       setIsLoading(false)
       setIsFormDirty(false)
+
+      // Chạy validation sau khi load dữ liệu
+      setTimeout(() => {
+        validateForm()
+      }, 500)
     }
-  }, [shiftId, t, timeStringToDate])
+  }, [shiftId, t, timeStringToDate, validateForm])
 
   useEffect(() => {
     if (isEditing) {
@@ -678,21 +716,59 @@ const AddEditShiftScreen = ({ route, navigation }) => {
                 )
                 let shifts = shiftsData ? JSON.parse(shiftsData) : []
 
+                // Chuẩn hóa tên ca làm việc
+                const normalizedName = shiftName.trim().replace(/\s+/g, ' ')
+
                 const newShift = {
                   id: isEditing ? shiftId : Date.now().toString(),
-                  name: shiftName.trim(),
+                  name: normalizedName,
                   departureTime: formattedDepartureTime,
                   startTime: formattedStartTime,
                   officeEndTime: formattedOfficeEndTime,
                   endTime: formattedEndTime,
-                  breakTime: parseInt(breakTime, 10),
-                  remindBeforeStart: parseInt(remindBeforeStart, 10),
-                  remindAfterEnd: parseInt(remindAfterEnd, 10),
+                  breakTime: parseInt(breakTime, 10) || 0,
+                  remindBeforeStart: parseInt(remindBeforeStart, 10) || 0,
+                  remindAfterEnd: parseInt(remindAfterEnd, 10) || 0,
                   isActive,
-                  showPunch,
-                  daysApplied,
+                  showCheckInButtonWhileWorking: showPunch, // Đổi tên thuộc tính để rõ ràng hơn
+                  daysApplied: [...daysApplied].sort(), // Sắp xếp lại các ngày để đảm bảo tính nhất quán
                   updatedAt: new Date().toISOString(),
                 }
+
+                // Xác định nếu ca làm việc là ca qua đêm
+                const isOvernightShift =
+                  endTime.getHours() < startTime.getHours() ||
+                  officeEndTime.getHours() < startTime.getHours() ||
+                  (endTime.getHours() === startTime.getHours() &&
+                    endTime.getMinutes() < startTime.getMinutes()) ||
+                  (officeEndTime.getHours() === startTime.getHours() &&
+                    officeEndTime.getMinutes() < startTime.getMinutes())
+
+                // Thêm thuộc tính isOvernightShift
+                newShift.isOvernightShift = isOvernightShift
+
+                // Tính toán thời gian làm việc hành chính (phút)
+                const startMinutes =
+                  startTime.getHours() * 60 + startTime.getMinutes()
+                const officeEndMinutes =
+                  officeEndTime.getHours() * 60 + officeEndTime.getMinutes()
+
+                // Xử lý ca qua đêm
+                let officeWorkMinutes = 0
+                if (isOvernightShift && officeEndMinutes < startMinutes) {
+                  officeWorkMinutes = officeEndMinutes + 24 * 60 - startMinutes
+                } else {
+                  officeWorkMinutes = officeEndMinutes - startMinutes
+                }
+
+                // Trừ thời gian nghỉ
+                officeWorkMinutes = Math.max(
+                  0,
+                  officeWorkMinutes - (parseInt(breakTime, 10) || 0)
+                )
+
+                // Thêm thuộc tính officeWorkMinutes
+                newShift.officeWorkMinutes = officeWorkMinutes
 
                 if (isEditing) {
                   // Update existing shift
@@ -823,6 +899,16 @@ const AddEditShiftScreen = ({ route, navigation }) => {
                 ? t('Chỉnh sửa ca làm việc')
                 : t('Thêm ca làm việc mới')}
             </Text>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => navigation.goBack()}
+            >
+              <Ionicons
+                name="close-circle"
+                size={28}
+                color={darkMode ? COLORS.TEXT_DARK : COLORS.TEXT_LIGHT}
+              />
+            </TouchableOpacity>
           </View>
 
           {/* Shift Name */}
@@ -1394,14 +1480,15 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     backgroundColor: COLORS.CARD_LIGHT,
-    borderRadius: 8,
-    padding: 16,
+    borderRadius: 12,
+    padding: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
     marginBottom: 20,
+    borderWidth: 0,
   },
   darkFormContainer: {
     backgroundColor: COLORS.CARD_DARK,
@@ -1412,12 +1499,23 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
     paddingBottom: 10,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
   },
   formTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: COLORS.TEXT_LIGHT,
     textAlign: 'center',
+    flex: 1,
+  },
+  closeButton: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    padding: 5,
   },
   darkText: {
     color: COLORS.TEXT_DARK,
@@ -1523,12 +1621,12 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     backgroundColor: COLORS.PRIMARY,
-    borderRadius: 8,
-    height: 50,
+    borderRadius: 10,
+    height: 54,
     alignItems: 'center',
     justifyContent: 'center',
     flex: 1,
-    marginLeft: 8,
+    marginLeft: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
@@ -1538,14 +1636,18 @@ const styles = StyleSheet.create({
   },
   resetButton: {
     backgroundColor: COLORS.SECONDARY_CARD_LIGHT,
-    borderRadius: 8,
-    height: 50,
+    borderRadius: 10,
+    height: 54,
     alignItems: 'center',
     justifyContent: 'center',
     flex: 1,
-    marginRight: 8,
-    borderWidth: 1,
-    borderColor: COLORS.BORDER_LIGHT,
+    marginRight: 10,
+    borderWidth: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
     flexDirection: 'row',
   },
   darkResetButton: {
@@ -1562,16 +1664,16 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.DISABLED_DARK,
   },
   saveButtonText: {
-    color: COLORS.TEXT_DARK,
+    color: '#ffffff',
     fontSize: 16,
     fontWeight: '600',
-    marginLeft: 6,
+    marginLeft: 8,
   },
   resetButtonText: {
     color: COLORS.TEXT_LIGHT,
     fontSize: 16,
     fontWeight: '600',
-    marginLeft: 6,
+    marginLeft: 8,
   },
   darkResetButtonText: {
     color: COLORS.TEXT_DARK,

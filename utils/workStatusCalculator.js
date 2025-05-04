@@ -17,37 +17,72 @@ import {
  * @returns {boolean} true nếu thời điểm nằm trong khoảng thời gian làm đêm
  */
 const isNightTime = (time, nightStartTime, nightEndTime) => {
-  // Parse thời gian bắt đầu và kết thúc ca đêm
-  const [startHour, startMinute] = nightStartTime.split(':').map(Number)
-  const [endHour, endMinute] = nightEndTime.split(':').map(Number)
+  if (!time || !nightStartTime || !nightEndTime) return false
 
-  // Tạo đối tượng Date cho thời gian bắt đầu và kết thúc ca đêm
-  const nightStart = new Date(time)
-  nightStart.setHours(startHour, startMinute, 0, 0)
+  try {
+    // Parse thời gian bắt đầu và kết thúc ca đêm
+    const [startHour, startMinute] = nightStartTime.split(':').map(Number)
+    const [endHour, endMinute] = nightEndTime.split(':').map(Number)
 
-  const nightEnd = new Date(time)
-  nightEnd.setHours(endHour, endMinute, 0, 0)
+    // Tạo đối tượng Date cho thời gian bắt đầu và kết thúc ca đêm
+    const nightStart = new Date(time)
+    nightStart.setHours(startHour, startMinute, 0, 0)
 
-  // Nếu thời gian kết thúc ca đêm nhỏ hơn thời gian bắt đầu, đó là ca qua đêm
-  if (nightEnd < nightStart) {
-    nightEnd.setDate(nightEnd.getDate() + 1)
+    const nightEnd = new Date(time)
+    nightEnd.setHours(endHour, endMinute, 0, 0)
+
+    // Xác định nếu ca đêm qua đêm (kết thúc vào sáng hôm sau)
+    const isOvernightShift =
+      endHour < startHour || (endHour === startHour && endMinute < startMinute)
+
+    // Nếu thời gian kết thúc ca đêm nhỏ hơn thời gian bắt đầu, đó là ca qua đêm
+    if (isOvernightShift) {
+      nightEnd.setDate(nightEnd.getDate() + 1)
+    }
+
+    // Kiểm tra xem thời điểm có nằm trong khoảng thời gian làm đêm hay không
+    if (time >= nightStart && time <= nightEnd) {
+      return true
+    }
+
+    // Trường hợp đặc biệt: nếu thời điểm nằm sau 0h và trước thời gian kết thúc ca đêm
+    // và ca làm việc là ca qua đêm
+    if (isOvernightShift) {
+      const timeHour = time.getHours()
+      const timeMinute = time.getMinutes()
+
+      // Nếu thời điểm hiện tại là sáng sớm (trước giờ kết thúc ca đêm)
+      if (
+        timeHour < endHour ||
+        (timeHour === endHour && timeMinute <= endMinute)
+      ) {
+        // Tạo thời điểm so sánh là thời gian kết thúc ca đêm của ngày hiện tại
+        const compareTime = new Date(time)
+        compareTime.setHours(endHour, endMinute, 0, 0)
+
+        // Nếu thời điểm hiện tại trước thời gian kết thúc ca đêm, đó là thời gian làm đêm
+        return time <= compareTime
+      }
+
+      // Kiểm tra thêm trường hợp thời điểm hiện tại là tối muộn (sau giờ bắt đầu ca đêm)
+      if (
+        timeHour > startHour ||
+        (timeHour === startHour && timeMinute >= startMinute)
+      ) {
+        // Tạo thời điểm so sánh là thời gian bắt đầu ca đêm của ngày hiện tại
+        const compareTime = new Date(time)
+        compareTime.setHours(startHour, startMinute, 0, 0)
+
+        // Nếu thời điểm hiện tại sau thời gian bắt đầu ca đêm, đó là thời gian làm đêm
+        return time >= compareTime
+      }
+    }
+
+    return false
+  } catch (error) {
+    console.error('Lỗi khi kiểm tra thời gian làm đêm:', error)
+    return false
   }
-
-  // Kiểm tra xem thời điểm có nằm trong khoảng thời gian làm đêm hay không
-  if (time >= nightStart && time <= nightEnd) {
-    return true
-  }
-
-  // Trường hợp đặc biệt: nếu thời điểm nằm sau 0h và trước thời gian kết thúc ca đêm
-  const timeHour = time.getHours()
-  const timeMinute = time.getMinutes()
-  if (endHour < startHour && timeHour < endHour) {
-    const compareTime = new Date(time)
-    compareTime.setHours(endHour, endMinute, 0, 0)
-    return time <= compareTime
-  }
-
-  return false
 }
 
 /**
@@ -64,53 +99,111 @@ const calculateNightWorkMinutes = (
   nightStartTime,
   nightEndTime
 ) => {
-  if (!startTime || !endTime) return 0
+  if (!startTime || !endTime || !nightStartTime || !nightEndTime) return 0
 
-  // Parse thời gian bắt đầu và kết thúc ca đêm
-  const [startHour, startMinute] = nightStartTime.split(':').map(Number)
-  const [endHour, endMinute] = nightEndTime.split(':').map(Number)
+  try {
+    // Đảm bảo startTime <= endTime
+    if (startTime > endTime) {
+      console.warn('Thời gian bắt đầu sau thời gian kết thúc, đảo ngược lại')
+      const temp = startTime
+      startTime = endTime
+      endTime = temp
+    }
 
-  // Tạo đối tượng Date cho thời gian bắt đầu và kết thúc ca đêm trong ngày bắt đầu
-  const nightStartDay1 = new Date(startTime)
-  nightStartDay1.setHours(startHour, startMinute, 0, 0)
+    // Parse thời gian bắt đầu và kết thúc ca đêm
+    const [startHour, startMinute] = nightStartTime.split(':').map(Number)
+    const [endHour, endMinute] = nightEndTime.split(':').map(Number)
 
-  const nightEndDay1 = new Date(startTime)
-  nightEndDay1.setHours(endHour, endMinute, 0, 0)
+    // Xác định nếu ca đêm qua đêm (kết thúc vào sáng hôm sau)
+    const isOvernightShift =
+      endHour < startHour || (endHour === startHour && endMinute < startMinute)
 
-  // Nếu thời gian kết thúc ca đêm nhỏ hơn thời gian bắt đầu, đó là ca qua đêm
-  if (nightEndDay1 < nightStartDay1) {
-    nightEndDay1.setDate(nightEndDay1.getDate() + 1)
+    // Tính tổng thời gian làm việc (phút)
+    const totalWorkMs = endTime.getTime() - startTime.getTime()
+    const totalWorkMinutes = Math.floor(totalWorkMs / (1000 * 60))
+
+    // Nếu tổng thời gian làm việc quá ngắn, không cần tính toán phức tạp
+    if (totalWorkMinutes <= 0) return 0
+
+    // Nếu tổng thời gian làm việc quá dài (> 24 giờ), cần xử lý đặc biệt
+    const isLongShift = totalWorkMinutes > 24 * 60
+
+    // Tạo mảng các khoảng thời gian làm đêm cần kiểm tra
+    const nightIntervals = []
+
+    // Ngày bắt đầu
+    const baseDate = new Date(startTime)
+    baseDate.setHours(0, 0, 0, 0)
+
+    // Tạo khoảng thời gian làm đêm cho ngày bắt đầu
+    const nightStartDay1 = new Date(baseDate)
+    nightStartDay1.setHours(startHour, startMinute, 0, 0)
+
+    const nightEndDay1 = new Date(baseDate)
+    nightEndDay1.setHours(endHour, endMinute, 0, 0)
+
+    // Xử lý ca đêm qua đêm
+    if (isOvernightShift) {
+      nightEndDay1.setDate(nightEndDay1.getDate() + 1)
+    }
+
+    nightIntervals.push({ start: nightStartDay1, end: nightEndDay1 })
+
+    // Nếu khoảng thời gian làm việc kéo dài qua ngày tiếp theo hoặc ca dài
+    if (
+      isLongShift ||
+      endTime.getDate() > startTime.getDate() ||
+      (isOvernightShift && endTime.getHours() >= endHour)
+    ) {
+      // Thêm khoảng thời gian làm đêm cho ngày tiếp theo
+      const nightStartDay2 = new Date(nightStartDay1)
+      nightStartDay2.setDate(nightStartDay2.getDate() + 1)
+
+      const nightEndDay2 = new Date(nightEndDay1)
+      nightEndDay2.setDate(nightEndDay2.getDate() + 1)
+
+      nightIntervals.push({ start: nightStartDay2, end: nightEndDay2 })
+
+      // Nếu ca làm việc kéo dài hơn 2 ngày, thêm khoảng thời gian cho ngày thứ 3
+      if (
+        isLongShift ||
+        endTime.getTime() - startTime.getTime() > 2 * 24 * 60 * 60 * 1000
+      ) {
+        const nightStartDay3 = new Date(nightStartDay2)
+        nightStartDay3.setDate(nightStartDay3.getDate() + 1)
+
+        const nightEndDay3 = new Date(nightEndDay2)
+        nightEndDay3.setDate(nightEndDay3.getDate() + 1)
+
+        nightIntervals.push({ start: nightStartDay3, end: nightEndDay3 })
+      }
+    }
+
+    // Tính tổng thời gian làm đêm
+    let totalNightMinutes = 0
+
+    // Kiểm tra từng khoảng thời gian làm đêm
+    for (const interval of nightIntervals) {
+      // Nếu khoảng thời gian làm việc và khoảng thời gian làm đêm có giao nhau
+      if (startTime <= interval.end && endTime >= interval.start) {
+        // Tính thời điểm bắt đầu và kết thúc của phần giao
+        const overlapStart =
+          startTime > interval.start ? startTime : interval.start
+        const overlapEnd = endTime < interval.end ? endTime : interval.end
+
+        // Tính thời gian làm đêm (phút)
+        const overlapMs = overlapEnd.getTime() - overlapStart.getTime()
+        const overlapMinutes = Math.max(0, Math.floor(overlapMs / (1000 * 60)))
+
+        totalNightMinutes += overlapMinutes
+      }
+    }
+
+    return totalNightMinutes
+  } catch (error) {
+    console.error('Lỗi khi tính toán thời gian làm đêm:', error)
+    return 0
   }
-
-  // Tạo đối tượng Date cho thời gian bắt đầu và kết thúc ca đêm trong ngày tiếp theo
-  const nightStartDay2 = new Date(nightStartDay1)
-  nightStartDay2.setDate(nightStartDay2.getDate() + 1)
-
-  const nightEndDay2 = new Date(nightEndDay1)
-  nightEndDay2.setDate(nightEndDay2.getDate() + 1)
-
-  // Tính toán thời gian làm đêm
-  let nightMinutes = 0
-
-  // Kiểm tra xem khoảng thời gian có giao với ca đêm ngày đầu tiên không
-  if (startTime <= nightEndDay1 && endTime >= nightStartDay1) {
-    const overlapStart = startTime > nightStartDay1 ? startTime : nightStartDay1
-    const overlapEnd = endTime < nightEndDay1 ? endTime : nightEndDay1
-
-    const overlapMs = overlapEnd.getTime() - overlapStart.getTime()
-    nightMinutes += Math.max(0, Math.floor(overlapMs / (1000 * 60)))
-  }
-
-  // Kiểm tra xem khoảng thời gian có giao với ca đêm ngày tiếp theo không
-  if (startTime <= nightEndDay2 && endTime >= nightStartDay2) {
-    const overlapStart = startTime > nightStartDay2 ? startTime : nightStartDay2
-    const overlapEnd = endTime < nightEndDay2 ? endTime : nightEndDay2
-
-    const overlapMs = overlapEnd.getTime() - overlapStart.getTime()
-    nightMinutes += Math.max(0, Math.floor(overlapMs / (1000 * 60)))
-  }
-
-  return nightMinutes
 }
 
 /**
@@ -257,6 +350,12 @@ export const calculateDailyWorkStatus = async (date, shift) => {
           raLogTime = shiftTimes.shiftMaxEndTime
         }
 
+        // Nếu có log punch (Ký công), cập nhật trạng thái
+        if (punchLog) {
+          // Trạng thái vẫn là đủ công
+          status = WORK_STATUS.DU_CONG
+        }
+
         // Nếu có log complete (Ký công), cập nhật trạng thái
         if (completeLog) {
           // Trạng thái vẫn là đủ công
@@ -310,10 +409,17 @@ export const calculateDailyWorkStatus = async (date, shift) => {
           const otEndTime =
             checkOutTime < shiftMaxEndTime ? checkOutTime : shiftMaxEndTime
           const otMs = otEndTime.getTime() - shiftOfficeEndTime.getTime()
-          otMinutes = Math.floor(otMs / (1000 * 60))
 
-          // Làm tròn OT lên 0.5 giờ
-          otMinutes = Math.ceil(otMinutes / 30) * 30
+          // Đảm bảo không có giá trị âm
+          const rawOtMinutes = Math.max(0, Math.floor(otMs / (1000 * 60)))
+
+          // Làm tròn OT lên 0.5 giờ (30 phút)
+          // Chỉ làm tròn nếu có OT thực tế
+          if (rawOtMinutes > 0) {
+            otMinutes = Math.ceil(rawOtMinutes / 30) * 30
+          } else {
+            otMinutes = 0
+          }
         }
 
         // Tính giờ phạt
