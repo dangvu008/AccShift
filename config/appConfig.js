@@ -16,6 +16,13 @@ export const WORK_STATUS = {
 
 export const API_CONFIG = {
   WEATHER_BASE_URL: 'https://api.openweathermap.org/data/2.5',
+  // Các proxy URL để tránh vấn đề CORS
+  WEATHER_PROXY_URLS: [
+    'https://cors-anywhere.herokuapp.com/https://api.openweathermap.org/data/2.5',
+    'https://api.allorigins.win/raw?url=https://api.openweathermap.org/data/2.5',
+    'https://api.codetabs.com/v1/proxy?quest=https://api.openweathermap.org/data/2.5',
+    'https://corsproxy.io/?https://api.openweathermap.org/data/2.5',
+  ],
   CACHE_TTL: 3 * 60 * 60 * 1000, // 3 hours (giảm từ 24 giờ để cập nhật thường xuyên hơn)
   CACHE_TTL_FALLBACK: 7 * 24 * 60 * 60 * 1000, // 7 days (cache dự phòng khi không có mạng)
   KEY_USAGE_LIMIT_PER_MINUTE: 50, // Giảm từ 60 để tránh đạt giới hạn

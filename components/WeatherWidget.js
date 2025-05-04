@@ -38,6 +38,7 @@ const WeatherWidget = ({ onPress }) => {
   const [weatherAlert, setWeatherAlert] = useState(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [errorMessage, setErrorMessage] = useState(null)
 
   // Thêm state để lưu thời tiết ở vị trí công ty (nếu có)
   const [workWeather, setWorkWeather] = useState(null)
@@ -240,6 +241,8 @@ const WeatherWidget = ({ onPress }) => {
       clearTimeout(fetchTimeout)
 
       if (isMounted) {
+        // Lưu thông báo lỗi
+        setErrorMessage(`Lỗi: ${error.message}`)
         setLoading(false)
         setRefreshing(false)
       }
@@ -360,6 +363,8 @@ const WeatherWidget = ({ onPress }) => {
       return
     }
 
+    // Xóa thông báo lỗi khi làm mới
+    setErrorMessage(null)
     setRefreshing(true)
 
     // Kiểm tra thời gian từ lần gọi API cuối cùng
@@ -583,23 +588,77 @@ const WeatherWidget = ({ onPress }) => {
             }}
           >
             {locationPermissionGranted
-              ? t('Kiểm tra kết nối mạng và thử lại')
+              ? errorMessage
+                ? errorMessage
+                : t('Kiểm tra kết nối mạng và thử lại')
               : t('Cần cấp quyền vị trí để xem thời tiết')}
           </Text>
-          <TouchableOpacity
+          <View
             style={{
-              backgroundColor: COLORS.PRIMARY,
-              paddingVertical: 8,
-              paddingHorizontal: 16,
-              borderRadius: 20,
+              flexDirection: 'row',
+              justifyContent: 'center',
               marginTop: 12,
             }}
-            onPress={refreshWeatherData}
           >
-            <Text style={{ color: '#fff', fontWeight: '500' }}>
-              {t('Thử lại')}
-            </Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={{
+                backgroundColor: COLORS.PRIMARY,
+                paddingVertical: 8,
+                paddingHorizontal: 16,
+                borderRadius: 20,
+                marginRight: 8,
+              }}
+              onPress={refreshWeatherData}
+            >
+              <Text style={{ color: '#fff', fontWeight: '500' }}>
+                {t('Thử lại')}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={{
+                backgroundColor: '#555',
+                paddingVertical: 8,
+                paddingHorizontal: 16,
+                borderRadius: 20,
+              }}
+              onPress={async () => {
+                setLoading(true)
+                try {
+                  // Xóa cache trước
+                  await weatherService.clearWeatherCache()
+
+                  // Kiểm tra kết nối
+                  const result = await weatherService.testWeatherConnection()
+
+                  if (result.workingMethods.length > 0) {
+                    // Có ít nhất một phương thức kết nối hoạt động
+                    alert(
+                      `Đã tìm thấy ${result.workingMethods.length} phương thức kết nối hoạt động. Đang tải lại dữ liệu...`
+                    )
+                    // Tải lại dữ liệu
+                    await fetchWeatherData(true)
+                  } else {
+                    // Không có phương thức kết nối nào hoạt động
+                    alert(
+                      `Không thể kết nối đến API thời tiết. Lỗi: ${
+                        result.error || 'Không xác định'
+                      }`
+                    )
+                    setLoading(false)
+                  }
+                } catch (error) {
+                  console.error('Lỗi khi kiểm tra kết nối:', error)
+                  alert(`Lỗi khi kiểm tra kết nối: ${error.message}`)
+                  setLoading(false)
+                }
+              }}
+            >
+              <Text style={{ color: '#fff', fontWeight: '500' }}>
+                {t('Kiểm tra kết nối')}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </TouchableOpacity>
     )

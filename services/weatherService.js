@@ -347,8 +347,39 @@ export const fetchWeatherData = async (
     const isWeb = typeof document !== 'undefined'
     const isMobile = !isWeb
 
-    // Tối ưu hóa cho môi trường mobile
+    // Tạo URL với proxy cho môi trường web (snack.expo.dev)
     let fetchUrl = url
+
+    // Biến để theo dõi proxy đã thử
+    const proxyIndex = retryCount % API_CONFIG.WEATHER_PROXY_URLS.length
+
+    if (isWeb) {
+      // Tạo URL endpoint (phần sau /data/2.5/)
+      const endpoint_part = url.split('/data/2.5/')[1]
+
+      // Sử dụng proxy CORS từ danh sách proxy
+      if (API_CONFIG.WEATHER_PROXY_URLS[proxyIndex].includes('allorigins')) {
+        // Xử lý đặc biệt cho allorigins
+        fetchUrl = `${
+          API_CONFIG.WEATHER_PROXY_URLS[proxyIndex]
+        }=${encodeURIComponent(url)}`
+      } else if (
+        API_CONFIG.WEATHER_PROXY_URLS[proxyIndex].includes('codetabs')
+      ) {
+        // Xử lý đặc biệt cho codetabs
+        fetchUrl = `${API_CONFIG.WEATHER_PROXY_URLS[proxyIndex]}=${url}`
+      } else {
+        // Các proxy khác
+        fetchUrl = `${API_CONFIG.WEATHER_PROXY_URLS[proxyIndex]}/${endpoint_part}`
+      }
+
+      console.log(
+        `Sử dụng CORS proxy #${proxyIndex + 1}:`,
+        fetchUrl.replace(apiKey, '***')
+      )
+    }
+
+    // Tối ưu hóa cho môi trường mobile
     let fetchOptions = {
       signal: controller.signal,
       headers: {
@@ -359,13 +390,13 @@ export const fetchWeatherData = async (
 
     // Thêm cấu hình đặc biệt cho môi trường web (như snack.expo.dev)
     if (isWeb) {
-      // Sử dụng direct API call trước, nếu có lỗi CORS thì sẽ thử lại với proxy
       fetchOptions = {
         ...fetchOptions,
         mode: 'cors',
         headers: {
           ...fetchOptions.headers,
           'X-Requested-With': 'XMLHttpRequest',
+          Origin: 'https://snack.expo.dev',
         },
       }
     }
@@ -378,6 +409,8 @@ export const fetchWeatherData = async (
       fetchOptions.headers['Pragma'] = 'no-cache'
       fetchOptions.headers['Expires'] = '0'
     }
+
+    console.log('Gọi API với URL:', fetchUrl.replace(apiKey, '***'))
 
     const response = await fetch(fetchUrl, fetchOptions).catch((error) => {
       console.error('Lỗi fetch API thời tiết:', error)
@@ -502,35 +535,13 @@ export const fetchWeatherData = async (
         error.message.includes('cross-origin'))
 
     if (isCorsError && retryCount > 0) {
-      console.log('Lỗi CORS trên môi trường web, thử lại với proxy...')
+      console.log('Lỗi CORS trên môi trường web, thử lại với proxy khác...')
 
       // Đợi 1 giây trước khi thử lại
       await new Promise((resolve) => setTimeout(resolve, 1000))
 
-      // Thử lại với proxy CORS
-      try {
-        const proxyUrl = `https://cors-anywhere.herokuapp.com/${url}`
-        console.log('Sử dụng CORS proxy:', proxyUrl.replace(apiKey, '***'))
-
-        const proxyResponse = await fetch(proxyUrl, {
-          signal: controller.signal,
-          headers: {
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-          },
-          mode: 'cors',
-        })
-
-        if (proxyResponse.ok) {
-          const data = await proxyResponse.json()
-          // Lưu vào cache
-          await saveToCache(cacheKey, data)
-          return data
-        }
-      } catch (proxyError) {
-        console.error('Lỗi khi sử dụng proxy CORS:', proxyError)
-      }
+      // Thử lại với proxy tiếp theo trong danh sách
+      return fetchWeatherData(endpoint, params, retryCount - 1)
     }
 
     // Xử lý các lỗi mạng khác
@@ -1145,6 +1156,142 @@ export const checkAndUseNewApiKey = async (apiKey) => {
   }
 }
 
+/**
+ * Kiểm tra kết nối API thời tiết
+ * @returns {Promise<Object>} Kết quả kiểm tra
+ */
+export const testWeatherConnection = async () => {
+  const results = {
+    direct: false,
+    proxies: [],
+    workingMethods: [],
+    error: null,
+  }
+
+  try {
+    console.log('Đang kiểm tra kết nối API thời tiết...')
+
+    // Lấy API key
+    const apiKey = selectApiKey()
+    if (!apiKey) {
+      results.error = 'Không có API key khả dụng'
+      return results
+    }
+
+    // Tạo URL API để kiểm tra kết nối
+    const url = `${API_CONFIG.WEATHER_BASE_URL}/weather?q=Hanoi&appid=${apiKey}&units=metric&lang=vi`
+
+    // Kiểm tra kết nối trực tiếp
+    try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 10000)
+
+      const response = await fetch(url, {
+        signal: controller.signal,
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+      })
+
+      clearTimeout(timeoutId)
+
+      if (response.ok) {
+        results.direct = true
+        results.workingMethods.push('direct')
+        console.log('Kết nối trực tiếp thành công')
+      }
+    } catch (error) {
+      console.log('Kết nối trực tiếp thất bại:', error.message)
+    }
+
+    // Kiểm tra các proxy
+    for (let i = 0; i < API_CONFIG.WEATHER_PROXY_URLS.length; i++) {
+      const proxy = API_CONFIG.WEATHER_PROXY_URLS[i]
+      let proxyUrl = ''
+
+      // Tạo URL với proxy
+      if (proxy.includes('allorigins')) {
+        proxyUrl = `${proxy}=${encodeURIComponent(url)}`
+      } else if (proxy.includes('codetabs')) {
+        proxyUrl = `${proxy}=${url}`
+      } else {
+        const endpoint_part = url.split('/data/2.5/')[1]
+        proxyUrl = `${proxy}/${endpoint_part}`
+      }
+
+      try {
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 10000)
+
+        const response = await fetch(proxyUrl, {
+          signal: controller.signal,
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+          mode: 'cors',
+        })
+
+        clearTimeout(timeoutId)
+
+        if (response.ok) {
+          results.proxies.push({
+            index: i,
+            name: proxy.split('//')[1].split('.')[0],
+            working: true,
+          })
+          results.workingMethods.push(`proxy_${i}`)
+          console.log(
+            `Proxy #${i + 1} (${
+              proxy.split('//')[1].split('.')[0]
+            }) hoạt động tốt`
+          )
+        } else {
+          results.proxies.push({
+            index: i,
+            name: proxy.split('//')[1].split('.')[0],
+            working: false,
+            status: response.status,
+          })
+          console.log(
+            `Proxy #${i + 1} (${
+              proxy.split('//')[1].split('.')[0]
+            }) không hoạt động: ${response.status}`
+          )
+        }
+      } catch (error) {
+        results.proxies.push({
+          index: i,
+          name: proxy.split('//')[1].split('.')[0],
+          working: false,
+          error: error.message,
+        })
+        console.log(
+          `Proxy #${i + 1} (${proxy.split('//')[1].split('.')[0]}) lỗi: ${
+            error.message
+          }`
+        )
+      }
+    }
+
+    // Tổng kết
+    if (results.direct || results.proxies.some((p) => p.working)) {
+      console.log('Có ít nhất một phương thức kết nối hoạt động')
+    } else {
+      results.error = 'Không có phương thức kết nối nào hoạt động'
+      console.error(results.error)
+    }
+
+    return results
+  } catch (error) {
+    results.error = error.message
+    console.error('Lỗi khi kiểm tra kết nối:', error)
+    return results
+  }
+}
+
 export default {
   getCurrentWeather,
   getWeatherForecast,
@@ -1159,4 +1306,5 @@ export default {
   initWeatherService,
   validateApiKey,
   checkAndUseNewApiKey,
+  testWeatherConnection,
 }
