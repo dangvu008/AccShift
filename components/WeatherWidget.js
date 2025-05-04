@@ -218,9 +218,7 @@ const WeatherWidget = ({ onPress }) => {
           }
         } catch (defaultError) {
           console.error('Lỗi khi lấy dữ liệu thời tiết mặc định:', defaultError)
-          setErrorMessage(
-            'Không thể lấy dữ liệu thời tiết. Vui lòng kiểm tra kết nối mạng và thử lại.'
-          )
+          // Không hiển thị thông báo lỗi chi tiết nữa
           setLoading(false)
           setRefreshing(false)
           clearTimeout(fetchTimeout)
@@ -278,8 +276,8 @@ const WeatherWidget = ({ onPress }) => {
       clearTimeout(fetchTimeout)
 
       if (isMounted) {
-        // Lưu thông báo lỗi
-        setErrorMessage(`Lỗi: ${error.message}`)
+        // Không hiển thị thông báo lỗi chi tiết nữa, chỉ ghi log
+        console.log(`Lỗi: ${error.message}`)
         setLoading(false)
         setRefreshing(false)
       }
@@ -625,69 +623,26 @@ const WeatherWidget = ({ onPress }) => {
               marginBottom: 12,
             }}
           >
-            {locationPermissionGranted
-              ? errorMessage
-                ? errorMessage
-                : t('Kiểm tra kết nối mạng và thử lại')
-              : t('Cần cấp quyền vị trí để xem thời tiết')}
+            {!locationPermissionGranted
+              ? t('Cần cấp quyền vị trí để xem thời tiết')
+              : t('Nhấn nút làm mới để thử lại')}
           </Text>
 
-          <View
+          <TouchableOpacity
             style={{
-              flexDirection: 'row',
-              justifyContent: 'center',
+              backgroundColor: COLORS.PRIMARY,
+              paddingVertical: 8,
+              paddingHorizontal: 16,
+              borderRadius: 20,
+              alignSelf: 'center',
               marginTop: 12,
-              flexWrap: 'wrap',
             }}
+            onPress={refreshWeatherData}
           >
-            <TouchableOpacity
-              style={{
-                backgroundColor: COLORS.PRIMARY,
-                paddingVertical: 8,
-                paddingHorizontal: 16,
-                borderRadius: 20,
-                marginRight: 8,
-                marginBottom: 8,
-              }}
-              onPress={refreshWeatherData}
-            >
-              <Text style={{ color: COLORS.TEXT_DARK, fontWeight: '500' }}>
-                {t('Thử lại')}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={{
-                backgroundColor: '#4CAF50',
-                paddingVertical: 8,
-                paddingHorizontal: 16,
-                borderRadius: 20,
-                marginLeft: 8,
-                marginBottom: 8,
-              }}
-              onPress={async () => {
-                setLoading(true)
-                try {
-                  // Xóa cache
-                  await weatherService.clearWeatherCache()
-
-                  // Hiển thị thông báo
-                  alert('Đã xóa cache thời tiết. Đang tải lại dữ liệu...')
-
-                  // Tải lại dữ liệu
-                  await fetchWeatherData(true)
-                } catch (error) {
-                  console.error('Lỗi khi làm mới dữ liệu:', error)
-                  alert(`Lỗi: ${error.message}`)
-                  setLoading(false)
-                }
-              }}
-            >
-              <Text style={{ color: COLORS.TEXT_DARK, fontWeight: '500' }}>
-                {t('Xóa cache & Làm mới')}
-              </Text>
-            </TouchableOpacity>
-          </View>
+            <Text style={{ color: COLORS.TEXT_DARK, fontWeight: '500' }}>
+              {t('Làm mới')}
+            </Text>
+          </TouchableOpacity>
         </View>
       </TouchableOpacity>
     )

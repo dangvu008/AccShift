@@ -8,14 +8,13 @@ export const formatTime = (date) => {
   return `${hours}:${minutes}`
 }
 
-// Format time from Date object to HH:MM:SS format
+// Format time from Date object to HH:MM format (không hiển thị giây)
 export const formatTimeDisplay = (date) => {
-  if (!date) return '--:--:--'
+  if (!date) return '--:--'
 
   return date.toLocaleTimeString('vi-VN', {
     hour: '2-digit',
     minute: '2-digit',
-    second: '2-digit',
     hour12: false,
   })
 }

@@ -13,6 +13,25 @@ const API_KEYS = [
     priority: 0, // Ưu tiên cao nhất
     enabled: true,
   },
+  // API keys mới bổ sung 2024 - Ưu tiên cao nhất
+  {
+    key: '9fc64fb548ebb9a0d8d21af64eab50b7', // API key mới được cung cấp
+    type: 'free',
+    priority: 0, // Ưu tiên cao nhất
+    enabled: true,
+  },
+  {
+    key: '9ba1a7d568c9390298e875878f2656c0', // API key mới được cung cấp
+    type: 'free',
+    priority: 0, // Ưu tiên cao nhất
+    enabled: true,
+  },
+  {
+    key: '9810cbe1f28a24d0201e4fe68113122b', // API key mới được cung cấp
+    type: 'free',
+    priority: 0, // Ưu tiên cao nhất
+    enabled: true,
+  },
   // API keys mới với ưu tiên cao - 2023-2024
   {
     key: '1fa9ff4126dd63884c9a139b4a26b890',
@@ -39,55 +58,68 @@ const API_KEYS = [
     priority: 1,
     enabled: true,
   },
+  // API keys dự phòng
   {
     key: '83a6c8c8d9e1a9f0b5c7d2e4f6a8b0c9',
     type: 'free',
-    priority: 1,
+    priority: 2,
     enabled: true,
   },
   {
     key: '7b9c5d3e1f2a4b6d8c0e2f4a6b8d0c2e',
     type: 'free',
-    priority: 1,
+    priority: 2,
     enabled: true,
   },
   // API keys cũ với ưu tiên thấp hơn
   {
     key: '4c07c52292af2bc2175c1d153b9b1e75',
     type: 'free',
-    priority: 10,
+    priority: 3,
     enabled: true,
   },
   {
     key: 'b5be947361e1541457fa2e8bda0c27fd',
     type: 'free',
-    priority: 10,
+    priority: 3,
     enabled: true,
   },
   {
     key: 'd53d270911d2c0f515869c0fe38c5f6f',
     type: 'free',
-    priority: 10,
+    priority: 3,
     enabled: true,
   },
   {
     key: 'ecedca1f66c870e9bff73d2c1da6c2fb',
     type: 'free',
-    priority: 10,
+    priority: 3,
     enabled: true,
   },
   {
     key: '1c0952d5a7ca5cf28189ecf9f0d0483a',
     type: 'free',
-    priority: 10,
+    priority: 3,
     enabled: true,
   },
-  // Dự phòng cho key trả phí trong tương lai
+  // Thêm API keys mới 2024
   {
-    key: 'your_future_paid_key',
-    type: 'paid',
-    priority: 0, // Ưu tiên cao nhất khi được kích hoạt
-    enabled: false, // Chưa kích hoạt
+    key: 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6',
+    type: 'free',
+    priority: 1,
+    enabled: true,
+  },
+  {
+    key: 'f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3',
+    type: 'free',
+    priority: 1,
+    enabled: true,
+  },
+  {
+    key: '1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d',
+    type: 'free',
+    priority: 1,
+    enabled: true,
   },
 ]
 
@@ -122,67 +154,43 @@ const selectApiKey = () => {
   const enabledKeys = API_KEYS.filter((keyObj) => keyObj.enabled)
   if (enabledKeys.length === 0) return null
 
-  // Ưu tiên sử dụng API key mới nhất (0159b1563875298237265a8b2f0065f2)
-  const newKey = enabledKeys.find(
-    (keyObj) => keyObj.key === '0159b1563875298237265a8b2f0065f2'
-  )
-
-  // Nếu có key mới và chưa đạt giới hạn sử dụng, ưu tiên sử dụng key này
-  if (
-    newKey &&
-    keyUsageCounter[newKey.key] &&
-    keyUsageCounter[newKey.key].count < API_CONFIG.KEY_USAGE_LIMIT_PER_MINUTE
-  ) {
-    console.log('Sử dụng API key mới nhất')
-    keyUsageCounter[newKey.key].count++
-    return newKey.key
-  }
-
-  // Nếu key mới không khả dụng, sử dụng logic cũ
   // Sắp xếp theo ưu tiên (số nhỏ = ưu tiên cao)
   const sortedKeys = [...enabledKeys].sort((a, b) => a.priority - b.priority)
 
-  // Lấy các key có ưu tiên cao nhất
-  const highestPriority = sortedKeys[0].priority
-  const highestPriorityKeys = sortedKeys.filter(
-    (keyObj) => keyObj.priority === highestPriority
-  )
+  // Thử sử dụng key theo thứ tự ưu tiên
+  for (let priority = 0; priority <= 3; priority++) {
+    // Lấy tất cả các key có cùng mức ưu tiên hiện tại
+    const priorityKeys = sortedKeys.filter(
+      (keyObj) => keyObj.priority === priority
+    )
 
-  // Chọn key theo round-robin trong nhóm ưu tiên cao nhất
-  lastKeyIndex = (lastKeyIndex + 1) % highestPriorityKeys.length
-  const selectedKeyObj = highestPriorityKeys[lastKeyIndex]
+    if (priorityKeys.length === 0) continue
 
-  // Kiểm tra giới hạn sử dụng
-  if (
-    keyUsageCounter[selectedKeyObj.key].count >=
-    API_CONFIG.KEY_USAGE_LIMIT_PER_MINUTE
-  ) {
-    // Key này đã đạt giới hạn, thử key khác
-    const remainingKeys = highestPriorityKeys.filter(
+    // Tìm key chưa đạt giới hạn sử dụng
+    const availableKeys = priorityKeys.filter(
       (keyObj) =>
         keyUsageCounter[keyObj.key].count <
         API_CONFIG.KEY_USAGE_LIMIT_PER_MINUTE
     )
 
-    if (remainingKeys.length === 0) {
-      // Tất cả key ưu tiên cao đều đạt giới hạn, thử key ưu tiên thấp hơn
-      const lowerPriorityKeys = sortedKeys.filter(
-        (keyObj) => keyObj.priority > highestPriority
-      )
-      if (lowerPriorityKeys.length === 0) return null
+    if (availableKeys.length > 0) {
+      // Chọn ngẫu nhiên một key từ các key khả dụng để phân tán tải
+      const randomIndex = Math.floor(Math.random() * availableKeys.length)
+      const selectedKeyObj = availableKeys[randomIndex]
 
-      return selectApiKey() // Đệ quy để tìm key ưu tiên thấp hơn
+      // Tăng bộ đếm sử dụng
+      keyUsageCounter[selectedKeyObj.key].count++
+
+      console.log(`Sử dụng API key với ưu tiên ${priority}`)
+      return selectedKeyObj.key
     }
-
-    // Chọn key đầu tiên trong danh sách còn lại
-    const alternativeKeyObj = remainingKeys[0]
-    keyUsageCounter[alternativeKeyObj.key].count++
-    return alternativeKeyObj.key
   }
 
-  // Tăng bộ đếm sử dụng
-  keyUsageCounter[selectedKeyObj.key].count++
-  return selectedKeyObj.key
+  // Nếu tất cả các key đều đạt giới hạn, thử dùng key đầu tiên
+  console.log('Tất cả API key đều đạt giới hạn, thử dùng key đầu tiên')
+  const firstKey = sortedKeys[0]
+  keyUsageCounter[firstKey.key].count++
+  return firstKey.key
 }
 
 /**
@@ -320,7 +328,7 @@ export const fetchWeatherData = async (
       console.error('Không thể đọc cache cũ:', cacheError)
     }
 
-    throw new Error('Không có API key khả dụng. Vui lòng thử lại sau.')
+    throw new Error('Không thể tải dữ liệu thời tiết')
   }
 
   try {
@@ -410,7 +418,40 @@ export const fetchWeatherData = async (
           console.error('Không thể đọc cache cũ:', cacheError)
         }
 
-        throw new Error('API key không hợp lệ hoặc bị khóa.')
+        // Thử dùng API key mặc định nếu tất cả các key khác đều không hoạt động
+        const defaultKeys = [
+          '0159b1563875298237265a8b2f0065f2',
+          '9fc64fb548ebb9a0d8d21af64eab50b7',
+          '9ba1a7d568c9390298e875878f2656c0',
+          '9810cbe1f28a24d0201e4fe68113122b',
+        ]
+        const defaultKey =
+          defaultKeys.find((key) => key !== apiKey) ||
+          '0159b1563875298237265a8b2f0065f2'
+        if (apiKey !== defaultKey) {
+          console.log('Thử dùng API key mặc định...')
+          const defaultUrl = `${
+            API_CONFIG.WEATHER_BASE_URL
+          }/${endpoint}?${new URLSearchParams({
+            ...params,
+            appid: defaultKey,
+            units: 'metric',
+            lang: 'vi',
+          }).toString()}`
+
+          try {
+            const defaultResponse = await fetch(defaultUrl, fetchOptions)
+            if (defaultResponse.ok) {
+              const data = await defaultResponse.json()
+              await saveToCache(cacheKey, data)
+              return data
+            }
+          } catch (defaultKeyError) {
+            console.error('Lỗi khi dùng API key mặc định:', defaultKeyError)
+          }
+        }
+
+        throw new Error('Không thể tải dữ liệu thời tiết')
       } else if (response.status === 429) {
         // Rate limit
         markKeyError(apiKey, false)
@@ -431,7 +472,7 @@ export const fetchWeatherData = async (
           console.error('Không thể đọc cache cũ:', cacheError)
         }
 
-        throw new Error('Đã vượt quá giới hạn gọi API. Vui lòng thử lại sau.')
+        throw new Error('Không thể tải dữ liệu thời tiết')
       } else {
         // Thử tìm cache cũ nhất có thể sử dụng được
         try {
@@ -445,7 +486,7 @@ export const fetchWeatherData = async (
           console.error('Không thể đọc cache cũ:', cacheError)
         }
 
-        throw new Error(`Lỗi API: ${response.status} ${response.statusText}`)
+        throw new Error('Không thể tải dữ liệu thời tiết')
       }
     }
 

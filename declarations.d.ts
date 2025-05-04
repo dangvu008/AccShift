@@ -1,5 +1,8 @@
 // Khai báo các module không có type definitions
 
+// Khai báo biến toàn cục __DEV__ cho TypeScript
+declare const __DEV__: boolean
+
 declare module 'react' {
   export const useState: any
   export const useEffect: any

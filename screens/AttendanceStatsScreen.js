@@ -11,7 +11,7 @@ import {
 } from 'react-native'
 import { AppContext } from '../context/AppContext'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { WORK_STATUS } from '../components/WeeklyStatusGrid'
+import { WORK_STATUS } from '../config/appConfig'
 
 const AttendanceStatsScreen = ({ navigation }) => {
   const { t, darkMode } = useContext(AppContext)
@@ -25,49 +25,6 @@ const AttendanceStatsScreen = ({ navigation }) => {
     monthlyTrend: [],
     weekdayDistribution: {},
   })
-
-  const loadAttendanceStats = useCallback(async () => {
-    setIsLoading(true)
-    try {
-      // Get all keys from AsyncStorage
-      const keys = await AsyncStorage.getAllKeys()
-      const statusKeys = keys.filter((key) =>
-        key.startsWith('dailyWorkStatus_')
-      )
-
-      // Get date range based on selected time range
-      const { startDate, endDate } = getDateRange(timeRange)
-
-      // Filter keys within the date range
-      const filteredKeys = statusKeys.filter((key) => {
-        const dateStr = key.replace('dailyWorkStatus_', '')
-        const date = new Date(dateStr)
-        return date >= startDate && date <= endDate
-      })
-
-      // Get all status data
-      const statusPairs = await AsyncStorage.multiGet(filteredKeys)
-      const statusData = statusPairs.map(([key, value]) => {
-        const dateStr = key.replace('dailyWorkStatus_', '')
-        return {
-          date: new Date(dateStr),
-          ...JSON.parse(value),
-        }
-      })
-
-      // Calculate statistics
-      const calculatedStats = calculateStats(statusData, startDate, endDate)
-      setStats(calculatedStats)
-    } catch (error) {
-      console.error('Error loading attendance stats:', error)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [timeRange, calculateStats, getDateRange])
-
-  useEffect(() => {
-    loadAttendanceStats()
-  }, [loadAttendanceStats])
 
   const getDateRange = useCallback((range) => {
     const now = new Date()
@@ -101,7 +58,8 @@ const AttendanceStatsScreen = ({ navigation }) => {
 
   const getWeekNumber = useCallback((date) => {
     const firstDayOfYear = new Date(date.getFullYear(), 0, 1)
-    const pastDaysOfYear = (date - firstDayOfYear) / 86400000
+    const pastDaysOfYear =
+      (date.getTime() - firstDayOfYear.getTime()) / 86400000
     return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7)
   }, [])
 
@@ -190,6 +148,49 @@ const AttendanceStatsScreen = ({ navigation }) => {
     },
     [getWeekNumber]
   )
+
+  const loadAttendanceStats = useCallback(async () => {
+    setIsLoading(true)
+    try {
+      // Get all keys from AsyncStorage
+      const keys = await AsyncStorage.getAllKeys()
+      const statusKeys = keys.filter((key) =>
+        key.startsWith('dailyWorkStatus_')
+      )
+
+      // Get date range based on selected time range
+      const { startDate, endDate } = getDateRange(timeRange)
+
+      // Filter keys within the date range
+      const filteredKeys = statusKeys.filter((key) => {
+        const dateStr = key.replace('dailyWorkStatus_', '')
+        const date = new Date(dateStr)
+        return date >= startDate && date <= endDate
+      })
+
+      // Get all status data
+      const statusPairs = await AsyncStorage.multiGet(filteredKeys)
+      const statusData = statusPairs.map(([key, value]) => {
+        const dateStr = key.replace('dailyWorkStatus_', '')
+        return {
+          date: new Date(dateStr),
+          ...JSON.parse(value),
+        }
+      })
+
+      // Calculate statistics
+      const calculatedStats = calculateStats(statusData, startDate, endDate)
+      setStats(calculatedStats)
+    } catch (error) {
+      console.error('Error loading attendance stats:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [timeRange, calculateStats, getDateRange])
+
+  useEffect(() => {
+    loadAttendanceStats()
+  }, [loadAttendanceStats])
 
   const getStatusName = (status) => {
     switch (status) {
