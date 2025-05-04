@@ -59,8 +59,13 @@ const WeatherWidget = ({ onPress }) => {
         console.log('Timeout khi lấy dữ liệu thời tiết')
         setLoading(false)
         setRefreshing(false)
+
+        // Hiển thị thông báo lỗi timeout
+        setErrorMessage(
+          'Quá thời gian chờ khi tải dữ liệu thời tiết. Vui lòng thử lại sau.'
+        )
       }
-    }, 30000) // 30 giây timeout
+    }, 45000) // 45 giây timeout (tăng từ 30 giây)
 
     try {
       setLoading(true)
@@ -194,15 +199,46 @@ const WeatherWidget = ({ onPress }) => {
       if (!isMounted) return
 
       // 3. Cập nhật state với dữ liệu đã lấy được
-      // Vị trí chính (nhà hoặc công ty)
-      setCurrentWeather(homeWeatherData || workWeatherData)
-      setForecast(
-        homeHourlyForecast.length > 0 ? homeHourlyForecast : workHourlyForecast
-      )
+      // Kiểm tra xem có dữ liệu thời tiết không
+      if (!homeWeatherData && !workWeatherData) {
+        console.log('Không có dữ liệu thời tiết từ cả hai vị trí')
 
-      // Vị trí công ty (nếu khác vị trí nhà)
-      setWorkWeather(workWeatherData)
-      setWorkForecast(workHourlyForecast)
+        // Thử lấy dữ liệu thời tiết mặc định từ Hà Nội
+        try {
+          console.log('Thử lấy dữ liệu thời tiết mặc định từ Hà Nội')
+          const defaultWeather = await weatherService.getCurrentWeather()
+          const defaultForecast = await weatherService.getHourlyForecast()
+
+          if (defaultWeather) {
+            setCurrentWeather(defaultWeather)
+            setForecast(defaultForecast || [])
+            console.log('Đã lấy được dữ liệu thời tiết mặc định')
+          } else {
+            throw new Error('Không thể lấy dữ liệu thời tiết mặc định')
+          }
+        } catch (defaultError) {
+          console.error('Lỗi khi lấy dữ liệu thời tiết mặc định:', defaultError)
+          setErrorMessage(
+            'Không thể lấy dữ liệu thời tiết. Vui lòng kiểm tra kết nối mạng và thử lại.'
+          )
+          setLoading(false)
+          setRefreshing(false)
+          clearTimeout(fetchTimeout)
+          return
+        }
+      } else {
+        // Vị trí chính (nhà hoặc công ty)
+        setCurrentWeather(homeWeatherData || workWeatherData)
+        setForecast(
+          homeHourlyForecast.length > 0
+            ? homeHourlyForecast
+            : workHourlyForecast
+        )
+
+        // Vị trí công ty (nếu khác vị trí nhà)
+        setWorkWeather(workWeatherData)
+        setWorkForecast(workHourlyForecast)
+      }
 
       // Cảnh báo thời tiết
       const primaryAlert =
@@ -611,14 +647,14 @@ const WeatherWidget = ({ onPress }) => {
               }}
               onPress={refreshWeatherData}
             >
-              <Text style={{ color: '#fff', fontWeight: '500' }}>
+              <Text style={{ color: COLORS.TEXT_DARK, fontWeight: '500' }}>
                 {t('Thử lại')}
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={{
-                backgroundColor: '#555',
+                backgroundColor: COLORS.BORDER_DARK,
                 paddingVertical: 8,
                 paddingHorizontal: 16,
                 borderRadius: 20,
@@ -634,18 +670,59 @@ const WeatherWidget = ({ onPress }) => {
 
                   if (result.workingMethods.length > 0) {
                     // Có ít nhất một phương thức kết nối hoạt động
-                    alert(
-                      `Đã tìm thấy ${result.workingMethods.length} phương thức kết nối hoạt động. Đang tải lại dữ liệu...`
-                    )
+                    let message = `Đã tìm thấy ${result.workingMethods.length} phương thức kết nối hoạt động.\n\n`
+
+                    // Hiển thị phương thức tốt nhất
+                    if (result.bestMethod === 'direct') {
+                      message += 'Kết nối trực tiếp hoạt động tốt nhất.\n'
+                    } else if (
+                      result.bestMethod &&
+                      result.bestMethod.startsWith('proxy_')
+                    ) {
+                      const proxyIndex = parseInt(
+                        result.bestMethod.split('_')[1]
+                      )
+                      const proxyName =
+                        result.proxies.find((p) => p.index === proxyIndex)
+                          ?.name || 'proxy'
+                      message += `Proxy ${proxyName} hoạt động tốt nhất.\n`
+                    }
+
+                    // Hiển thị các đề xuất
+                    if (result.suggestions && result.suggestions.length > 0) {
+                      message += '\nĐề xuất:\n'
+                      result.suggestions.forEach((suggestion, index) => {
+                        message += `${index + 1}. ${suggestion}\n`
+                      })
+                    }
+
+                    message += '\nĐang tải lại dữ liệu thời tiết...'
+
+                    alert(message)
+
                     // Tải lại dữ liệu
                     await fetchWeatherData(true)
                   } else {
                     // Không có phương thức kết nối nào hoạt động
-                    alert(
-                      `Không thể kết nối đến API thời tiết. Lỗi: ${
-                        result.error || 'Không xác định'
-                      }`
-                    )
+                    let errorMessage = `Không thể kết nối đến API thời tiết.\n\nLỗi: ${
+                      result.error || 'Không xác định'
+                    }\n\n`
+
+                    // Hiển thị các đề xuất
+                    if (result.suggestions && result.suggestions.length > 0) {
+                      errorMessage += 'Đề xuất khắc phục:\n'
+                      result.suggestions.forEach((suggestion, index) => {
+                        errorMessage += `${index + 1}. ${suggestion}\n`
+                      })
+                    }
+
+                    // Thêm thông tin về kết nối internet
+                    if (!result.internetConnected) {
+                      errorMessage +=
+                        '\nKhông phát hiện kết nối internet. Vui lòng kiểm tra kết nối mạng của bạn.'
+                    }
+
+                    alert(errorMessage)
                     setLoading(false)
                   }
                 } catch (error) {
@@ -655,7 +732,7 @@ const WeatherWidget = ({ onPress }) => {
                 }
               }}
             >
-              <Text style={{ color: '#fff', fontWeight: '500' }}>
+              <Text style={{ color: COLORS.TEXT_DARK, fontWeight: '500' }}>
                 {t('Kiểm tra kết nối')}
               </Text>
             </TouchableOpacity>
@@ -800,10 +877,10 @@ const WeatherWidget = ({ onPress }) => {
               <MaterialCommunityIcons
                 name="weather-pouring"
                 size={24}
-                color="#fff"
+                color={COLORS.TEXT_DARK}
               />
             ) : (
-              <Ionicons name="warning" size={24} color="#fff" />
+              <Ionicons name="warning" size={24} color={COLORS.TEXT_DARK} />
             )}
           </View>
           <Text style={styles.alertText}>{smartAlert.message}</Text>
@@ -824,7 +901,7 @@ const WeatherWidget = ({ onPress }) => {
           ]}
         >
           <View style={styles.alertIconContainer}>
-            <Ionicons name="warning" size={24} color="#fff" />
+            <Ionicons name="warning" size={24} color={COLORS.TEXT_DARK} />
           </View>
           <Text style={styles.alertText}>{weatherAlert.message}</Text>
         </View>
@@ -835,12 +912,12 @@ const WeatherWidget = ({ onPress }) => {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#fff', // Sẽ được ghi đè bởi theme.cardColor
+    backgroundColor: COLORS.BACKGROUND_LIGHT, // Sẽ được ghi đè bởi theme.cardColor
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
     elevation: 2,
-    shadowColor: '#000',
+    shadowColor: COLORS.SHADOW,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
     shadowRadius: 2,
@@ -917,7 +994,7 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   alertText: {
-    color: '#fff',
+    color: COLORS.TEXT_DARK,
     fontSize: 14,
     flex: 1,
     lineHeight: 20,

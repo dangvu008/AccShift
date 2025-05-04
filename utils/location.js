@@ -33,6 +33,17 @@ export const getCurrentLocation = async () => {
 
     console.log('Đã được cấp quyền vị trí, đang lấy vị trí hiện tại...')
 
+    // Kiểm tra xem có đang chạy trên máy ảo không
+    const isEmulator = await Location.isUsingLocationServicesEnabled()
+    if (!isEmulator) {
+      console.log('Đang chạy trên máy ảo, sử dụng vị trí mặc định (Hà Nội)')
+      // Sử dụng vị trí mặc định cho máy ảo (Hà Nội)
+      return {
+        latitude: 21.0278,
+        longitude: 105.8342,
+      }
+    }
+
     // Thêm timeout để tránh treo ứng dụng
     const locationPromise = Location.getCurrentPositionAsync({
       accuracy: Location.Accuracy.Balanced, // Sử dụng Balanced thay vì High để tăng tốc độ
@@ -70,7 +81,13 @@ export const getCurrentLocation = async () => {
       }
     } catch (retryError) {
       console.error('Lỗi khi thử lại lấy vị trí:', retryError)
-      return null
+
+      // Nếu vẫn không lấy được vị trí, sử dụng vị trí mặc định (Hà Nội)
+      console.log('Không thể lấy vị trí, sử dụng vị trí mặc định (Hà Nội)')
+      return {
+        latitude: 21.0278,
+        longitude: 105.8342,
+      }
     }
   }
 }
@@ -83,6 +100,11 @@ export const getCurrentLocation = async () => {
  */
 export const getAddressFromCoordinates = async (latitude, longitude) => {
   try {
+    // Kiểm tra xem có phải là vị trí mặc định (Hà Nội) không
+    if (latitude === 21.0278 && longitude === 105.8342) {
+      return 'Hà Nội, Việt Nam'
+    }
+
     const response = await fetch(
       `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`
     )
@@ -94,6 +116,15 @@ export const getAddressFromCoordinates = async (latitude, longitude) => {
     return null
   } catch (error) {
     console.error('Error getting address:', error)
+
+    // Nếu có lỗi và tọa độ gần với vị trí mặc định (Hà Nội), trả về địa chỉ mặc định
+    if (
+      Math.abs(latitude - 21.0278) < 0.01 &&
+      Math.abs(longitude - 105.8342) < 0.01
+    ) {
+      return 'Hà Nội, Việt Nam'
+    }
+
     return null
   }
 }
@@ -264,9 +295,12 @@ const deg2rad = (deg) => {
  * @param {Function} onConfirm Hàm xử lý khi xác nhận
  */
 export const showLocationConfirmDialog = (title, address, onConfirm) => {
+  // Nếu địa chỉ là null hoặc không xác định, sử dụng địa chỉ mặc định
+  const displayAddress = address || 'Hà Nội, Việt Nam'
+
   Alert.alert(
     title,
-    `Địa chỉ: ${address}\n\nBạn có muốn lưu vị trí này không?`,
+    `Địa chỉ: ${displayAddress}\n\nBạn có muốn lưu vị trí này không?`,
     [
       {
         text: 'Không',

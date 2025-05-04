@@ -534,6 +534,13 @@ export const fetchWeatherData = async (
         error.message.includes('Cross-Origin') ||
         error.message.includes('cross-origin'))
 
+    // Kiểm tra lỗi timeout
+    const isTimeoutError =
+      error.message.includes('timeout') ||
+      error.message.includes('Timeout') ||
+      error.message.includes('abort') ||
+      error.message.includes('AbortError')
+
     if (isCorsError && retryCount > 0) {
       console.log('Lỗi CORS trên môi trường web, thử lại với proxy khác...')
 
@@ -541,6 +548,59 @@ export const fetchWeatherData = async (
       await new Promise((resolve) => setTimeout(resolve, 1000))
 
       // Thử lại với proxy tiếp theo trong danh sách
+      return fetchWeatherData(endpoint, params, retryCount - 1)
+    }
+
+    // Xử lý lỗi timeout riêng để tăng thời gian timeout cho lần sau
+    if (isTimeoutError && retryCount > 0) {
+      console.log(
+        `Lỗi timeout, thử lại lần ${
+          3 - retryCount + 1
+        }/3 với timeout dài hơn...`
+      )
+
+      // Tăng thời gian timeout cho lần sau
+      const increasedTimeout = API_CONFIG.REQUEST_TIMEOUT * 1.5
+
+      // Đợi trước khi thử lại
+      await new Promise((resolve) =>
+        setTimeout(resolve, API_CONFIG.RETRY_DELAY)
+      )
+
+      // Thử lại với timeout dài hơn
+      try {
+        const url = `${
+          API_CONFIG.WEATHER_BASE_URL
+        }/${endpoint}?${new URLSearchParams({
+          ...params,
+          appid: apiKey,
+          units: 'metric',
+          lang: 'vi',
+        }).toString()}`
+
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), increasedTimeout)
+
+        const response = await fetch(url, {
+          signal: controller.signal,
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+          },
+        })
+
+        clearTimeout(timeoutId)
+
+        if (response.ok) {
+          const data = await response.json()
+          await saveToCache(cacheKey, data)
+          return data
+        }
+      } catch (retryError) {
+        console.log('Lỗi khi thử lại với timeout dài hơn:', retryError.message)
+      }
+
+      // Nếu vẫn lỗi, thử lại bình thường
       return fetchWeatherData(endpoint, params, retryCount - 1)
     }
 
@@ -1166,15 +1226,42 @@ export const testWeatherConnection = async () => {
     proxies: [],
     workingMethods: [],
     error: null,
+    internetConnected: false,
+    apiKeyValid: false,
+    suggestions: [],
+    bestMethod: null,
   }
 
   try {
     console.log('Đang kiểm tra kết nối API thời tiết...')
 
+    // Kiểm tra kết nối internet cơ bản
+    try {
+      const internetCheckUrl = 'https://www.google.com'
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 5000)
+
+      const response = await fetch(internetCheckUrl, {
+        signal: controller.signal,
+        method: 'HEAD',
+      })
+
+      clearTimeout(timeoutId)
+
+      if (response.ok) {
+        results.internetConnected = true
+        console.log('Kết nối internet hoạt động')
+      }
+    } catch (internetError) {
+      console.log('Kiểm tra kết nối internet thất bại:', internetError.message)
+      results.suggestions.push('Kiểm tra kết nối internet của bạn')
+    }
+
     // Lấy API key
     const apiKey = selectApiKey()
     if (!apiKey) {
       results.error = 'Không có API key khả dụng'
+      results.suggestions.push('Thêm API key mới vào ứng dụng')
       return results
     }
 
@@ -1184,13 +1271,16 @@ export const testWeatherConnection = async () => {
     // Kiểm tra kết nối trực tiếp
     try {
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 10000)
+      const timeoutId = setTimeout(() => controller.abort(), 15000) // Tăng timeout lên 15 giây
 
       const response = await fetch(url, {
         signal: controller.signal,
         headers: {
           Accept: 'application/json',
           'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          Pragma: 'no-cache',
+          Expires: '0',
         },
       })
 
@@ -1199,13 +1289,37 @@ export const testWeatherConnection = async () => {
       if (response.ok) {
         results.direct = true
         results.workingMethods.push('direct')
+        results.apiKeyValid = true
+        results.bestMethod = 'direct'
         console.log('Kết nối trực tiếp thành công')
+      } else if (response.status === 401 || response.status === 403) {
+        console.log('API key không hợp lệ hoặc bị khóa')
+        results.suggestions.push(
+          'API key không hợp lệ hoặc bị khóa. Thử thêm API key mới.'
+        )
+      } else {
+        console.log(`Kết nối trực tiếp thất bại với mã lỗi: ${response.status}`)
+        results.suggestions.push(
+          `Lỗi API: ${response.status}. Thử sử dụng proxy.`
+        )
       }
     } catch (error) {
       console.log('Kết nối trực tiếp thất bại:', error.message)
+
+      if (
+        error.message.includes('timeout') ||
+        error.message.includes('abort')
+      ) {
+        results.suggestions.push(
+          'Kết nối quá chậm. Thử lại sau hoặc sử dụng proxy.'
+        )
+      }
     }
 
     // Kiểm tra các proxy
+    let bestProxyIndex = -1
+    let bestProxyResponseTime = Infinity
+
     for (let i = 0; i < API_CONFIG.WEATHER_PROXY_URLS.length; i++) {
       const proxy = API_CONFIG.WEATHER_PROXY_URLS[i]
       let proxyUrl = ''
@@ -1222,7 +1336,8 @@ export const testWeatherConnection = async () => {
 
       try {
         const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 10000)
+        const startTime = Date.now()
+        const timeoutId = setTimeout(() => controller.abort(), 15000) // Tăng timeout lên 15 giây
 
         const response = await fetch(proxyUrl, {
           signal: controller.signal,
@@ -1230,24 +1345,35 @@ export const testWeatherConnection = async () => {
             Accept: 'application/json',
             'Content-Type': 'application/json',
             'X-Requested-With': 'XMLHttpRequest',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            Pragma: 'no-cache',
+            Expires: '0',
           },
           mode: 'cors',
         })
 
         clearTimeout(timeoutId)
+        const responseTime = Date.now() - startTime
 
         if (response.ok) {
+          const proxyName = proxy.split('//')[1].split('.')[0]
           results.proxies.push({
             index: i,
-            name: proxy.split('//')[1].split('.')[0],
+            name: proxyName,
             working: true,
+            responseTime: responseTime,
           })
           results.workingMethods.push(`proxy_${i}`)
+          results.apiKeyValid = true
           console.log(
-            `Proxy #${i + 1} (${
-              proxy.split('//')[1].split('.')[0]
-            }) hoạt động tốt`
+            `Proxy #${i + 1} (${proxyName}) hoạt động tốt - ${responseTime}ms`
           )
+
+          // Lưu proxy tốt nhất (phản hồi nhanh nhất)
+          if (responseTime < bestProxyResponseTime) {
+            bestProxyResponseTime = responseTime
+            bestProxyIndex = i
+          }
         } else {
           results.proxies.push({
             index: i,
@@ -1276,18 +1402,62 @@ export const testWeatherConnection = async () => {
       }
     }
 
+    // Nếu có proxy hoạt động, đặt proxy tốt nhất
+    if (bestProxyIndex !== -1) {
+      results.bestMethod = `proxy_${bestProxyIndex}`
+
+      // Nếu proxy tốt hơn kết nối trực tiếp, đề xuất sử dụng proxy
+      if (!results.direct || (results.direct && bestProxyResponseTime < 1000)) {
+        const bestProxyName = API_CONFIG.WEATHER_PROXY_URLS[bestProxyIndex]
+          .split('//')[1]
+          .split('.')[0]
+        results.suggestions.push(
+          `Sử dụng proxy ${bestProxyName} để có kết nối tốt nhất`
+        )
+      }
+    }
+
     // Tổng kết
     if (results.direct || results.proxies.some((p) => p.working)) {
       console.log('Có ít nhất một phương thức kết nối hoạt động')
+
+      // Thêm đề xuất xóa cache
+      results.suggestions.push('Xóa cache thời tiết để tải dữ liệu mới')
+
+      // Nếu có nhiều phương thức hoạt động, đề xuất phương thức tốt nhất
+      if (results.workingMethods.length > 1) {
+        if (results.bestMethod === 'direct') {
+          results.suggestions.push('Kết nối trực tiếp hoạt động tốt nhất')
+        } else if (
+          results.bestMethod &&
+          results.bestMethod.startsWith('proxy_')
+        ) {
+          const proxyIndex = parseInt(results.bestMethod.split('_')[1])
+          const proxyName = API_CONFIG.WEATHER_PROXY_URLS[proxyIndex]
+            .split('//')[1]
+            .split('.')[0]
+          results.suggestions.push(`Proxy ${proxyName} hoạt động tốt nhất`)
+        }
+      }
     } else {
       results.error = 'Không có phương thức kết nối nào hoạt động'
       console.error(results.error)
+
+      if (results.internetConnected) {
+        results.suggestions.push('Thử thêm API key mới')
+        results.suggestions.push('Kiểm tra tường lửa hoặc cài đặt mạng')
+      } else {
+        results.suggestions.push('Kiểm tra kết nối internet của bạn')
+      }
     }
 
     return results
   } catch (error) {
     results.error = error.message
     console.error('Lỗi khi kiểm tra kết nối:', error)
+    results.suggestions.push(
+      'Đã xảy ra lỗi không xác định. Thử khởi động lại ứng dụng.'
+    )
     return results
   }
 }
