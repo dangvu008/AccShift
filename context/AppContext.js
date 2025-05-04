@@ -25,7 +25,7 @@ import weatherAlertService from '../services/weatherAlertService'
 // Import STORAGE_KEYS
 import { STORAGE_KEYS } from '../utils/constants'
 // Import theme
-import { getTheme } from '../utils/theme'
+import { getTheme, COLORS } from '../utils/theme'
 // Import storage manager
 import { storage } from '../utils/storage'
 

@@ -18,6 +18,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
 import { AppContext } from '../context/AppContext'
 import { getWeatherIcon } from '../utils/helpers'
 import weatherService from '../services/weatherService'
+import { COLORS } from '../utils/theme'
 
 // Lấy chiều rộng màn hình để tính toán kích thước
 const { width } = Dimensions.get('window')

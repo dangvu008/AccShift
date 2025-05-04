@@ -5,6 +5,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native'
 import { Ionicons, MaterialIcons } from '@expo/vector-icons'
 import { AppContext, BUTTON_STATES } from '../context/AppContext'
 import { formatTimeDisplay } from '../utils/helpers'
+import { COLORS } from '../utils/theme'
 
 const MultiFunctionButton = () => {
   const {
@@ -28,7 +29,7 @@ const MultiFunctionButton = () => {
           return {
             text: t('Go Work'),
             icon: 'walk-outline',
-            color: '#8a56ff',
+            color: COLORS.PRIMARY,
             disabled: false,
             description: t('Bắt đầu ca làm việc'),
           }
@@ -36,7 +37,7 @@ const MultiFunctionButton = () => {
           return {
             text: t('Ký Công'),
             icon: 'checkmark-circle-outline',
-            color: '#27ae60',
+            color: COLORS.SUCCESS,
             disabled: false,
             description: t('Xác nhận hoàn thành ca làm việc'),
           }
@@ -44,7 +45,7 @@ const MultiFunctionButton = () => {
           return {
             text: t('Đã Ký Công'),
             icon: 'checkmark-circle',
-            color: '#95a5a6',
+            color: COLORS.DISABLED_LIGHT,
             disabled: true,
             description: t('Ca làm việc đã được hoàn thành'),
           }
@@ -54,7 +55,7 @@ const MultiFunctionButton = () => {
           return {
             text: t('Ký Công'),
             icon: 'checkmark-circle-outline',
-            color: '#27ae60',
+            color: COLORS.SUCCESS,
             disabled: false,
             description: t('Xác nhận hoàn thành ca làm việc'),
           }
@@ -67,7 +68,7 @@ const MultiFunctionButton = () => {
         return {
           text: t('Go Work'),
           icon: 'walk-outline',
-          color: '#8a56ff',
+          color: COLORS.PRIMARY,
           disabled: false,
           description: t('Bắt đầu hành trình đi làm'),
         }
@@ -75,7 +76,7 @@ const MultiFunctionButton = () => {
         return {
           text: t('Check In'),
           icon: 'time-outline',
-          color: '#f39c12',
+          color: COLORS.WARNING,
           disabled: false,
           description: t('Đã đến nơi làm việc, sẵn sàng check-in'),
         }
@@ -83,7 +84,7 @@ const MultiFunctionButton = () => {
         return {
           text: t('Check In'),
           icon: 'log-in-outline',
-          color: '#8a56ff',
+          color: COLORS.PRIMARY,
           disabled: false,
           description: t('Bắt đầu giờ làm việc'),
         }
@@ -91,7 +92,7 @@ const MultiFunctionButton = () => {
         return {
           text: t('Check Out'),
           icon: 'briefcase-outline',
-          color: '#27ae60',
+          color: COLORS.SUCCESS,
           disabled: false,
           description: t('Đang làm việc, nhấn để check-out'),
         }
@@ -99,7 +100,7 @@ const MultiFunctionButton = () => {
         return {
           text: t('Check Out'),
           icon: 'log-out-outline',
-          color: '#2c3e50',
+          color: COLORS.BORDER_DARK,
           disabled: false,
           description: t('Kết thúc giờ làm việc'),
         }
@@ -107,7 +108,7 @@ const MultiFunctionButton = () => {
         return {
           text: t('Ký Công'),
           icon: 'checkmark-done-outline',
-          color: '#3498db',
+          color: COLORS.INFO,
           disabled: false,
           description: t('Đã check-out, sẵn sàng ký công'),
         }
@@ -115,7 +116,7 @@ const MultiFunctionButton = () => {
         return {
           text: t('Ký Công'),
           icon: 'checkmark-circle-outline',
-          color: '#27ae60',
+          color: COLORS.SUCCESS,
           disabled: false,
           description: t('Xác nhận hoàn thành ca làm việc'),
         }
@@ -123,7 +124,7 @@ const MultiFunctionButton = () => {
         return {
           text: t('Đã Ký Công'),
           icon: 'checkmark-circle',
-          color: '#95a5a6',
+          color: COLORS.DISABLED_LIGHT,
           disabled: true,
           description: t('Ca làm việc đã được hoàn thành'),
         }
@@ -131,7 +132,7 @@ const MultiFunctionButton = () => {
         return {
           text: t('Go Work'),
           icon: 'walk-outline',
-          color: '#8a56ff',
+          color: COLORS.PRIMARY,
           disabled: false,
           description: t('Bắt đầu hành trình đi làm'),
         }
@@ -177,42 +178,42 @@ const MultiFunctionButton = () => {
         return {
           text: t('Go Work'),
           icon: 'walk',
-          color: '#3498db',
+          color: COLORS.INFO,
           description: t('Bắt đầu hành trình đi làm'),
         }
       case 'check_in':
         return {
           text: t('Check In'),
           icon: 'enter',
-          color: '#2ecc71',
+          color: COLORS.SUCCESS,
           description: t('Bắt đầu giờ làm việc'),
         }
       case 'check_out':
         return {
           text: t('Check Out'),
           icon: 'exit',
-          color: '#e74c3c',
+          color: COLORS.ERROR,
           description: t('Kết thúc giờ làm việc'),
         }
       case 'punch':
         return {
           text: t('Ký Công'),
           icon: 'finger-print',
-          color: '#f39c12',
+          color: COLORS.WARNING,
           description: t('Xác nhận đang làm việc'),
         }
       case 'complete':
         return {
           text: t('Complete'),
           icon: 'checkmark-circle',
-          color: '#9b59b6',
+          color: COLORS.PRIMARY,
           description: t('Hoàn thành ca làm việc'),
         }
       default:
         return {
           text: type,
           icon: 'alert-circle',
-          color: '#95a5a6',
+          color: COLORS.DISABLED_LIGHT,
           description: '',
         }
     }
@@ -426,7 +427,7 @@ const styles = StyleSheet.create({
   punchButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#e74c3c',
+    backgroundColor: COLORS.ERROR,
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 20,
@@ -439,25 +440,25 @@ const styles = StyleSheet.create({
   },
   logsContainer: {
     width: '100%',
-    backgroundColor: '#f9f9f9',
+    backgroundColor: COLORS.BACKGROUND_LIGHT,
     borderRadius: 12,
     padding: 16,
     marginTop: 10,
   },
   darkLogsContainer: {
-    backgroundColor: '#1e1e1e',
+    backgroundColor: COLORS.CARD_DARK,
   },
   logsTitle: {
     fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 10,
-    color: '#333',
+    color: COLORS.TEXT_LIGHT,
   },
   darkText: {
-    color: '#fff',
+    color: COLORS.TEXT_DARK,
   },
   darkSubtitle: {
-    color: '#aaa',
+    color: COLORS.SUBTEXT_DARK,
   },
   timelineContainer: {
     marginTop: 10,
@@ -473,13 +474,13 @@ const styles = StyleSheet.create({
     top: 24,
     width: 2,
     height: '100%',
-    backgroundColor: '#3498db',
+    backgroundColor: COLORS.INFO,
   },
   timelineDot: {
     width: 26,
     height: 26,
     borderRadius: 13,
-    backgroundColor: '#3498db',
+    backgroundColor: COLORS.INFO,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -490,7 +491,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 10,
     borderLeftWidth: 3,
-    borderLeftColor: '#3498db',
+    borderLeftColor: COLORS.INFO,
   },
   logHeader: {
     flexDirection: 'row',
@@ -500,15 +501,15 @@ const styles = StyleSheet.create({
   logType: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#333',
+    color: COLORS.TEXT_LIGHT,
   },
   logTime: {
     fontSize: 14,
-    color: '#666',
+    color: COLORS.SUBTEXT_LIGHT,
   },
   logDescription: {
     fontSize: 12,
-    color: '#888',
+    color: COLORS.SUBTEXT_LIGHT,
     marginTop: 4,
     fontStyle: 'italic',
   },
