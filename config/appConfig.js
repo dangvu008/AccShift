@@ -1,3 +1,19 @@
+export const WORK_STATUS = {
+  THIEU_LOG: 'THIEU_LOG', // Đi làm nhưng thiếu chấm công
+  DU_CONG: 'DU_CONG', // Đủ công
+  CHUA_CAP_NHAT: 'CHUA_CAP_NHAT', // Chưa cập nhật
+  NGHI_PHEP: 'NGHI_PHEP', // Nghỉ phép
+  NGHI_BENH: 'NGHI_BENH', // Nghỉ bệnh
+  NGHI_LE: 'NGHI_LE', // Nghỉ lễ
+  NGHI_THUONG: 'NGHI_THUONG', // Ngày nghỉ thông thường (thứ 7, chủ nhật)
+  VANG_MAT: 'VANG_MAT', // Vắng không lý do
+  DI_MUON: 'DI_MUON', // Đi muộn
+  VE_SOM: 'VE_SOM', // Về sớm
+  DI_MUON_VE_SOM: 'DI_MUON_VE_SOM', // Đi muộn và về sớm
+  NGAY_TUONG_LAI: 'NGAY_TUONG_LAI', // Ngày tương lai
+  QUEN_CHECK_OUT: 'QUEN_CHECK_OUT', // Quên check-out
+}
+
 export const API_CONFIG = {
   WEATHER_BASE_URL: 'https://api.openweathermap.org/data/2.5',
   CACHE_TTL: 3 * 60 * 60 * 1000, // 3 hours (giảm từ 24 giờ để cập nhật thường xuyên hơn)

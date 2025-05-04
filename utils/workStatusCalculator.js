@@ -214,6 +214,39 @@ const calculateNightWorkMinutes = (
  */
 export const calculateDailyWorkStatus = async (date, shift) => {
   try {
+    // Kiểm tra xem ngày có phải là ngày trong tương lai không
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    const dateParts = date.split('-')
+    const checkDate = new Date(
+      parseInt(dateParts[0]),
+      parseInt(dateParts[1]) - 1,
+      parseInt(dateParts[2])
+    )
+    checkDate.setHours(0, 0, 0, 0)
+
+    // Nếu là ngày trong tương lai, trả về trạng thái NGAY_TUONG_LAI
+    if (checkDate > today) {
+      console.log(`Ngày ${date} là ngày trong tương lai`)
+      return {
+        date,
+        status: WORK_STATUS.NGAY_TUONG_LAI,
+        shiftId: shift?.id,
+        shiftName: shift?.name,
+        checkInTime: null,
+        checkOutTime: null,
+        workMinutes: 0,
+        breakMinutes: shift?.breakMinutes || 0,
+        otMinutes: 0,
+        lateMinutes: 0,
+        earlyMinutes: 0,
+        isManuallyUpdated: false,
+        calculatedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+    }
+
     // Lấy log chấm công của ngày
     const logs = await storage.getAttendanceLogs(date)
 

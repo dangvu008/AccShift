@@ -48,7 +48,18 @@ const WeatherWidget = ({ onPress }) => {
 
   // Di chuyển hàm fetchWeatherData ra ngoài useEffect để có thể tái sử dụng
   const fetchWeatherData = async (forceRefresh = false) => {
+    // Sử dụng biến cờ để theo dõi trạng thái mount của component
     let isMounted = true
+
+    // Đặt timeout để đảm bảo hàm không chạy quá lâu
+    const fetchTimeout = setTimeout(() => {
+      if (isMounted) {
+        console.log('Timeout khi lấy dữ liệu thời tiết')
+        setLoading(false)
+        setRefreshing(false)
+      }
+    }, 30000) // 30 giây timeout
+
     try {
       setLoading(true)
 
@@ -56,6 +67,7 @@ const WeatherWidget = ({ onPress }) => {
       if (!locationPermissionGranted) {
         console.log('Không có quyền vị trí, không thể lấy dữ liệu thời tiết')
         setLoading(false)
+        clearTimeout(fetchTimeout)
         return
       }
 
@@ -65,12 +77,18 @@ const WeatherWidget = ({ onPress }) => {
       if (!primaryLocation) {
         console.log('Không có vị trí được lưu, không thể lấy dữ liệu thời tiết')
         setLoading(false)
+        clearTimeout(fetchTimeout)
         return
       }
 
       // Nếu yêu cầu làm mới, xóa cache thời tiết trước
       if (forceRefresh) {
-        await weatherService.clearWeatherCache()
+        try {
+          await weatherService.clearWeatherCache()
+        } catch (cacheError) {
+          console.error('Lỗi khi xóa cache thời tiết:', cacheError)
+          // Tiếp tục thực hiện ngay cả khi có lỗi xóa cache
+        }
       }
 
       // Biến để theo dõi dữ liệu thời tiết ở cả hai vị trí
@@ -194,23 +212,43 @@ const WeatherWidget = ({ onPress }) => {
       setWeatherAlert(primaryAlert)
 
       // 4. Tạo cảnh báo thông minh dựa trên dữ liệu thời tiết ở cả hai vị trí
-      generateSmartAlert(
-        homeWeatherData,
-        homeHourlyForecast,
-        workWeatherData,
-        workHourlyForecast
-      )
+      if (isMounted) {
+        try {
+          generateSmartAlert(
+            homeWeatherData,
+            homeHourlyForecast,
+            workWeatherData,
+            workHourlyForecast
+          )
+        } catch (alertError) {
+          console.error('Lỗi khi tạo cảnh báo thông minh:', alertError)
+          // Không để lỗi này ảnh hưởng đến việc hiển thị dữ liệu thời tiết
+        }
+      }
 
-      setLoading(false)
-      setRefreshing(false)
+      // Xóa timeout vì đã hoàn thành
+      clearTimeout(fetchTimeout)
+
+      if (isMounted) {
+        setLoading(false)
+        setRefreshing(false)
+      }
     } catch (error) {
       console.error('Error in weather data fetching process:', error)
-      setLoading(false)
-      setRefreshing(false)
+
+      // Xóa timeout khi có lỗi
+      clearTimeout(fetchTimeout)
+
+      if (isMounted) {
+        setLoading(false)
+        setRefreshing(false)
+      }
     }
 
+    // Trả về hàm dọn dẹp
     return () => {
       isMounted = false
+      clearTimeout(fetchTimeout)
     }
   }
 
@@ -316,7 +354,33 @@ const WeatherWidget = ({ onPress }) => {
 
   // Hàm làm mới dữ liệu thời tiết
   const refreshWeatherData = async () => {
+    // Kiểm tra xem đã đang refreshing chưa để tránh gọi nhiều lần
+    if (refreshing) {
+      console.log('Đang làm mới dữ liệu, bỏ qua yêu cầu mới')
+      return
+    }
+
     setRefreshing(true)
+
+    // Kiểm tra thời gian từ lần gọi API cuối cùng
+    const now = Date.now()
+    const timeSinceLastFetch = now - lastFetchTime.current
+    const MIN_REFRESH_INTERVAL = 30 * 1000 // 30 giây
+
+    if (
+      timeSinceLastFetch < MIN_REFRESH_INTERVAL &&
+      lastFetchTime.current !== 0
+    ) {
+      console.log(
+        `Đã làm mới gần đây (${Math.round(
+          timeSinceLastFetch / 1000
+        )}s trước). Đợi thêm.`
+      )
+      setTimeout(() => {
+        setRefreshing(false)
+      }, 500)
+      return
+    }
 
     // Kiểm tra quyền vị trí nếu chưa được cấp
     if (!locationPermissionGranted) {
@@ -331,6 +395,9 @@ const WeatherWidget = ({ onPress }) => {
       // Xóa cache thời tiết
       await weatherService.clearWeatherCache()
 
+      // Cập nhật thời gian gọi API cuối cùng
+      lastFetchTime.current = now
+
       // Tải lại dữ liệu thời tiết
       await fetchWeatherData(true)
     } catch (error) {
@@ -340,16 +407,64 @@ const WeatherWidget = ({ onPress }) => {
     }
   }
 
+  // Sử dụng useRef để theo dõi lần mount đầu tiên và thời gian gọi API cuối cùng
+  const isFirstMount = useRef(true)
+  const lastFetchTime = useRef(0)
+  const fetchTimeoutRef = useRef(null)
+
   // Sử dụng useCallback để tránh tạo lại hàm fetchWeatherData mỗi khi render
-  const memoizedFetchWeatherData = useCallback(fetchWeatherData, [
+  // Thêm kiểm tra thời gian để tránh gọi API quá thường xuyên
+  const memoizedFetchWeatherData = useCallback(() => {
+    // Kiểm tra thời gian từ lần gọi API cuối cùng
+    const now = Date.now()
+    const timeSinceLastFetch = now - lastFetchTime.current
+
+    // Chỉ cho phép gọi API nếu đã qua ít nhất 5 phút từ lần gọi trước
+    // hoặc đây là lần gọi đầu tiên (lastFetchTime = 0)
+    const MIN_FETCH_INTERVAL = 5 * 60 * 1000 // 5 phút
+
+    if (
+      timeSinceLastFetch < MIN_FETCH_INTERVAL &&
+      lastFetchTime.current !== 0
+    ) {
+      console.log(
+        `Đã gọi API gần đây (${Math.round(
+          timeSinceLastFetch / 1000
+        )}s trước). Bỏ qua.`
+      )
+
+      // Nếu đang loading, hủy trạng thái loading
+      setLoading(false)
+      setRefreshing(false)
+
+      // Lên lịch gọi lại sau khoảng thời gian còn lại
+      if (fetchTimeoutRef.current) {
+        clearTimeout(fetchTimeoutRef.current)
+      }
+
+      return
+    }
+
+    // Cập nhật thời gian gọi API cuối cùng
+    lastFetchTime.current = now
+
+    // Gọi hàm fetch dữ liệu
+    fetchWeatherData()
+  }, [
     homeLocation,
     workLocation,
-    locationPermissionGranted, // Thêm locationPermissionGranted vào dependencies
+    locationPermissionGranted,
     // Loại bỏ generateSmartAlert khỏi dependencies để tránh vòng lặp render
   ])
 
-  // Sử dụng useRef để theo dõi lần mount đầu tiên
-  const isFirstMount = useRef(true)
+  useEffect(() => {
+    // Dọn dẹp timeout khi component unmount
+    return () => {
+      if (fetchTimeoutRef.current) {
+        clearTimeout(fetchTimeoutRef.current)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     // Chỉ fetch dữ liệu khi component được mount lần đầu

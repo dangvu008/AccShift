@@ -17,21 +17,8 @@ import {
 import { AppContext } from '../context/AppContext'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
-// Status constants
-export const WORK_STATUS = {
-  THIEU_LOG: 'THIEU_LOG', // Đi làm nhưng thiếu chấm công
-  DU_CONG: 'DU_CONG', // Đủ công
-  CHUA_CAP_NHAT: 'CHUA_CAP_NHAT', // Chưa cập nhật
-  NGHI_PHEP: 'NGHI_PHEP', // Nghỉ phép
-  NGHI_BENH: 'NGHI_BENH', // Nghỉ bệnh
-  NGHI_LE: 'NGHI_LE', // Nghỉ lễ
-  NGHI_THUONG: 'NGHI_THUONG', // Ngày nghỉ thông thường (thứ 7, chủ nhật)
-  VANG_MAT: 'VANG_MAT', // Vắng không lý do
-  DI_MUON: 'DI_MUON', // Đi muộn
-  VE_SOM: 'VE_SOM', // Về sớm
-  DI_MUON_VE_SOM: 'DI_MUON_VE_SOM', // Đi muộn và về sớm
-  NGAY_TUONG_LAI: 'NGAY_TUONG_LAI', // Ngày tương lai
-}
+// Import WORK_STATUS từ appConfig
+import { WORK_STATUS } from '../config/appConfig'
 
 // Tên viết tắt các ngày trong tuần
 const weekdayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']

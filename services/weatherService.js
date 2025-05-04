@@ -6,23 +6,30 @@ import { API_CONFIG, STORAGE_KEYS } from '../config/appConfig'
 // LƯU Ý: API key chỉ có thể được thay đổi bởi dev thông qua code.
 // Người dùng không có quyền thay đổi API key thông qua giao diện.
 const API_KEYS = [
-  // API keys mới với ưu tiên cao nhất - 2023-2024
+  // API key mới nhất với ưu tiên cao nhất
+  {
+    key: '0159b1563875298237265a8b2f0065f2', // API key mới được cung cấp
+    type: 'free',
+    priority: 0, // Ưu tiên cao nhất
+    enabled: true,
+  },
+  // API keys mới với ưu tiên cao - 2023-2024
   {
     key: '1fa9ff4126dd63884c9a139b4a26b890',
     type: 'free',
-    priority: 1, // Ưu tiên cao nhất
+    priority: 1,
     enabled: true,
   },
   {
     key: '69518b1636f2223985f28531ec32700c',
     type: 'free',
-    priority: 1, // Ưu tiên cao nhất
+    priority: 1,
     enabled: true,
   },
   {
     key: '7c9962f2f9f8f4c28e2c8d6a5d3e8f6a',
     type: 'free',
-    priority: 1, // Ưu tiên cao nhất
+    priority: 1,
     enabled: true,
   },
   // API keys mới bổ sung 2024
@@ -115,6 +122,23 @@ const selectApiKey = () => {
   const enabledKeys = API_KEYS.filter((keyObj) => keyObj.enabled)
   if (enabledKeys.length === 0) return null
 
+  // Ưu tiên sử dụng API key mới nhất (0159b1563875298237265a8b2f0065f2)
+  const newKey = enabledKeys.find(
+    (keyObj) => keyObj.key === '0159b1563875298237265a8b2f0065f2'
+  )
+
+  // Nếu có key mới và chưa đạt giới hạn sử dụng, ưu tiên sử dụng key này
+  if (
+    newKey &&
+    keyUsageCounter[newKey.key] &&
+    keyUsageCounter[newKey.key].count < API_CONFIG.KEY_USAGE_LIMIT_PER_MINUTE
+  ) {
+    console.log('Sử dụng API key mới nhất')
+    keyUsageCounter[newKey.key].count++
+    return newKey.key
+  }
+
+  // Nếu key mới không khả dụng, sử dụng logic cũ
   // Sắp xếp theo ưu tiên (số nhỏ = ưu tiên cao)
   const sortedKeys = [...enabledKeys].sort((a, b) => a.priority - b.priority)
 
@@ -674,6 +698,19 @@ export const clearWeatherCache = async () => {
     if (weatherCacheKeys.length > 0) {
       await AsyncStorage.multiRemove(weatherCacheKeys)
       console.log(`Đã xóa ${weatherCacheKeys.length} cache thời tiết`)
+
+      // Reset bộ đếm sử dụng API key
+      Object.keys(keyUsageCounter).forEach((key) => {
+        keyUsageCounter[key] = {
+          count: 0,
+          lastReset: Date.now(),
+        }
+      })
+      console.log('Đã reset bộ đếm sử dụng API key')
+
+      // Reset lastKeyIndex để bắt đầu lại từ key đầu tiên
+      lastKeyIndex = -1
+      console.log('Đã reset chỉ số key để ưu tiên key mới')
     } else {
       console.log('Không tìm thấy cache thời tiết nào')
     }
@@ -783,35 +820,74 @@ export const getApiKeys = () => {
   }))
 }
 
+// Biến để theo dõi trạng thái khởi tạo
+let isInitialized = false
+let initializationPromise = null
+
 /**
  * Khởi tạo service
+ * @returns {Promise<void>}
  */
 export const initWeatherService = async () => {
-  try {
-    // Tải danh sách key từ AsyncStorage (đã mã hóa)
-    const savedKeys = await secureRetrieve(STORAGE_KEYS.WEATHER_API_KEYS)
-    if (savedKeys) {
-      // Cập nhật danh sách key
-      API_KEYS.length = 0 // Xóa tất cả phần tử hiện có
-      savedKeys.forEach((keyObj) => {
-        API_KEYS.push(keyObj)
-
-        // Khởi tạo bộ đếm
-        if (!keyUsageCounter[keyObj.key]) {
-          keyUsageCounter[keyObj.key] = {
-            count: 0,
-            lastReset: Date.now(),
-          }
-        }
-      })
-    }
-  } catch (error) {
-    console.error('Lỗi khi khởi tạo Weather Service:', error)
+  // Nếu đã khởi tạo hoặc đang trong quá trình khởi tạo, không thực hiện lại
+  if (isInitialized) {
+    return
   }
+
+  // Nếu đang trong quá trình khởi tạo, trả về promise hiện tại
+  if (initializationPromise) {
+    return initializationPromise
+  }
+
+  // Tạo promise mới cho quá trình khởi tạo
+  initializationPromise = (async () => {
+    try {
+      console.log('Đang khởi tạo Weather Service...')
+
+      // Tải danh sách key từ AsyncStorage (đã mã hóa)
+      const savedKeys = await secureRetrieve(STORAGE_KEYS.WEATHER_API_KEYS)
+      if (savedKeys && Array.isArray(savedKeys) && savedKeys.length > 0) {
+        // Cập nhật danh sách key
+        API_KEYS.length = 0 // Xóa tất cả phần tử hiện có
+        savedKeys.forEach((keyObj) => {
+          if (keyObj && keyObj.key) {
+            API_KEYS.push(keyObj)
+
+            // Khởi tạo bộ đếm
+            if (!keyUsageCounter[keyObj.key]) {
+              keyUsageCounter[keyObj.key] = {
+                count: 0,
+                lastReset: Date.now(),
+              }
+            }
+          }
+        })
+
+        console.log(`Đã tải ${API_KEYS.length} API key từ bộ nhớ`)
+      } else {
+        console.log('Không tìm thấy API key đã lưu, sử dụng key mặc định')
+      }
+
+      // Đánh dấu đã khởi tạo
+      isInitialized = true
+    } catch (error) {
+      console.error('Lỗi khi khởi tạo Weather Service:', error)
+    } finally {
+      // Xóa promise khởi tạo
+      initializationPromise = null
+    }
+  })()
+
+  return initializationPromise
 }
 
 // Khởi tạo service khi import
-initWeatherService()
+// Sử dụng setTimeout để tránh block thread chính
+setTimeout(() => {
+  initWeatherService().catch((error) => {
+    console.error('Lỗi khi khởi tạo Weather Service:', error)
+  })
+}, 0)
 
 /**
  * Lấy dự báo thời tiết theo giờ
@@ -999,6 +1075,76 @@ export const getDailyForecast = async (
   }
 }
 
+/**
+ * Kiểm tra tính hợp lệ của API key
+ * @param {string} apiKey API key cần kiểm tra
+ * @returns {Promise<boolean>} true nếu key hợp lệ, false nếu không
+ */
+export const validateApiKey = async (apiKey) => {
+  try {
+    console.log('Đang kiểm tra tính hợp lệ của API key...')
+
+    // Tạo URL API để kiểm tra key
+    const url = `${API_CONFIG.WEATHER_BASE_URL}/weather?q=Hanoi&appid=${apiKey}&units=metric&lang=vi`
+
+    // Thêm timeout để tránh treo ứng dụng
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 giây timeout
+
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+    })
+
+    clearTimeout(timeoutId) // Xóa timeout nếu request thành công
+
+    if (response.ok) {
+      console.log('API key hợp lệ')
+      return true
+    } else {
+      console.error(
+        `API key không hợp lệ: ${response.status} ${response.statusText}`
+      )
+      return false
+    }
+  } catch (error) {
+    console.error('Lỗi khi kiểm tra API key:', error)
+    return false
+  }
+}
+
+/**
+ * Kiểm tra và sử dụng API key mới
+ * @param {string} apiKey API key mới
+ * @returns {Promise<boolean>} true nếu key hợp lệ và đã được thêm, false nếu không
+ */
+export const checkAndUseNewApiKey = async (apiKey) => {
+  try {
+    // Kiểm tra tính hợp lệ của key
+    const isValid = await validateApiKey(apiKey)
+
+    if (isValid) {
+      // Thêm key mới vào danh sách với ưu tiên cao nhất
+      await addApiKey(apiKey, 'free', 0)
+
+      // Xóa cache để buộc sử dụng key mới
+      await clearWeatherCache()
+
+      console.log('Đã thêm và kích hoạt API key mới')
+      return true
+    } else {
+      console.error('API key không hợp lệ, không thể thêm')
+      return false
+    }
+  } catch (error) {
+    console.error('Lỗi khi kiểm tra và sử dụng API key mới:', error)
+    return false
+  }
+}
+
 export default {
   getCurrentWeather,
   getWeatherForecast,
@@ -1011,4 +1157,6 @@ export default {
   toggleApiKey,
   getApiKeys,
   initWeatherService,
+  validateApiKey,
+  checkAndUseNewApiKey,
 }
