@@ -15,35 +15,40 @@ export const WORK_STATUS = {
 }
 
 export const API_CONFIG = {
+  // API URLs - Sử dụng API trực tiếp không qua proxy
   WEATHER_BASE_URL: 'https://api.openweathermap.org/data/2.5',
-  // Các proxy URL để tránh vấn đề CORS
-  WEATHER_PROXY_URLS: [
-    'https://corsproxy.io/?https://api.openweathermap.org/data/2.5',
-    'https://api.allorigins.win/raw?url=https://api.openweathermap.org/data/2.5',
-    'https://api.codetabs.com/v1/proxy?quest=https://api.openweathermap.org/data/2.5',
-    'https://cors-anywhere.herokuapp.com/https://api.openweathermap.org/data/2.5',
-    'https://cors-proxy.htmldriven.com/?url=https://api.openweathermap.org/data/2.5',
-    'https://thingproxy.freeboard.io/fetch/https://api.openweathermap.org/data/2.5',
-    'https://proxy.cors.sh/https://api.openweathermap.org/data/2.5',
-    'https://crossorigin.me/https://api.openweathermap.org/data/2.5',
-    'https://cors.bridged.cc/https://api.openweathermap.org/data/2.5',
-  ],
-  CACHE_TTL: 2 * 60 * 60 * 1000, // 2 hours (giảm từ 3 giờ để cập nhật thường xuyên hơn)
-  CACHE_TTL_FALLBACK: 14 * 24 * 60 * 60 * 1000, // 14 days (cache dự phòng khi không có mạng)
-  KEY_USAGE_LIMIT_PER_MINUTE: 40, // Giảm từ 50 để tránh đạt giới hạn
-  KEY_USAGE_RESET_INTERVAL: 60 * 1000, // 1 minute
-  REQUEST_TIMEOUT: 20000, // 20 seconds timeout (tăng từ 15 giây)
-  MAX_RETRY_COUNT: 5, // Số lần thử lại tối đa (tăng từ 3 lần)
-  RETRY_DELAY: 2000, // 2 seconds delay giữa các lần thử lại (tăng từ 1.5 giây)
+
+  // Cấu hình cache
+  CACHE_TTL: 30 * 60 * 1000, // 30 phút (giảm từ 1 giờ để cập nhật thường xuyên hơn)
+  CACHE_TTL_FALLBACK: 7 * 24 * 60 * 60 * 1000, // 7 ngày (cache dự phòng khi không có mạng)
+
+  // Cấu hình API key
+  KEY_USAGE_LIMIT_PER_MINUTE: 20, // Giảm từ 30 để tránh đạt giới hạn
+  KEY_USAGE_RESET_INTERVAL: 60 * 1000, // 1 phút
+
+  // Cấu hình timeout và retry
+  REQUEST_TIMEOUT: 15000, // 15 giây timeout (giảm từ 25 giây)
+  MAX_RETRY_COUNT: 3, // Giảm số lần thử lại để tránh quá nhiều request
+  RETRY_DELAY: 1000, // 1 giây delay giữa các lần thử lại
+
+  // Vị trí mặc định
   DEFAULT_LOCATION: {
     lat: 21.0278,
     lon: 105.8342, // Hà Nội
   },
-  // Thêm các API endpoints khác
+
+  // Cấu hình API endpoints
   ENDPOINTS: {
     CURRENT_WEATHER: 'weather',
     FORECAST: 'forecast',
     ONECALL: 'onecall',
+  },
+
+  // Cấu hình cho môi trường web (snack.expo.dev)
+  WEB_CONFIG: {
+    USE_DIRECT_FETCH: true, // Luôn sử dụng fetch trực tiếp
+    ENABLE_MOCK_DATA: true, // Cho phép sử dụng dữ liệu giả khi không thể kết nối
+    USE_PROXY: false, // Không sử dụng proxy
   },
 }
 
