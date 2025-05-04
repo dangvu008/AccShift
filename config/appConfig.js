@@ -24,6 +24,9 @@ export const API_CONFIG = {
     'https://cors-anywhere.herokuapp.com/https://api.openweathermap.org/data/2.5',
     'https://cors-proxy.htmldriven.com/?url=https://api.openweathermap.org/data/2.5',
     'https://thingproxy.freeboard.io/fetch/https://api.openweathermap.org/data/2.5',
+    'https://proxy.cors.sh/https://api.openweathermap.org/data/2.5',
+    'https://crossorigin.me/https://api.openweathermap.org/data/2.5',
+    'https://cors.bridged.cc/https://api.openweathermap.org/data/2.5',
   ],
   CACHE_TTL: 2 * 60 * 60 * 1000, // 2 hours (giảm từ 3 giờ để cập nhật thường xuyên hơn)
   CACHE_TTL_FALLBACK: 14 * 24 * 60 * 60 * 1000, // 14 days (cache dự phòng khi không có mạng)

@@ -146,11 +146,28 @@ const WeeklyStatusGrid = () => {
   useEffect(() => {
     // Đăng ký sự kiện lắng nghe thay đổi trong AsyncStorage
     const refreshListener = () => {
-      refreshData()
+      // Chỉ làm mới dữ liệu khi cần thiết
+      const now = new Date()
+      const lastRefreshKey = 'lastWeeklyStatusRefresh'
+
+      AsyncStorage.getItem(lastRefreshKey)
+        .then((lastRefreshTime) => {
+          const shouldRefresh =
+            !lastRefreshTime ||
+            now.getTime() - parseInt(lastRefreshTime) > 60000 // Chỉ làm mới sau 1 phút
+
+          if (shouldRefresh) {
+            refreshData()
+            AsyncStorage.setItem(lastRefreshKey, now.getTime().toString())
+          }
+        })
+        .catch((err) => {
+          console.error('Lỗi khi kiểm tra thời gian làm mới:', err)
+        })
     }
 
     // Giả lập sự kiện lắng nghe (trong thực tế, bạn có thể sử dụng EventEmitter)
-    const refreshInterval = setInterval(refreshListener, 5000) // Làm mới mỗi 5 giây
+    const refreshInterval = setInterval(refreshListener, 60000) // Làm mới mỗi 60 giây
 
     return () => {
       clearInterval(refreshInterval) // Dọn dẹp khi component unmount
@@ -194,6 +211,15 @@ const WeeklyStatusGrid = () => {
       const statusKeys = keys.filter((key) =>
         key.startsWith('dailyWorkStatus_')
       )
+
+      // Nếu không có thay đổi về số lượng key, không cần tải lại
+      if (
+        statusKeys.length === Object.keys(dailyStatuses).length &&
+        Object.keys(dailyStatuses).length > 0
+      ) {
+        return
+      }
+
       const statusPairs = await AsyncStorage.multiGet(statusKeys)
 
       const statuses = {}
@@ -202,9 +228,6 @@ const WeeklyStatusGrid = () => {
           const dateStr = key.replace('dailyWorkStatus_', '')
           const parsedValue = JSON.parse(value)
           statuses[dateStr] = parsedValue
-
-          // Log để debug
-          console.log(`Loaded status for ${dateStr}:`, parsedValue)
         } catch (parseError) {
           console.error(`Error parsing status for key ${key}:`, parseError)
         }
@@ -214,7 +237,7 @@ const WeeklyStatusGrid = () => {
     } catch (error) {
       console.error('Error loading daily statuses:', error)
     }
-  }, [])
+  }, [dailyStatuses])
 
   // Hàm đã được khai báo ở trên
 
@@ -222,11 +245,6 @@ const WeeklyStatusGrid = () => {
   const getDayStatus = (day) => {
     const dateKey = formatDateKey(day.date)
     const status = dailyStatuses[dateKey]
-
-    // Log để debug
-    if (status) {
-      console.log(`Getting status for ${dateKey}:`, status)
-    }
 
     // Kiểm tra xem ngày có phải là ngày nghỉ thông thường không (thứ 7, chủ nhật)
     // dựa trên cài đặt của ca làm việc hiện tại

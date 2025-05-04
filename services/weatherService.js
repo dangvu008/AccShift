@@ -350,6 +350,15 @@ export const fetchWeatherData = async (
     // Tạo URL với proxy cho môi trường web (snack.expo.dev)
     let fetchUrl = url
 
+    // Tối ưu hóa cho môi trường mobile
+    let fetchOptions = {
+      signal: controller.signal,
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+    }
+
     // Biến để theo dõi proxy đã thử
     const proxyIndex = retryCount % API_CONFIG.WEATHER_PROXY_URLS.length
 
@@ -368,6 +377,19 @@ export const fetchWeatherData = async (
       ) {
         // Xử lý đặc biệt cho codetabs
         fetchUrl = `${API_CONFIG.WEATHER_PROXY_URLS[proxyIndex]}=${url}`
+      } else if (
+        API_CONFIG.WEATHER_PROXY_URLS[proxyIndex].includes('cors.sh')
+      ) {
+        // Xử lý đặc biệt cho proxy.cors.sh
+        fetchUrl = `${API_CONFIG.WEATHER_PROXY_URLS[proxyIndex]}/${endpoint_part}`
+        // Thêm API key vào header thay vì URL để tránh vấn đề với một số proxy
+        fetchOptions = {
+          ...fetchOptions,
+          headers: {
+            ...fetchOptions.headers,
+            'x-cors-api-key': apiKey,
+          },
+        }
       } else {
         // Các proxy khác
         fetchUrl = `${API_CONFIG.WEATHER_PROXY_URLS[proxyIndex]}/${endpoint_part}`
@@ -377,15 +399,6 @@ export const fetchWeatherData = async (
         `Sử dụng CORS proxy #${proxyIndex + 1}:`,
         fetchUrl.replace(apiKey, '***')
       )
-    }
-
-    // Tối ưu hóa cho môi trường mobile
-    let fetchOptions = {
-      signal: controller.signal,
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      },
     }
 
     // Thêm cấu hình đặc biệt cho môi trường web (như snack.expo.dev)
@@ -409,6 +422,9 @@ export const fetchWeatherData = async (
       fetchOptions.headers['Pragma'] = 'no-cache'
       fetchOptions.headers['Expires'] = '0'
     }
+
+    // Thêm các header chung cho cả web và mobile
+    fetchOptions.headers['Accept-Language'] = 'vi'
 
     console.log('Gọi API với URL:', fetchUrl.replace(apiKey, '***'))
 
@@ -1320,6 +1336,15 @@ export const testWeatherConnection = async () => {
     let bestProxyIndex = -1
     let bestProxyResponseTime = Infinity
 
+    // Thêm thông báo về CORS cho môi trường web
+    const isWeb = typeof document !== 'undefined'
+    if (isWeb) {
+      console.log('Đang chạy trong môi trường web, có thể gặp vấn đề CORS')
+      results.suggestions.push(
+        'Khi chạy trên snack.expo.dev, bạn có thể gặp vấn đề CORS. Thử sử dụng các proxy khác nhau.'
+      )
+    }
+
     for (let i = 0; i < API_CONFIG.WEATHER_PROXY_URLS.length; i++) {
       const proxy = API_CONFIG.WEATHER_PROXY_URLS[i]
       let proxyUrl = ''
@@ -1329,6 +1354,10 @@ export const testWeatherConnection = async () => {
         proxyUrl = `${proxy}=${encodeURIComponent(url)}`
       } else if (proxy.includes('codetabs')) {
         proxyUrl = `${proxy}=${url}`
+      } else if (proxy.includes('cors.sh')) {
+        const endpoint_part = url.split('/data/2.5/')[1]
+        proxyUrl = `${proxy}/${endpoint_part}`
+        // Thêm API key vào header thay vì URL để tránh vấn đề với một số proxy
       } else {
         const endpoint_part = url.split('/data/2.5/')[1]
         proxyUrl = `${proxy}/${endpoint_part}`
@@ -1339,16 +1368,24 @@ export const testWeatherConnection = async () => {
         const startTime = Date.now()
         const timeoutId = setTimeout(() => controller.abort(), 15000) // Tăng timeout lên 15 giây
 
+        // Tạo headers tùy chỉnh cho từng proxy
+        let headers = {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          Pragma: 'no-cache',
+          Expires: '0',
+        }
+
+        // Xử lý đặc biệt cho proxy.cors.sh
+        if (proxy.includes('cors.sh')) {
+          headers['x-cors-api-key'] = apiKey
+        }
+
         const response = await fetch(proxyUrl, {
           signal: controller.signal,
-          headers: {
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            Pragma: 'no-cache',
-            Expires: '0',
-          },
+          headers: headers,
           mode: 'cors',
         })
 

@@ -622,6 +622,7 @@ const WeatherWidget = ({ onPress }) => {
               fontSize: 14,
               color: theme.subtextColor,
               textAlign: 'center',
+              marginBottom: 12,
             }}
           >
             {locationPermissionGranted
@@ -630,11 +631,27 @@ const WeatherWidget = ({ onPress }) => {
                 : t('Kiểm tra kết nối mạng và thử lại')
               : t('Cần cấp quyền vị trí để xem thời tiết')}
           </Text>
+
+          <Text
+            style={{
+              fontSize: 12,
+              color: theme.subtextColor,
+              textAlign: 'center',
+              marginBottom: 12,
+              fontStyle: 'italic',
+            }}
+          >
+            {t(
+              'Lưu ý: Khi chạy trên snack.expo.dev, bạn có thể cần thử lại nhiều lần do giới hạn CORS'
+            )}
+          </Text>
+
           <View
             style={{
               flexDirection: 'row',
               justifyContent: 'center',
               marginTop: 12,
+              flexWrap: 'wrap',
             }}
           >
             <TouchableOpacity
@@ -644,6 +661,7 @@ const WeatherWidget = ({ onPress }) => {
                 paddingHorizontal: 16,
                 borderRadius: 20,
                 marginRight: 8,
+                marginBottom: 8,
               }}
               onPress={refreshWeatherData}
             >
@@ -658,6 +676,7 @@ const WeatherWidget = ({ onPress }) => {
                 paddingVertical: 8,
                 paddingHorizontal: 16,
                 borderRadius: 20,
+                marginBottom: 8,
               }}
               onPress={async () => {
                 setLoading(true)
@@ -668,7 +687,10 @@ const WeatherWidget = ({ onPress }) => {
                   // Kiểm tra kết nối
                   const result = await weatherService.testWeatherConnection()
 
-                  if (result.workingMethods.length > 0) {
+                  if (
+                    result.workingMethods &&
+                    result.workingMethods.length > 0
+                  ) {
                     // Có ít nhất một phương thức kết nối hoạt động
                     let message = `Đã tìm thấy ${result.workingMethods.length} phương thức kết nối hoạt động.\n\n`
 
@@ -683,8 +705,10 @@ const WeatherWidget = ({ onPress }) => {
                         result.bestMethod.split('_')[1]
                       )
                       const proxyName =
-                        result.proxies.find((p) => p.index === proxyIndex)
-                          ?.name || 'proxy'
+                        (result.proxies &&
+                          result.proxies.find((p) => p.index === proxyIndex)
+                            ?.name) ||
+                        'proxy'
                       message += `Proxy ${proxyName} hoạt động tốt nhất.\n`
                     }
 
@@ -717,7 +741,7 @@ const WeatherWidget = ({ onPress }) => {
                     }
 
                     // Thêm thông tin về kết nối internet
-                    if (!result.internetConnected) {
+                    if (result.internetConnected === false) {
                       errorMessage +=
                         '\nKhông phát hiện kết nối internet. Vui lòng kiểm tra kết nối mạng của bạn.'
                     }
@@ -734,6 +758,49 @@ const WeatherWidget = ({ onPress }) => {
             >
               <Text style={{ color: COLORS.TEXT_DARK, fontWeight: '500' }}>
                 {t('Kiểm tra kết nối')}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={{
+                backgroundColor: '#4CAF50',
+                paddingVertical: 8,
+                paddingHorizontal: 16,
+                borderRadius: 20,
+                marginLeft: 8,
+                marginBottom: 8,
+              }}
+              onPress={async () => {
+                setLoading(true)
+                try {
+                  // Xóa cache
+                  await weatherService.clearWeatherCache()
+
+                  // Sử dụng API key mới
+                  const success = await weatherService.checkAndUseNewApiKey(
+                    '0159b1563875298237265a8b2f0065f2'
+                  )
+
+                  if (success) {
+                    alert(
+                      'Đã kích hoạt API key mới. Đang tải lại dữ liệu thời tiết...'
+                    )
+                    await fetchWeatherData(true)
+                  } else {
+                    alert(
+                      'Không thể kích hoạt API key mới. Vui lòng thử lại sau.'
+                    )
+                    setLoading(false)
+                  }
+                } catch (error) {
+                  console.error('Lỗi khi kích hoạt API key mới:', error)
+                  alert(`Lỗi: ${error.message}`)
+                  setLoading(false)
+                }
+              }}
+            >
+              <Text style={{ color: COLORS.TEXT_DARK, fontWeight: '500' }}>
+                {t('Kích hoạt API key mới')}
               </Text>
             </TouchableOpacity>
           </View>
