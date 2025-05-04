@@ -95,14 +95,15 @@ const NotesScreen = ({ navigation, route }) => {
 
   // Theo dõi thay đổi từ tham số route
   useEffect(() => {
-    if (route && route.params?.notesUpdated) {
+    // Kiểm tra route và route.params tồn tại trước khi truy cập
+    if (route && route.params && route.params.notesUpdated) {
       console.log(
         'Nhận thông báo cập nhật ghi chú từ tham số route, timestamp:',
-        route.params.timestamp
+        route.params.timestamp || 'không có timestamp'
       )
       loadNotes()
     }
-  }, [route, route?.params?.notesUpdated, route?.params?.timestamp, loadNotes])
+  }, [route, loadNotes])
 
   // Xử lý tìm kiếm
   const handleSearch = (text) => {
