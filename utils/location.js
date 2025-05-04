@@ -15,26 +15,63 @@ const STORAGE_KEYS = {
  */
 export const getCurrentLocation = async () => {
   try {
-    // Kiểm tra quyền truy cập vị trí
-    const { status } = await Location.requestForegroundPermissionsAsync()
+    // Kiểm tra quyền truy cập vị trí hiện tại
+    let { status } = await Location.getForegroundPermissionsAsync()
 
+    // Nếu chưa được cấp quyền, yêu cầu quyền
     if (status !== 'granted') {
-      console.error('Permission to access location was denied')
-      return null
+      console.log('Yêu cầu quyền truy cập vị trí...')
+      const permissionResult =
+        await Location.requestForegroundPermissionsAsync()
+      status = permissionResult.status
+
+      if (status !== 'granted') {
+        console.error('Quyền truy cập vị trí bị từ chối')
+        return null
+      }
     }
 
-    // Lấy vị trí hiện tại
-    const location = await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.High,
+    console.log('Đã được cấp quyền vị trí, đang lấy vị trí hiện tại...')
+
+    // Thêm timeout để tránh treo ứng dụng
+    const locationPromise = Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.Balanced, // Sử dụng Balanced thay vì High để tăng tốc độ
+      timeout: 15000, // 15 giây timeout
     })
+
+    // Tạo promise với timeout
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Timeout getting location')), 15000)
+    )
+
+    // Chạy đua giữa lấy vị trí và timeout
+    const location = await Promise.race([locationPromise, timeoutPromise])
+
+    console.log('Đã lấy được vị trí:', location.coords)
 
     return {
       latitude: location.coords.latitude,
       longitude: location.coords.longitude,
     }
   } catch (error) {
-    console.error('Error getting current location:', error)
-    return null
+    console.error('Lỗi khi lấy vị trí hiện tại:', error)
+
+    // Thử lại với độ chính xác thấp hơn nếu lỗi
+    try {
+      console.log('Thử lại với độ chính xác thấp...')
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Low,
+        timeout: 10000,
+      })
+
+      return {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      }
+    } catch (retryError) {
+      console.error('Lỗi khi thử lại lấy vị trí:', retryError)
+      return null
+    }
   }
 }
 

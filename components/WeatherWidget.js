@@ -23,8 +23,16 @@ import weatherService from '../services/weatherService'
 const { width } = Dimensions.get('window')
 
 const WeatherWidget = ({ onPress }) => {
-  const { darkMode, theme, homeLocation, workLocation, t } =
-    useContext(AppContext)
+  const {
+    darkMode,
+    theme,
+    homeLocation,
+    workLocation,
+    locationPermissionGranted,
+    requestLocationPermission,
+    t,
+  } = useContext(AppContext)
+
   const [currentWeather, setCurrentWeather] = useState(null)
   const [forecast, setForecast] = useState([])
   const [weatherAlert, setWeatherAlert] = useState(null)
@@ -44,10 +52,18 @@ const WeatherWidget = ({ onPress }) => {
     try {
       setLoading(true)
 
+      // Kiểm tra quyền vị trí
+      if (!locationPermissionGranted) {
+        console.log('Không có quyền vị trí, không thể lấy dữ liệu thời tiết')
+        setLoading(false)
+        return
+      }
+
       // Sử dụng vị trí nhà làm vị trí chính, nếu không có thì dùng vị trí công ty
       const primaryLocation = homeLocation || workLocation
 
       if (!primaryLocation) {
+        console.log('Không có vị trí được lưu, không thể lấy dữ liệu thời tiết')
         setLoading(false)
         return
       }
@@ -301,13 +317,34 @@ const WeatherWidget = ({ onPress }) => {
   // Hàm làm mới dữ liệu thời tiết
   const refreshWeatherData = async () => {
     setRefreshing(true)
-    await fetchWeatherData(true) // Truyền true để xóa cache
+
+    // Kiểm tra quyền vị trí nếu chưa được cấp
+    if (!locationPermissionGranted) {
+      const granted = await requestLocationPermission()
+      if (!granted) {
+        setRefreshing(false)
+        return
+      }
+    }
+
+    try {
+      // Xóa cache thời tiết
+      await weatherService.clearWeatherCache()
+
+      // Tải lại dữ liệu thời tiết
+      await fetchWeatherData(true)
+    } catch (error) {
+      console.error('Lỗi khi làm mới dữ liệu thời tiết:', error)
+    } finally {
+      setRefreshing(false)
+    }
   }
 
   // Sử dụng useCallback để tránh tạo lại hàm fetchWeatherData mỗi khi render
   const memoizedFetchWeatherData = useCallback(fetchWeatherData, [
     homeLocation,
     workLocation,
+    locationPermissionGranted, // Thêm locationPermissionGranted vào dependencies
     // Loại bỏ generateSmartAlert khỏi dependencies để tránh vòng lặp render
   ])
 
@@ -319,12 +356,37 @@ const WeatherWidget = ({ onPress }) => {
     // hoặc khi các dependency thực sự thay đổi
     if (isFirstMount.current) {
       isFirstMount.current = false
-      memoizedFetchWeatherData()
-    } else if (homeLocation || workLocation) {
-      // Chỉ fetch lại khi vị trí thay đổi
+
+      // Kiểm tra quyền vị trí trước khi fetch dữ liệu
+      if (!locationPermissionGranted) {
+        console.log('Không có quyền vị trí, yêu cầu quyền...')
+        requestLocationPermission().then((granted) => {
+          if (granted) {
+            console.log('Đã được cấp quyền vị trí, fetch dữ liệu thời tiết')
+            memoizedFetchWeatherData()
+          } else {
+            console.log(
+              'Quyền vị trí bị từ chối, không thể fetch dữ liệu thời tiết'
+            )
+            setLoading(false)
+          }
+        })
+      } else {
+        console.log('Đã có quyền vị trí, fetch dữ liệu thời tiết')
+        memoizedFetchWeatherData()
+      }
+    } else if ((homeLocation || workLocation) && locationPermissionGranted) {
+      // Chỉ fetch lại khi vị trí thay đổi và có quyền vị trí
+      console.log('Vị trí thay đổi, fetch lại dữ liệu thời tiết')
       memoizedFetchWeatherData()
     }
-  }, [homeLocation, workLocation, memoizedFetchWeatherData])
+  }, [
+    homeLocation,
+    workLocation,
+    locationPermissionGranted,
+    memoizedFetchWeatherData,
+    requestLocationPermission,
+  ])
 
   if (loading) {
     return (
@@ -380,16 +442,50 @@ const WeatherWidget = ({ onPress }) => {
         }}
         onPress={onPress}
       >
-        <Text
-          style={{
-            fontSize: 16,
-            color: theme.textColor,
-            textAlign: 'center',
-            padding: 16,
-          }}
-        >
-          {t('Unable to load weather data')}
-        </Text>
+        <View style={{ alignItems: 'center', padding: 16 }}>
+          <Ionicons
+            name="cloud-offline-outline"
+            size={32}
+            color={theme.textColor}
+            style={{ marginBottom: 8 }}
+          />
+          <Text
+            style={{
+              fontSize: 16,
+              fontWeight: 'bold',
+              color: theme.textColor,
+              textAlign: 'center',
+              marginBottom: 8,
+            }}
+          >
+            {t('Không thể tải dữ liệu thời tiết')}
+          </Text>
+          <Text
+            style={{
+              fontSize: 14,
+              color: theme.subtextColor,
+              textAlign: 'center',
+            }}
+          >
+            {locationPermissionGranted
+              ? t('Kiểm tra kết nối mạng và thử lại')
+              : t('Cần cấp quyền vị trí để xem thời tiết')}
+          </Text>
+          <TouchableOpacity
+            style={{
+              backgroundColor: COLORS.PRIMARY,
+              paddingVertical: 8,
+              paddingHorizontal: 16,
+              borderRadius: 20,
+              marginTop: 12,
+            }}
+            onPress={refreshWeatherData}
+          >
+            <Text style={{ color: '#fff', fontWeight: '500' }}>
+              {t('Thử lại')}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </TouchableOpacity>
     )
   }

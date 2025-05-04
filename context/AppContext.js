@@ -1553,20 +1553,72 @@ export const AppProvider = ({ children }) => {
   // Hàm yêu cầu quyền truy cập vị trí
   const requestLocationPermission = async () => {
     try {
-      // Yêu cầu quyền truy cập vị trí chính xác
-      const { status } = await Location.requestForegroundPermissionsAsync()
+      console.log('Kiểm tra quyền vị trí hiện tại...')
+      // Kiểm tra quyền hiện tại trước
+      let { status } = await Location.getForegroundPermissionsAsync()
 
       if (status === 'granted') {
-        // Nếu được cấp quyền, yêu cầu quyền vị trí chính xác
-        const accuracyStatus = await Location.requestPermissionsAsync()
-        setLocationPermissionGranted(accuracyStatus.status === 'granted')
-        return accuracyStatus.status === 'granted'
+        console.log('Đã có quyền vị trí')
+        setLocationPermissionGranted(true)
+        return true
+      }
+
+      console.log('Yêu cầu quyền vị trí...')
+      // Yêu cầu quyền truy cập vị trí
+      const permissionResult =
+        await Location.requestForegroundPermissionsAsync()
+      status = permissionResult.status
+
+      if (status === 'granted') {
+        console.log('Quyền vị trí được cấp')
+
+        // Thử lấy vị trí để xác nhận quyền hoạt động
+        try {
+          const location = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+            timeout: 10000,
+          })
+          console.log('Đã lấy được vị trí:', location.coords)
+        } catch (locationError) {
+          console.warn(
+            'Không thể lấy vị trí dù đã được cấp quyền:',
+            locationError
+          )
+          // Vẫn tiếp tục vì quyền đã được cấp
+        }
+
+        setLocationPermissionGranted(true)
+        return true
       } else {
+        console.log('Quyền vị trí bị từ chối')
         setLocationPermissionGranted(false)
+
+        // Hiển thị thông báo giải thích tại sao cần quyền
+        Alert.alert(
+          t('Cần quyền vị trí'),
+          t(
+            'AccShift cần quyền vị trí để hiển thị thông tin thời tiết chính xác cho vị trí của bạn. Bạn có thể cấp quyền này trong cài đặt ứng dụng.'
+          ),
+          [
+            { text: t('Để sau') },
+            {
+              text: t('Mở cài đặt'),
+              onPress: () => {
+                // Mở cài đặt ứng dụng
+                if (Platform.OS === 'ios') {
+                  Linking.openURL('app-settings:')
+                } else {
+                  Linking.openSettings()
+                }
+              },
+            },
+          ]
+        )
+
         return false
       }
     } catch (error) {
-      console.error('Error requesting location permission:', error)
+      console.error('Lỗi khi yêu cầu quyền vị trí:', error)
       setLocationPermissionGranted(false)
       return false
     }

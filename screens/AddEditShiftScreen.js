@@ -50,6 +50,7 @@ const AddEditShiftScreen = ({ route, navigation }) => {
   const [breakTime, setBreakTime] = useState('60')
   const [remindBeforeStart, setRemindBeforeStart] = useState('15')
   const [remindAfterEnd, setRemindAfterEnd] = useState('15')
+  // Mặc định các trường boolean là false khi tạo ca mới
   const [isActive, setIsActive] = useState(false)
   const [showPunch, setShowPunch] = useState(false)
   const [daysApplied, setDaysApplied] = useState(['T2', 'T3', 'T4', 'T5', 'T6'])
@@ -57,6 +58,7 @@ const AddEditShiftScreen = ({ route, navigation }) => {
   // UI state
   const [isLoading, setIsLoading] = useState(false)
   const [isFormDirty, setIsFormDirty] = useState(false)
+  const [hasInteracted, setHasInteracted] = useState(false) // Theo dõi xem người dùng đã tương tác với form chưa
 
   // Time picker state
   const [showDepartureTimePicker, setShowDepartureTimePicker] = useState(false)
@@ -100,12 +102,29 @@ const AddEditShiftScreen = ({ route, navigation }) => {
   const loadShiftData = useCallback(async () => {
     if (!shiftId) return
 
+    console.log('Loading shift data for ID:', shiftId)
     setIsLoading(true)
     try {
       const shiftsData = await AsyncStorage.getItem(STORAGE_KEYS.SHIFT_LIST)
       if (shiftsData) {
         const shifts = JSON.parse(shiftsData)
+        console.log('Found shifts:', shifts.length)
         const shift = shifts.find((s) => s.id === shiftId)
+        console.log('Found shift:', shift ? 'yes' : 'no')
+
+        if (shift) {
+          // Log chi tiết về ca làm việc đã tìm thấy
+          console.log('Shift details:')
+          console.log('- ID:', shift.id)
+          console.log('- Name:', shift.name)
+          console.log('- isActive:', shift.isActive, typeof shift.isActive)
+          console.log(
+            '- showCheckInButtonWhileWorking:',
+            shift.showCheckInButtonWhileWorking,
+            typeof shift.showCheckInButtonWhileWorking
+          )
+          console.log('- showPunch:', shift.showPunch, typeof shift.showPunch)
+        }
 
         if (shift) {
           setShiftName(shift.name || '')
@@ -152,13 +171,24 @@ const AddEditShiftScreen = ({ route, navigation }) => {
           )
 
           // Xử lý các trường boolean
+          console.log('Loading isActive value:', shift.isActive)
+          console.log(
+            'Loading showCheckInButtonWhileWorking value:',
+            shift.showCheckInButtonWhileWorking
+          )
+          console.log('Loading showPunch value:', shift.showPunch)
+
+          // Đảm bảo isActive được xử lý đúng - chỉ true khi giá trị rõ ràng là true
           setIsActive(shift.isActive === true)
 
           // Kiểm tra cả hai trường để đảm bảo tương thích ngược
-          setShowPunch(
+          // Chỉ true khi giá trị rõ ràng là true
+          const shouldShowPunch =
             shift.showCheckInButtonWhileWorking === true ||
-              shift.showPunch === true
-          )
+            shift.showPunch === true
+
+          console.log('Setting showPunch to:', shouldShowPunch)
+          setShowPunch(shouldShowPunch)
 
           // Đảm bảo daysApplied luôn là một mảng hợp lệ
           if (
@@ -179,8 +209,18 @@ const AddEditShiftScreen = ({ route, navigation }) => {
       setIsLoading(false)
       setIsFormDirty(false)
 
-      // Chạy validation sau khi load dữ liệu
+      // Không chạy validation hiển thị lỗi sau khi load dữ liệu
+      // Người dùng chưa tương tác với form nên không nên hiển thị lỗi
+      console.log(
+        'Data loaded, but not showing validation errors until user interacts with form'
+      )
+
+      // Đặt hasInteracted thành false sau khi load dữ liệu
+      setHasInteracted(false)
+
+      // Vẫn chạy validation nhưng không hiển thị lỗi
       setTimeout(() => {
+        console.log('Running silent validation after data load...')
         validateForm()
       }, 500)
     }
@@ -275,6 +315,7 @@ const AddEditShiftScreen = ({ route, navigation }) => {
       setShowDepartureTimePicker(false)
       if (selectedTime) {
         setIsFormDirty(true)
+        setHasInteracted(true) // Đánh dấu người dùng đã tương tác với form
         updateTimeValue('departure', selectedTime)
       }
     }
@@ -283,6 +324,7 @@ const AddEditShiftScreen = ({ route, navigation }) => {
       if (event.type === 'set') {
         setShowDepartureTimePicker(false)
         setIsFormDirty(true)
+        setHasInteracted(true) // Đánh dấu người dùng đã tương tác với form
         updateTimeValue('departure', selectedTime)
       } else if (event.type === 'dismissed') {
         setShowDepartureTimePicker(false)
@@ -293,6 +335,7 @@ const AddEditShiftScreen = ({ route, navigation }) => {
       setShowDepartureTimePicker(false)
       if (selectedTime) {
         setIsFormDirty(true)
+        setHasInteracted(true) // Đánh dấu người dùng đã tương tác với form
         updateTimeValue('departure', selectedTime)
       }
     }
@@ -304,6 +347,7 @@ const AddEditShiftScreen = ({ route, navigation }) => {
       setShowStartTimePicker(false)
       if (selectedTime) {
         setIsFormDirty(true)
+        setHasInteracted(true) // Đánh dấu người dùng đã tương tác với form
         updateTimeValue('start', selectedTime)
       }
     }
@@ -312,6 +356,7 @@ const AddEditShiftScreen = ({ route, navigation }) => {
       if (event.type === 'set') {
         setShowStartTimePicker(false)
         setIsFormDirty(true)
+        setHasInteracted(true) // Đánh dấu người dùng đã tương tác với form
         updateTimeValue('start', selectedTime)
       } else if (event.type === 'dismissed') {
         setShowStartTimePicker(false)
@@ -322,6 +367,7 @@ const AddEditShiftScreen = ({ route, navigation }) => {
       setShowStartTimePicker(false)
       if (selectedTime) {
         setIsFormDirty(true)
+        setHasInteracted(true) // Đánh dấu người dùng đã tương tác với form
         updateTimeValue('start', selectedTime)
       }
     }
@@ -333,6 +379,7 @@ const AddEditShiftScreen = ({ route, navigation }) => {
       setShowOfficeEndTimePicker(false)
       if (selectedTime) {
         setIsFormDirty(true)
+        setHasInteracted(true) // Đánh dấu người dùng đã tương tác với form
         updateTimeValue('officeEnd', selectedTime)
       }
     }
@@ -341,6 +388,7 @@ const AddEditShiftScreen = ({ route, navigation }) => {
       if (event.type === 'set') {
         setShowOfficeEndTimePicker(false)
         setIsFormDirty(true)
+        setHasInteracted(true) // Đánh dấu người dùng đã tương tác với form
         updateTimeValue('officeEnd', selectedTime)
       } else if (event.type === 'dismissed') {
         setShowOfficeEndTimePicker(false)
@@ -351,6 +399,7 @@ const AddEditShiftScreen = ({ route, navigation }) => {
       setShowOfficeEndTimePicker(false)
       if (selectedTime) {
         setIsFormDirty(true)
+        setHasInteracted(true) // Đánh dấu người dùng đã tương tác với form
         updateTimeValue('officeEnd', selectedTime)
       }
     }
@@ -362,6 +411,7 @@ const AddEditShiftScreen = ({ route, navigation }) => {
       setShowEndTimePicker(false)
       if (selectedTime) {
         setIsFormDirty(true)
+        setHasInteracted(true) // Đánh dấu người dùng đã tương tác với form
         updateTimeValue('end', selectedTime)
       }
     }
@@ -370,6 +420,7 @@ const AddEditShiftScreen = ({ route, navigation }) => {
       if (event.type === 'set') {
         setShowEndTimePicker(false)
         setIsFormDirty(true)
+        setHasInteracted(true) // Đánh dấu người dùng đã tương tác với form
         updateTimeValue('end', selectedTime)
       } else if (event.type === 'dismissed') {
         setShowEndTimePicker(false)
@@ -380,6 +431,7 @@ const AddEditShiftScreen = ({ route, navigation }) => {
       setShowEndTimePicker(false)
       if (selectedTime) {
         setIsFormDirty(true)
+        setHasInteracted(true) // Đánh dấu người dùng đã tương tác với form
         updateTimeValue('end', selectedTime)
       }
     }
@@ -392,6 +444,7 @@ const AddEditShiftScreen = ({ route, navigation }) => {
   }
 
   const toggleDaySelection = (day) => {
+    setHasInteracted(true) // Đánh dấu người dùng đã tương tác với form
     if (daysApplied.includes(day)) {
       setDaysApplied(daysApplied.filter((d) => d !== day))
     } else {
@@ -428,39 +481,51 @@ const AddEditShiftScreen = ({ route, navigation }) => {
 
   // Validate form fields
   const validateForm = useCallback(async () => {
+    console.log('Running form validation...')
     const newErrors = {}
     let isValid = true
 
+    // Nếu người dùng chưa tương tác với form, không hiển thị lỗi
+    if (!hasInteracted) {
+      console.log(
+        'User has not interacted with form yet, skipping validation display'
+      )
+      // Vẫn chạy validation nhưng không hiển thị lỗi
+      setErrors({})
+      setIsFormValid(true)
+      return true
+    }
+
     // Validate shift name
-    if (!shiftName.trim()) {
+    console.log('Validating shift name:', shiftName)
+    if (!shiftName || !shiftName.trim()) {
+      console.log('Shift name is empty')
       newErrors.shiftName = t('Tên ca không được để trống.')
       isValid = false
     } else if (shiftName.length > 200) {
+      console.log('Shift name is too long:', shiftName.length)
       newErrors.shiftName = t('Tên ca quá dài (tối đa 200 ký tự).')
       isValid = false
     } else {
-      // Check for valid characters (letters, numbers, spaces)
-      // This regex allows Unicode letters from various languages
-      const nameRegex = /^[\p{L}\p{N}\s]+$/u
-      if (!nameRegex.test(shiftName)) {
-        newErrors.shiftName = t('Tên ca chứa ký tự không hợp lệ.')
-        isValid = false
-      } else {
-        // Normalize name by removing extra spaces and converting to lowercase
-        const normalizedName = shiftName
-          .trim()
-          .replace(/\s+/g, ' ')
-          .toLowerCase()
+      // Bỏ qua kiểm tra regex để cho phép tất cả các ký tự trong tên ca làm việc
+      // Chỉ kiểm tra xem tên có trống không và độ dài tối đa
+      // Điều này sẽ cho phép người dùng nhập bất kỳ ký tự nào, bao gồm tiếng Việt và các ký tự đặc biệt
 
-        // Check for uniqueness
-        const isUnique = await isShiftNameUnique(
-          normalizedName,
-          isEditing ? shiftId : null
-        )
-        if (!isUnique) {
-          newErrors.shiftName = t('Tên ca này đã tồn tại.')
-          isValid = false
-        }
+      // Log để debug
+      console.log('Validating shift name:', shiftName)
+
+      // Normalize name by removing extra spaces and converting to lowercase
+      const normalizedName = shiftName.trim().replace(/\s+/g, ' ').toLowerCase()
+
+      // Check for uniqueness
+      const isUnique = await isShiftNameUnique(
+        normalizedName,
+        isEditing ? shiftId : null
+      )
+      if (!isUnique) {
+        console.log('Shift name is not unique:', normalizedName)
+        newErrors.shiftName = t('Tên ca này đã tồn tại.')
+        isValid = false
       }
     }
 
@@ -600,10 +665,15 @@ const AddEditShiftScreen = ({ route, navigation }) => {
       isValid = false
     }
 
+    // Log kết quả validation
+    console.log('Validation errors:', newErrors)
+    console.log('Form is valid:', isValid)
+
     setErrors(newErrors)
     setIsFormValid(isValid)
     return isValid
   }, [
+    hasInteracted, // Thêm hasInteracted vào dependency array
     shiftName,
     departureTime,
     startTime,
@@ -662,14 +732,21 @@ const AddEditShiftScreen = ({ route, navigation }) => {
               setBreakTime('60')
               setRemindBeforeStart('15')
               setRemindAfterEnd('15')
+
+              // Đảm bảo các giá trị boolean mặc định là false
+              console.log(
+                'Resetting form - setting isActive and showPunch to false'
+              )
               setIsActive(false)
               setShowPunch(false)
+
               setDaysApplied(['T2', 'T3', 'T4', 'T5', 'T6'])
             }
 
             setErrors({})
             setIsFormDirty(false)
             setIsFormValid(true)
+            setHasInteracted(false) // Đặt lại trạng thái tương tác
           },
         },
       ]
@@ -678,6 +755,8 @@ const AddEditShiftScreen = ({ route, navigation }) => {
 
   // Save shift data
   const handleSaveShift = async () => {
+    // Đánh dấu người dùng đã tương tác với form khi bấm nút lưu
+    setHasInteracted(true)
     setIsLoading(true)
 
     try {
@@ -719,6 +798,11 @@ const AddEditShiftScreen = ({ route, navigation }) => {
                 // Chuẩn hóa tên ca làm việc
                 const normalizedName = shiftName.trim().replace(/\s+/g, ' ')
 
+                // Log trạng thái trước khi lưu
+                console.log('Saving shift with values:')
+                console.log('- isActive:', isActive)
+                console.log('- showPunch:', showPunch)
+
                 const newShift = {
                   id: isEditing ? shiftId : Date.now().toString(),
                   name: normalizedName,
@@ -729,8 +813,8 @@ const AddEditShiftScreen = ({ route, navigation }) => {
                   breakTime: parseInt(breakTime, 10) || 0,
                   remindBeforeStart: parseInt(remindBeforeStart, 10) || 0,
                   remindAfterEnd: parseInt(remindAfterEnd, 10) || 0,
-                  isActive,
-                  showCheckInButtonWhileWorking: showPunch, // Đổi tên thuộc tính để rõ ràng hơn
+                  isActive: isActive === true, // Đảm bảo giá trị boolean rõ ràng
+                  showCheckInButtonWhileWorking: showPunch === true, // Đảm bảo giá trị boolean rõ ràng
                   daysApplied: [...daysApplied].sort(), // Sắp xếp lại các ngày để đảm bảo tính nhất quán
                   updatedAt: new Date().toISOString(),
                 }
@@ -822,11 +906,19 @@ const AddEditShiftScreen = ({ route, navigation }) => {
 
   // Run validation on form changes
   useEffect(() => {
-    if (isFormDirty) {
+    // Chỉ chạy validation khi người dùng đã tương tác với form
+    if (hasInteracted) {
+      console.log(
+        'Form value changed and user has interacted, running validation...'
+      )
       validateForm()
+    } else {
+      console.log(
+        'Form value changed but user has not interacted yet, skipping validation'
+      )
     }
   }, [
-    isFormDirty,
+    hasInteracted,
     shiftName,
     departureTime,
     startTime,
@@ -924,8 +1016,10 @@ const AddEditShiftScreen = ({ route, navigation }) => {
               ]}
               value={shiftName}
               onChangeText={(text) => {
+                console.log('Shift name changed to:', text)
                 setShiftName(text)
                 setIsFormDirty(true)
+                setHasInteracted(true) // Đánh dấu người dùng đã tương tác với form
               }}
               placeholder={t('Nhập tên ca làm việc')}
               placeholderTextColor={darkMode ? '#666' : '#999'}
@@ -1343,6 +1437,7 @@ const AddEditShiftScreen = ({ route, navigation }) => {
           </View>
 
           {/* Show Punch Switch */}
+          {console.log('Rendering showPunch switch with value:', showPunch)}
           <View
             style={[
               styles.switchContainer,
@@ -1355,6 +1450,7 @@ const AddEditShiftScreen = ({ route, navigation }) => {
             <Switch
               value={showPunch}
               onValueChange={(value) => {
+                console.log('Changing showPunch to:', value)
                 setShowPunch(value)
                 setIsFormDirty(true)
               }}
@@ -1364,6 +1460,7 @@ const AddEditShiftScreen = ({ route, navigation }) => {
           </View>
 
           {/* Active Switch */}
+          {console.log('Rendering isActive switch with value:', isActive)}
           <View
             style={[
               styles.switchContainer,
@@ -1376,6 +1473,7 @@ const AddEditShiftScreen = ({ route, navigation }) => {
             <Switch
               value={isActive}
               onValueChange={(value) => {
+                console.log('Changing isActive to:', value)
                 // Nếu đang tắt ca hiện tại, hiển thị xác nhận
                 if (isCurrentShift && !value) {
                   Alert.alert(
@@ -1392,6 +1490,7 @@ const AddEditShiftScreen = ({ route, navigation }) => {
                         text: t('Tắt ca'),
                         style: 'destructive',
                         onPress: () => {
+                          console.log('Confirmed: setting isActive to false')
                           setIsActive(false)
                           setIsFormDirty(true)
                         },
@@ -1399,6 +1498,7 @@ const AddEditShiftScreen = ({ route, navigation }) => {
                     ]
                   )
                 } else {
+                  console.log('Setting isActive to:', value)
                   setIsActive(value)
                   setIsFormDirty(true)
                 }
@@ -1456,9 +1556,26 @@ const AddEditShiftScreen = ({ route, navigation }) => {
 
           {/* Thông báo lỗi */}
           {!isFormValid && (
-            <Text style={styles.formErrorText}>
-              {t('Vui lòng sửa các lỗi để tiếp tục')}
-            </Text>
+            <View>
+              <Text style={styles.formErrorText}>
+                {t('Vui lòng sửa các lỗi để tiếp tục')}
+              </Text>
+              {__DEV__ && (
+                <TouchableOpacity
+                  style={styles.debugButton}
+                  onPress={() => {
+                    console.log('Current form state:')
+                    console.log('Shift name:', shiftName)
+                    console.log('Is form dirty:', isFormDirty)
+                    console.log('Is form valid:', isFormValid)
+                    console.log('Errors:', errors)
+                    validateForm()
+                  }}
+                >
+                  <Text style={styles.debugButtonText}>Debug Form</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           )}
         </View>
       </ScrollView>
@@ -1711,6 +1828,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1000,
+  },
+  debugButton: {
+    backgroundColor: '#ff5252',
+    padding: 8,
+    borderRadius: 4,
+    marginTop: 8,
+    alignSelf: 'center',
+  },
+  debugButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
   },
   modalContainer: {
     flex: 1,

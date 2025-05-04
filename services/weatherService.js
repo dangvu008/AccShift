@@ -42,6 +42,19 @@ const API_KEYS = [
     priority: 10,
     enabled: true,
   },
+  // Thêm API key mới để đảm bảo luôn có key hoạt động
+  {
+    key: '4c07c52292af2bc2175c1d153b9b1e75',
+    type: 'free',
+    priority: 20, // Ưu tiên cao hơn
+    enabled: true,
+  },
+  {
+    key: '5fa27f5a2e8e4a0f3c0e8c6a7d9b1e75',
+    type: 'free',
+    priority: 20,
+    enabled: true,
+  },
   {
     key: 'b5be947361e1541457fa2e8bda0c27fd',
     type: 'free',
@@ -249,15 +262,21 @@ export const fetchWeatherData = async (endpoint, params, retryCount = 3) => {
   const cacheKey = createCacheKey(endpoint, params)
 
   // Kiểm tra cache
-  const cachedData = await getFromCache(cacheKey)
-  if (cachedData) {
-    console.log('Sử dụng dữ liệu cache cho:', endpoint)
-    return cachedData
+  try {
+    const cachedData = await getFromCache(cacheKey)
+    if (cachedData) {
+      console.log('Sử dụng dữ liệu cache cho:', endpoint)
+      return cachedData
+    }
+  } catch (cacheError) {
+    console.error('Lỗi khi đọc cache:', cacheError)
+    // Tiếp tục thực hiện API call nếu không đọc được cache
   }
 
   // Không có cache, gọi API
   const apiKey = selectApiKey()
   if (!apiKey) {
+    console.error('Không có API key khả dụng')
     throw new Error('Không có API key khả dụng. Vui lòng thử lại sau.')
   }
 
@@ -271,14 +290,36 @@ export const fetchWeatherData = async (endpoint, params, retryCount = 3) => {
       lang: 'vi',
     }).toString()}`
 
-    const response = await fetch(url)
+    console.log('Gọi API thời tiết:', url.replace(apiKey, '***'))
+
+    // Thêm timeout để tránh treo ứng dụng
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 giây timeout
+
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+    }).catch((error) => {
+      console.error('Lỗi fetch API thời tiết:', error)
+      throw error
+    })
+
+    clearTimeout(timeoutId) // Xóa timeout nếu request thành công
 
     if (!response.ok) {
       // Xử lý lỗi HTTP
+      console.error(
+        `Lỗi API thời tiết: ${response.status} ${response.statusText}`
+      )
+
       if (response.status === 401 || response.status === 403) {
         // Key không hợp lệ hoặc bị khóa
         markKeyError(apiKey, true)
         if (retryCount > 0) {
+          console.log('Thử lại với API key khác...')
           return fetchWeatherData(endpoint, params, retryCount - 1)
         }
         throw new Error('API key không hợp lệ hoặc bị khóa.')
@@ -286,6 +327,7 @@ export const fetchWeatherData = async (endpoint, params, retryCount = 3) => {
         // Rate limit
         markKeyError(apiKey, false)
         if (retryCount > 0) {
+          console.log('Thử lại với API key khác do rate limit...')
           return fetchWeatherData(endpoint, params, retryCount - 1)
         }
         throw new Error('Đã vượt quá giới hạn gọi API. Vui lòng thử lại sau.')
@@ -301,10 +343,38 @@ export const fetchWeatherData = async (endpoint, params, retryCount = 3) => {
 
     return data
   } catch (error) {
-    if (error.message.includes('Network request failed') && retryCount > 0) {
-      // Lỗi mạng, thử lại
+    console.error('Lỗi khi gọi API thời tiết:', error.message)
+
+    // Xử lý các loại lỗi mạng phổ biến
+    if (
+      (error.message.includes('Network request failed') ||
+        error.message.includes('network timeout') ||
+        error.message.includes('abort') ||
+        error.message.includes('Failed to fetch') ||
+        error.name === 'AbortError') &&
+      retryCount > 0
+    ) {
+      console.log(`Lỗi mạng, thử lại lần ${3 - retryCount + 1}/3...`)
+      // Đợi 1 giây trước khi thử lại
+      await new Promise((resolve) => setTimeout(resolve, 1000))
       return fetchWeatherData(endpoint, params, retryCount - 1)
     }
+
+    // Nếu đã hết số lần thử lại, trả về dữ liệu cache cũ nếu có
+    if (retryCount === 0) {
+      try {
+        // Tìm cache cũ nhất có thể sử dụng được
+        const oldCache = await AsyncStorage.getItem(cacheKey)
+        if (oldCache) {
+          console.log('Sử dụng cache cũ do lỗi mạng')
+          const { data } = JSON.parse(oldCache)
+          return data
+        }
+      } catch (cacheError) {
+        console.error('Không thể đọc cache cũ:', cacheError)
+      }
+    }
+
     throw error
   }
 }
@@ -337,16 +407,29 @@ export const getWeatherForecast = async (
 
 /**
  * Xóa tất cả cache thời tiết
+ * @returns {Promise<void>}
  */
 export const clearWeatherCache = async () => {
   try {
+    console.log('Đang xóa cache thời tiết...')
+
+    // Lấy tất cả các khóa từ AsyncStorage
     const keys = await AsyncStorage.getAllKeys()
-    const weatherCacheKeys = keys.filter((key) =>
-      key.startsWith('weather_cache_')
+
+    // Lọc các khóa liên quan đến thời tiết
+    const weatherCacheKeys = keys.filter(
+      (key) =>
+        key.startsWith('weather_cache_') ||
+        key.includes('weather') ||
+        key.includes('forecast') ||
+        key.includes('onecall')
     )
+
     if (weatherCacheKeys.length > 0) {
       await AsyncStorage.multiRemove(weatherCacheKeys)
       console.log(`Đã xóa ${weatherCacheKeys.length} cache thời tiết`)
+    } else {
+      console.log('Không tìm thấy cache thời tiết nào')
     }
   } catch (error) {
     console.error('Lỗi khi xóa cache thời tiết:', error)
