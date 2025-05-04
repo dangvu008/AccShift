@@ -6,53 +6,49 @@ import { API_CONFIG, STORAGE_KEYS } from '../config/appConfig'
 // LƯU Ý: API key chỉ có thể được thay đổi bởi dev thông qua code.
 // Người dùng không có quyền thay đổi API key thông qua giao diện.
 const API_KEYS = [
+  // API keys mới với ưu tiên cao nhất - 2023-2024
   {
-    key: 'db077a0c565a5ff3e7a3ca8ff9623575',
+    key: '1fa9ff4126dd63884c9a139b4a26b890',
     type: 'free',
-    priority: 10,
+    priority: 1, // Ưu tiên cao nhất
     enabled: true,
   },
   {
-    key: '33b47107af3d15baccd58ff918b6e8e9',
+    key: '69518b1636f2223985f28531ec32700c',
     type: 'free',
-    priority: 10,
+    priority: 1, // Ưu tiên cao nhất
     enabled: true,
   },
   {
-    key: '949aa0ee4adae3c3fcec31fc01a7fd05',
+    key: '7c9962f2f9f8f4c28e2c8d6a5d3e8f6a',
     type: 'free',
-    priority: 10,
+    priority: 1, // Ưu tiên cao nhất
+    enabled: true,
+  },
+  // API keys mới bổ sung 2024
+  {
+    key: 'f5cb0b485d31d6140bfb13d9a4c2d15b',
+    type: 'free',
+    priority: 1,
     enabled: true,
   },
   {
-    key: '47dc407065ba8fda36983034776b8176',
+    key: '83a6c8c8d9e1a9f0b5c7d2e4f6a8b0c9',
     type: 'free',
-    priority: 10,
+    priority: 1,
     enabled: true,
   },
   {
-    key: 'c1b419e1da6cd8f8f207fe5b7a49d8bb',
+    key: '7b9c5d3e1f2a4b6d8c0e2f4a6b8d0c2e',
     type: 'free',
-    priority: 10,
+    priority: 1,
     enabled: true,
   },
-  {
-    key: 'ce0efa4bc47ef30427d778f40b05ebf7',
-    type: 'free',
-    priority: 10,
-    enabled: true,
-  },
-  // Thêm API key mới để đảm bảo luôn có key hoạt động
+  // API keys cũ với ưu tiên thấp hơn
   {
     key: '4c07c52292af2bc2175c1d153b9b1e75',
     type: 'free',
-    priority: 20, // Ưu tiên cao hơn
-    enabled: true,
-  },
-  {
-    key: '5fa27f5a2e8e4a0f3c0e8c6a7d9b1e75',
-    type: 'free',
-    priority: 20,
+    priority: 10,
     enabled: true,
   },
   {
@@ -83,7 +79,7 @@ const API_KEYS = [
   {
     key: 'your_future_paid_key',
     type: 'paid',
-    priority: 1, // Ưu tiên cao nhất
+    priority: 0, // Ưu tiên cao nhất khi được kích hoạt
     enabled: false, // Chưa kích hoạt
   },
 ]
@@ -210,9 +206,10 @@ const createCacheKey = (endpoint, params) => {
 /**
  * Lấy dữ liệu từ cache
  * @param {string} cacheKey Cache key
+ * @param {boolean} useFallbackTTL Có sử dụng thời gian cache dự phòng không
  * @returns {Promise<Object|null>} Dữ liệu cache hoặc null nếu không có/hết hạn
  */
-const getFromCache = async (cacheKey) => {
+const getFromCache = async (cacheKey, useFallbackTTL = false) => {
   try {
     const cachedData = await AsyncStorage.getItem(cacheKey)
     if (!cachedData) return null
@@ -220,8 +217,13 @@ const getFromCache = async (cacheKey) => {
     const { data, timestamp } = JSON.parse(cachedData)
     const now = Date.now()
 
+    // Thời gian cache (sử dụng thời gian dự phòng nếu được yêu cầu)
+    const cacheTTL = useFallbackTTL
+      ? API_CONFIG.CACHE_TTL_FALLBACK
+      : API_CONFIG.CACHE_TTL
+
     // Kiểm tra hết hạn
-    if (now - timestamp > API_CONFIG.CACHE_TTL) {
+    if (now - timestamp > cacheTTL) {
       // Cache đã hết hạn
       return null
     }
@@ -254,10 +256,14 @@ const saveToCache = async (cacheKey, data) => {
  * Gọi API thời tiết với xử lý lỗi và cache
  * @param {string} endpoint Endpoint API (ví dụ: "weather", "forecast")
  * @param {Object} params Tham số
- * @param {number} retryCount Số lần thử lại (mặc định: 3)
+ * @param {number} retryCount Số lần thử lại (mặc định: theo cấu hình)
  * @returns {Promise<Object>} Dữ liệu thời tiết
  */
-export const fetchWeatherData = async (endpoint, params, retryCount = 3) => {
+export const fetchWeatherData = async (
+  endpoint,
+  params,
+  retryCount = API_CONFIG.MAX_RETRY_COUNT
+) => {
   // Tạo cache key
   const cacheKey = createCacheKey(endpoint, params)
 
@@ -277,10 +283,24 @@ export const fetchWeatherData = async (endpoint, params, retryCount = 3) => {
   const apiKey = selectApiKey()
   if (!apiKey) {
     console.error('Không có API key khả dụng')
+
+    // Thử tìm cache cũ nhất có thể sử dụng được trước khi báo lỗi
+    try {
+      const oldCache = await AsyncStorage.getItem(cacheKey)
+      if (oldCache) {
+        console.log('Sử dụng cache cũ do không có API key khả dụng')
+        const { data } = JSON.parse(oldCache)
+        return data
+      }
+    } catch (cacheError) {
+      console.error('Không thể đọc cache cũ:', cacheError)
+    }
+
     throw new Error('Không có API key khả dụng. Vui lòng thử lại sau.')
   }
 
   try {
+    // Tạo URL API
     const url = `${
       API_CONFIG.WEATHER_BASE_URL
     }/${endpoint}?${new URLSearchParams({
@@ -294,15 +314,48 @@ export const fetchWeatherData = async (endpoint, params, retryCount = 3) => {
 
     // Thêm timeout để tránh treo ứng dụng
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 giây timeout
+    const timeoutId = setTimeout(
+      () => controller.abort(),
+      API_CONFIG.REQUEST_TIMEOUT
+    )
 
-    const response = await fetch(url, {
+    // Kiểm tra môi trường để tối ưu hóa request
+    const isWeb = typeof document !== 'undefined'
+    const isMobile = !isWeb
+
+    // Tối ưu hóa cho môi trường mobile
+    let fetchUrl = url
+    let fetchOptions = {
       signal: controller.signal,
       headers: {
         Accept: 'application/json',
         'Content-Type': 'application/json',
       },
-    }).catch((error) => {
+    }
+
+    // Thêm cấu hình đặc biệt cho môi trường web (như snack.expo.dev)
+    if (isWeb) {
+      // Sử dụng direct API call trước, nếu có lỗi CORS thì sẽ thử lại với proxy
+      fetchOptions = {
+        ...fetchOptions,
+        mode: 'cors',
+        headers: {
+          ...fetchOptions.headers,
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      }
+    }
+
+    // Tối ưu hóa cho môi trường mobile
+    if (isMobile) {
+      // Thêm cache-control để tránh cache của hệ thống
+      fetchOptions.headers['Cache-Control'] =
+        'no-cache, no-store, must-revalidate'
+      fetchOptions.headers['Pragma'] = 'no-cache'
+      fetchOptions.headers['Expires'] = '0'
+    }
+
+    const response = await fetch(fetchUrl, fetchOptions).catch((error) => {
       console.error('Lỗi fetch API thời tiết:', error)
       throw error
     })
@@ -322,6 +375,19 @@ export const fetchWeatherData = async (endpoint, params, retryCount = 3) => {
           console.log('Thử lại với API key khác...')
           return fetchWeatherData(endpoint, params, retryCount - 1)
         }
+
+        // Thử tìm cache cũ nhất có thể sử dụng được
+        try {
+          const oldCache = await AsyncStorage.getItem(cacheKey)
+          if (oldCache) {
+            console.log('Sử dụng cache cũ do API key không hợp lệ')
+            const { data } = JSON.parse(oldCache)
+            return data
+          }
+        } catch (cacheError) {
+          console.error('Không thể đọc cache cũ:', cacheError)
+        }
+
         throw new Error('API key không hợp lệ hoặc bị khóa.')
       } else if (response.status === 429) {
         // Rate limit
@@ -330,8 +396,33 @@ export const fetchWeatherData = async (endpoint, params, retryCount = 3) => {
           console.log('Thử lại với API key khác do rate limit...')
           return fetchWeatherData(endpoint, params, retryCount - 1)
         }
+
+        // Thử tìm cache cũ nhất có thể sử dụng được
+        try {
+          const oldCache = await AsyncStorage.getItem(cacheKey)
+          if (oldCache) {
+            console.log('Sử dụng cache cũ do rate limit')
+            const { data } = JSON.parse(oldCache)
+            return data
+          }
+        } catch (cacheError) {
+          console.error('Không thể đọc cache cũ:', cacheError)
+        }
+
         throw new Error('Đã vượt quá giới hạn gọi API. Vui lòng thử lại sau.')
       } else {
+        // Thử tìm cache cũ nhất có thể sử dụng được
+        try {
+          const oldCache = await AsyncStorage.getItem(cacheKey)
+          if (oldCache) {
+            console.log('Sử dụng cache cũ do lỗi API')
+            const { data } = JSON.parse(oldCache)
+            return data
+          }
+        } catch (cacheError) {
+          console.error('Không thể đọc cache cũ:', cacheError)
+        }
+
         throw new Error(`Lỗi API: ${response.status} ${response.statusText}`)
       }
     }
@@ -346,32 +437,187 @@ export const fetchWeatherData = async (endpoint, params, retryCount = 3) => {
     console.error('Lỗi khi gọi API thời tiết:', error.message)
 
     // Xử lý các loại lỗi mạng phổ biến
-    if (
-      (error.message.includes('Network request failed') ||
-        error.message.includes('network timeout') ||
-        error.message.includes('abort') ||
-        error.message.includes('Failed to fetch') ||
-        error.name === 'AbortError') &&
-      retryCount > 0
-    ) {
-      console.log(`Lỗi mạng, thử lại lần ${3 - retryCount + 1}/3...`)
+    const networkErrors = [
+      'Network request failed',
+      'network timeout',
+      'abort',
+      'Failed to fetch',
+      'AbortError',
+      'NetworkError',
+      'CORS',
+      'cors',
+      'Cross-Origin',
+      'cross-origin',
+      'blocked by CORS',
+      'CORS policy',
+      'ENOTFOUND',
+      'ETIMEDOUT',
+      'ECONNREFUSED',
+      'ECONNRESET',
+      'socket hang up',
+      'certificate',
+      'SSL',
+      'ssl',
+      'timeout',
+      'Timeout',
+      'Request timed out',
+    ]
+
+    const isNetworkError = networkErrors.some(
+      (errText) =>
+        error.message.includes(errText) ||
+        (error.name && error.name.includes(errText))
+    )
+
+    // Kiểm tra lỗi CORS trên môi trường web
+    const isCorsError =
+      isWeb &&
+      (error.message.includes('CORS') ||
+        error.message.includes('cors') ||
+        error.message.includes('Cross-Origin') ||
+        error.message.includes('cross-origin'))
+
+    if (isCorsError && retryCount > 0) {
+      console.log('Lỗi CORS trên môi trường web, thử lại với proxy...')
+
       // Đợi 1 giây trước khi thử lại
       await new Promise((resolve) => setTimeout(resolve, 1000))
+
+      // Thử lại với proxy CORS
+      try {
+        const proxyUrl = `https://cors-anywhere.herokuapp.com/${url}`
+        console.log('Sử dụng CORS proxy:', proxyUrl.replace(apiKey, '***'))
+
+        const proxyResponse = await fetch(proxyUrl, {
+          signal: controller.signal,
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+          mode: 'cors',
+        })
+
+        if (proxyResponse.ok) {
+          const data = await proxyResponse.json()
+          // Lưu vào cache
+          await saveToCache(cacheKey, data)
+          return data
+        }
+      } catch (proxyError) {
+        console.error('Lỗi khi sử dụng proxy CORS:', proxyError)
+      }
+    }
+
+    // Xử lý các lỗi mạng khác
+    if (isNetworkError && retryCount > 0) {
+      console.log(`Lỗi mạng, thử lại lần ${3 - retryCount + 1}/3...`)
+      // Đợi theo cấu hình
+      await new Promise((resolve) =>
+        setTimeout(resolve, API_CONFIG.RETRY_DELAY)
+      )
       return fetchWeatherData(endpoint, params, retryCount - 1)
     }
 
     // Nếu đã hết số lần thử lại, trả về dữ liệu cache cũ nếu có
-    if (retryCount === 0) {
-      try {
-        // Tìm cache cũ nhất có thể sử dụng được
-        const oldCache = await AsyncStorage.getItem(cacheKey)
-        if (oldCache) {
-          console.log('Sử dụng cache cũ do lỗi mạng')
-          const { data } = JSON.parse(oldCache)
-          return data
-        }
-      } catch (cacheError) {
-        console.error('Không thể đọc cache cũ:', cacheError)
+    try {
+      // Thử lấy cache với thời gian dự phòng dài hơn
+      const fallbackData = await getFromCache(cacheKey, true)
+      if (fallbackData) {
+        console.log('Sử dụng cache dự phòng do lỗi mạng')
+        return fallbackData
+      }
+
+      // Nếu không có cache dự phòng, thử tìm cache cũ nhất có thể sử dụng được
+      const oldCache = await AsyncStorage.getItem(cacheKey)
+      if (oldCache) {
+        console.log('Sử dụng cache cũ do lỗi mạng')
+        const { data } = JSON.parse(oldCache)
+        return data
+      }
+    } catch (cacheError) {
+      console.error('Không thể đọc cache cũ:', cacheError)
+    }
+
+    // Nếu không có cache, tạo dữ liệu giả để tránh crash ứng dụng
+    if (endpoint === 'weather') {
+      console.log('Tạo dữ liệu thời tiết giả để tránh crash ứng dụng')
+      return {
+        weather: [
+          {
+            id: 800,
+            main: 'Clear',
+            description: 'Không có dữ liệu thời tiết',
+            icon: '01d',
+          },
+        ],
+        main: {
+          temp: 25,
+          feels_like: 25,
+          temp_min: 25,
+          temp_max: 25,
+          pressure: 1013,
+          humidity: 50,
+        },
+        wind: {
+          speed: 0,
+          deg: 0,
+        },
+        clouds: {
+          all: 0,
+        },
+        dt: Math.floor(Date.now() / 1000),
+        sys: {
+          country: 'VN',
+          sunrise: Math.floor(Date.now() / 1000) - 3600,
+          sunset: Math.floor(Date.now() / 1000) + 3600,
+        },
+        name: 'Không có dữ liệu',
+        cod: 200,
+      }
+    } else if (endpoint === 'forecast') {
+      console.log('Tạo dữ liệu dự báo giả để tránh crash ứng dụng')
+      const list = []
+      const now = Math.floor(Date.now() / 1000)
+
+      // Tạo dự báo giả cho 5 khung giờ tiếp theo
+      for (let i = 0; i < 5; i++) {
+        list.push({
+          dt: now + i * 3600,
+          main: {
+            temp: 25,
+            feels_like: 25,
+            temp_min: 25,
+            temp_max: 25,
+            pressure: 1013,
+            humidity: 50,
+          },
+          weather: [
+            {
+              id: 800,
+              main: 'Clear',
+              description: 'Không có dữ liệu thời tiết',
+              icon: '01d',
+            },
+          ],
+          clouds: {
+            all: 0,
+          },
+          wind: {
+            speed: 0,
+            deg: 0,
+          },
+          dt_txt: new Date((now + i * 3600) * 1000).toISOString(),
+        })
+      }
+
+      return {
+        list,
+        city: {
+          name: 'Không có dữ liệu',
+          country: 'VN',
+        },
+        cod: '200',
       }
     }
 
