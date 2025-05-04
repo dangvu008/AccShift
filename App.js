@@ -1,4 +1,4 @@
-'use client'
+// App.js - Main entry point for the AccShift application
 
 import { useEffect, useState, useContext } from 'react'
 import { StatusBar } from 'expo-status-bar'
