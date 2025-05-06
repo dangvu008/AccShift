@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useContext, useEffect, useCallback } from 'react'
+import React, { useState, useContext, useEffect, useCallback } from 'react'
 import {
   View,
   Text,
@@ -142,7 +142,7 @@ const WeeklyStatusGrid = () => {
     }
   }, [attendanceLogs, updateStatusFromAttendanceLogs])
 
-  // Thêm useEffect để làm mới dữ liệu khi có thay đổi
+  // Thêm useEffect để làm mới dữ liệu khi có thay đổi, nhưng với tần suất thấp hơn
   useEffect(() => {
     // Đăng ký sự kiện lắng nghe thay đổi trong AsyncStorage
     const refreshListener = () => {
@@ -154,7 +154,7 @@ const WeeklyStatusGrid = () => {
         .then((lastRefreshTime) => {
           const shouldRefresh =
             !lastRefreshTime ||
-            now.getTime() - parseInt(lastRefreshTime) > 60000 // Chỉ làm mới sau 1 phút
+            now.getTime() - parseInt(lastRefreshTime) > 300000 // Chỉ làm mới sau 5 phút
 
           if (shouldRefresh) {
             refreshData()
@@ -166,8 +166,8 @@ const WeeklyStatusGrid = () => {
         })
     }
 
-    // Giả lập sự kiện lắng nghe (trong thực tế, bạn có thể sử dụng EventEmitter)
-    const refreshInterval = setInterval(refreshListener, 60000) // Làm mới mỗi 60 giây
+    // Giả lập sự kiện lắng nghe với tần suất thấp hơn
+    const refreshInterval = setInterval(refreshListener, 300000) // Làm mới mỗi 5 phút
 
     return () => {
       clearInterval(refreshInterval) // Dọn dẹp khi component unmount
@@ -1286,4 +1286,5 @@ const styles = StyleSheet.create({
   },
 })
 
-export default WeeklyStatusGrid
+// Bọc component trong React.memo để tránh render lại không cần thiết
+export default React.memo(WeeklyStatusGrid)

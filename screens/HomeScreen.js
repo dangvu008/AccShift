@@ -1,6 +1,6 @@
 'use client'
 
-import { useContext, useState, useEffect, useRef } from 'react'
+import { useContext, useState, useEffect, useRef, useMemo } from 'react'
 import {
   View,
   Text,
@@ -44,34 +44,36 @@ const HomeScreen = ({ navigation, route }) => {
     workStartTimeRef.current = workStartTime
   }, [isWorking, workStartTime])
 
-  // Update current time mỗi giây, nhưng tối ưu hóa để tránh re-render quá nhiều
+  // Update current time mỗi 5 giây để giảm số lần render
   useEffect(() => {
-    // Chỉ cập nhật UI mỗi 2 giây để giảm số lần render
-    const intervalId = setInterval(() => {
+    // Tạo một hàm cập nhật riêng để tránh tạo lại hàm trong setInterval
+    const updateTime = () => {
       const now = new Date()
+      setCurrentTime(now)
 
-      // Chỉ cập nhật state nếu thời gian thay đổi đáng kể (giây chẵn)
-      if (now.getSeconds() % 2 === 0) {
-        setCurrentTime(now)
+      // Tính toán thời gian làm việc nếu đang làm việc
+      if (isWorkingRef.current && workStartTimeRef.current) {
+        const currentTimeMs = now.getTime()
+        const workStartTimeMs = workStartTimeRef.current.getTime()
+        const duration = Math.floor(
+          (currentTimeMs - workStartTimeMs) / (1000 * 60)
+        )
 
-        // Tính toán thời gian làm việc nếu đang làm việc
-        if (isWorkingRef.current && workStartTimeRef.current) {
-          const currentTimeMs = now.getTime()
-          const workStartTimeMs = workStartTimeRef.current.getTime()
-          const duration = Math.floor(
-            (currentTimeMs - workStartTimeMs) / (1000 * 60)
-          )
-
-          // Chỉ cập nhật nếu thời gian làm việc thay đổi
-          setWorkDuration((prevDuration) => {
-            if (prevDuration !== duration) {
-              return duration
-            }
-            return prevDuration
-          })
-        }
+        // Chỉ cập nhật nếu thời gian làm việc thay đổi
+        setWorkDuration((prevDuration) => {
+          if (prevDuration !== duration) {
+            return duration
+          }
+          return prevDuration
+        })
       }
-    }, 1000)
+    }
+
+    // Cập nhật ngay lập tức khi component mount
+    updateTime()
+
+    // Sau đó cập nhật mỗi 5 giây
+    const intervalId = setInterval(updateTime, 5000)
 
     return () => clearInterval(intervalId)
   }, []) // Không phụ thuộc vào bất kỳ props nào để tránh re-render
@@ -107,16 +109,18 @@ const HomeScreen = ({ navigation, route }) => {
     t,
   ])
 
-  const formatTimeDisplay = (date) => {
-    return date.toLocaleTimeString('vi-VN', {
+  // Sử dụng useMemo để tránh tính toán lại các giá trị hiển thị thời gian mỗi khi render
+  const formattedTime = useMemo(() => {
+    return currentTime.toLocaleTimeString('vi-VN', {
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',
       hour12: false,
     })
-  }
+  }, [currentTime])
 
-  const formatDateDisplay = (date) => {
+  // Sử dụng useMemo để tránh tính toán lại các giá trị hiển thị ngày tháng mỗi khi render
+  const formattedDate = useMemo(() => {
     const days = [
       t('Sunday'),
       t('Monday'),
@@ -126,8 +130,10 @@ const HomeScreen = ({ navigation, route }) => {
       t('Friday'),
       t('Saturday'),
     ]
-    return `${days[date.getDay()]}, ${date.getDate()}/${date.getMonth() + 1}`
-  }
+    return `${days[currentTime.getDay()]}, ${currentTime.getDate()}/${
+      currentTime.getMonth() + 1
+    }`
+  }, [currentTime, t])
 
   return (
     <ScrollView
@@ -139,12 +145,12 @@ const HomeScreen = ({ navigation, route }) => {
           <Text
             style={{ fontSize: 32, fontWeight: 'bold', color: theme.textColor }}
           >
-            {formatTimeDisplay(currentTime)}
+            {formattedTime}
           </Text>
           <Text
             style={{ fontSize: 14, color: theme.subtextColor, marginTop: 4 }}
           >
-            {formatDateDisplay(currentTime)}
+            {formattedDate}
           </Text>
         </View>
         {/* Đã loại bỏ các nút thống kê và cài đặt */}

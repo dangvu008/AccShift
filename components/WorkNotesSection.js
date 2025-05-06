@@ -1,6 +1,12 @@
 'use client'
 
-import { useContext, useState, useEffect, useCallback } from 'react'
+import React, {
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+} from 'react'
 import {
   View,
   Text,
@@ -408,25 +414,42 @@ const WorkNotesSection = ({ navigation, route }) => {
     loadNotes()
   }, [loadNotes])
 
-  // Tải lại dữ liệu khi màn hình được focus
+  // Tải lại dữ liệu khi màn hình được focus, nhưng với kiểm tra thời gian để tránh tải lại quá thường xuyên
+  const lastLoadTimeRef = useRef(0)
+
   useFocusEffect(
     useCallback(() => {
-      console.log('WorkNotesSection được focus, tải lại dữ liệu ghi chú')
-      loadNotes()
+      const now = Date.now()
+      // Chỉ tải lại dữ liệu nếu đã qua ít nhất 5 giây từ lần tải trước
+      if (now - lastLoadTimeRef.current > 5000) {
+        console.log('WorkNotesSection được focus, tải lại dữ liệu ghi chú')
+        loadNotes()
+        lastLoadTimeRef.current = now
+      } else {
+        console.log('Bỏ qua tải lại dữ liệu ghi chú do mới tải gần đây')
+      }
+
       return () => {
         // Cleanup khi component bị unfocus
       }
     }, [loadNotes])
   )
 
-  // Theo dõi thay đổi từ tham số route
+  // Theo dõi thay đổi từ tham số route, nhưng với kiểm tra thời gian
   useEffect(() => {
     if (route?.params?.notesUpdated) {
-      console.log(
-        'WorkNotesSection: Phát hiện cập nhật ghi chú từ tham số route, timestamp:',
-        route.params.timestamp
-      )
-      loadNotes()
+      const now = Date.now()
+      // Chỉ tải lại dữ liệu nếu đã qua ít nhất 5 giây từ lần tải trước
+      if (now - lastLoadTimeRef.current > 5000) {
+        console.log(
+          'WorkNotesSection: Phát hiện cập nhật ghi chú từ tham số route, timestamp:',
+          route.params.timestamp
+        )
+        loadNotes()
+        lastLoadTimeRef.current = now
+      } else {
+        console.log('Bỏ qua tải lại dữ liệu ghi chú do mới tải gần đây')
+      }
     }
   }, [route?.params?.notesUpdated, route?.params?.timestamp, loadNotes])
 
@@ -903,4 +926,5 @@ const styles = StyleSheet.create({
   },
 })
 
-export default WorkNotesSection
+// Bọc component trong React.memo để tránh render lại không cần thiết
+export default React.memo(WorkNotesSection)

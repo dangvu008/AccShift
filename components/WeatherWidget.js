@@ -4,6 +4,7 @@ import React, {
   useState,
   useCallback,
   useRef,
+  useMemo,
 } from 'react'
 import {
   View,
@@ -405,7 +406,7 @@ const WeatherWidget = ({ onPress }) => {
     // Kiểm tra thời gian từ lần gọi API cuối cùng
     const now = Date.now()
     const timeSinceLastFetch = now - lastFetchTime.current
-    const MIN_REFRESH_INTERVAL = 30 * 1000 // 30 giây
+    const MIN_REFRESH_INTERVAL = 60 * 1000 // 60 giây
 
     if (
       timeSinceLastFetch < MIN_REFRESH_INTERVAL &&
@@ -459,9 +460,9 @@ const WeatherWidget = ({ onPress }) => {
     const now = Date.now()
     const timeSinceLastFetch = now - lastFetchTime.current
 
-    // Chỉ cho phép gọi API nếu đã qua ít nhất 5 phút từ lần gọi trước
+    // Chỉ cho phép gọi API nếu đã qua ít nhất 15 phút từ lần gọi trước
     // hoặc đây là lần gọi đầu tiên (lastFetchTime = 0)
-    const MIN_FETCH_INTERVAL = 5 * 60 * 1000 // 5 phút
+    const MIN_FETCH_INTERVAL = 15 * 60 * 1000 // 15 phút
 
     if (
       timeSinceLastFetch < MIN_FETCH_INTERVAL &&
@@ -907,4 +908,5 @@ const styles = StyleSheet.create({
   },
 })
 
-export default WeatherWidget
+// Bọc component trong React.memo để tránh render lại không cần thiết
+export default React.memo(WeatherWidget)
