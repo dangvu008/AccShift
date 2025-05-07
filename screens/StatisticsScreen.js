@@ -89,34 +89,42 @@ const StatisticsScreen = ({ navigation }) => {
     [startDate, endDate]
   )
 
-  const loadAttendanceLogs = async (startDate, endDate) => {
+  const loadDailyWorkStatuses = async (startDate, endDate) => {
     try {
       // Get all keys from AsyncStorage
-      const allLogs = []
+      const allKeys = await AsyncStorage.getAllKeys()
+      const statusKeys = allKeys.filter((key) =>
+        key.startsWith(STORAGE_KEYS.DAILY_WORK_STATUS_PREFIX)
+      )
 
-      // For each day in the range, try to load logs
+      // Filter keys within the date range
+      const filteredStatusData = []
+
+      // For each day in the range, try to load status
       const currentDate = new Date(startDate)
       while (currentDate <= endDate) {
         const dateKey = formatDate(currentDate)
-        const logsKey = `${STORAGE_KEYS.ATTENDANCE_LOGS_PREFIX}${dateKey}`
+        const statusKey = `${STORAGE_KEYS.DAILY_WORK_STATUS_PREFIX}${dateKey}`
 
-        try {
-          const logsJson = await AsyncStorage.getItem(logsKey)
-          if (logsJson) {
-            const dayLogs = JSON.parse(logsJson)
-            allLogs.push(...dayLogs)
+        if (statusKeys.includes(statusKey)) {
+          try {
+            const statusJson = await AsyncStorage.getItem(statusKey)
+            if (statusJson) {
+              const status = JSON.parse(statusJson)
+              filteredStatusData.push(status)
+            }
+          } catch (error) {
+            console.error(`Error loading status for ${dateKey}:`, error)
           }
-        } catch (error) {
-          console.error(`Error loading logs for ${dateKey}:`, error)
         }
 
         // Move to next day
         currentDate.setDate(currentDate.getDate() + 1)
       }
 
-      return allLogs
+      return filteredStatusData
     } catch (error) {
-      console.error('Error loading attendance logs:', error)
+      console.error('Error loading daily work statuses:', error)
       return []
     }
   }
@@ -218,84 +226,103 @@ const StatisticsScreen = ({ navigation }) => {
   )
 
   const calculateStatistics = useCallback(
-    (logs, startDate, endDate) => {
+    (workStatuses, startDate, endDate) => {
       // Initialize statistics
       const stats = {
         totalWorkTime: 0,
         overtime: 0,
+        standardHours: 0,
+        otHours: 0,
+        sundayHours: 0,
+        nightHours: 0,
         statusCounts: {
-          completed: 0,
-          late: 0,
-          earlyLeave: 0,
-          lateAndEarly: 0,
-          missingLog: 0,
-          leave: 0,
+          DU_CONG: 0,
+          DI_MUON: 0,
+          VE_SOM: 0,
+          DI_MUON_VE_SOM: 0,
+          THIEU_LOG: 0,
+          NGHI_PHEP: 0,
+          NGHI_BENH: 0,
+          NGHI_LE: 0,
+          NGHI_THUONG: 0,
+          VANG_MAT: 0,
+          CHUA_CAP_NHAT: 0,
         },
         dailyData: [],
       }
 
-      // Group logs by day
-      const logsByDay = {}
+      // Process each day's work status
+      workStatuses.forEach((status) => {
+        // Format date for display
+        const dateObj = new Date(status.date.split('-').join('/'))
+        const displayDate = formatShortDate(dateObj, language)
 
-      logs.forEach((log) => {
-        const date = new Date(log.timestamp)
-        const dateKey = formatDate(date)
+        // Get weekday
+        const weekday = getWeekdayName(dateObj.getDay())
 
-        if (!logsByDay[dateKey]) {
-          logsByDay[dateKey] = []
-        }
-
-        logsByDay[dateKey].push(log)
-      })
-
-      // Process each day's logs
-      Object.keys(logsByDay).forEach((dateKey) => {
-        const dayLogs = logsByDay[dateKey]
-        const dayStats = processDayLogs(dayLogs)
-
-        // Add to total stats
-        stats.totalWorkTime += dayStats.workTime
-        stats.overtime += dayStats.overtime
+        // Add to total stats (convert from hours to minutes for consistency)
+        stats.standardHours += status.standardHoursScheduled || 0
+        stats.otHours += status.otHoursScheduled || 0
+        stats.sundayHours += status.sundayHoursScheduled || 0
+        stats.nightHours += status.nightHoursScheduled || 0
+        stats.totalWorkTime += (status.standardHoursScheduled || 0) * 60
+        stats.overtime += (status.otHoursScheduled || 0) * 60
 
         // Update status counts
-        if (dayStats.status === 'completed') stats.statusCounts.completed++
-        else if (dayStats.status === 'late') stats.statusCounts.late++
-        else if (dayStats.status === 'earlyLeave')
-          stats.statusCounts.earlyLeave++
-        else if (dayStats.status === 'lateAndEarly')
-          stats.statusCounts.lateAndEarly++
-        else if (dayStats.status === 'missingLog')
-          stats.statusCounts.missingLog++
-        else if (dayStats.status === 'leave') stats.statusCounts.leave++
+        if (status.status && stats.statusCounts.hasOwnProperty(status.status)) {
+          stats.statusCounts[status.status]++
+        } else {
+          stats.statusCounts.CHUA_CAP_NHAT++
+        }
 
         // Add to daily data
         stats.dailyData.push({
-          date: dateKey,
-          ...dayStats,
+          date: displayDate,
+          weekday: weekday,
+          checkIn: status.vaoLogTime,
+          checkOut: status.raLogTime,
+          standardHours: status.standardHoursScheduled || 0,
+          otHours: status.otHoursScheduled || 0,
+          sundayHours: status.sundayHoursScheduled || 0,
+          nightHours: status.nightHoursScheduled || 0,
+          totalHours: status.totalHoursScheduled || 0,
+          status: status.status || 'CHUA_CAP_NHAT',
+          lateMinutes: status.lateMinutes || 0,
+          earlyMinutes: status.earlyMinutes || 0,
         })
       })
 
-      // Check for missing days in the range and mark as missing log
+      // Check for missing days in the range and mark as not updated
       const currentDate = new Date(startDate)
+      const processedDates = workStatuses.map((s) => s.date)
+
       while (currentDate <= endDate) {
         const dateKey = formatDate(currentDate)
 
-        // Skip weekends
-        const dayOfWeek = currentDate.getDay()
-        if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-          // Not Sunday or Saturday
-          if (!logsByDay[dateKey]) {
-            // No logs for this day, mark as missing
-            stats.statusCounts.missingLog++
-            stats.dailyData.push({
-              date: dateKey,
-              status: 'missingLog',
-              workTime: 0,
-              overtime: 0,
-              checkIn: null,
-              checkOut: null,
-            })
-          }
+        if (!processedDates.includes(dateKey)) {
+          // No status for this day, mark as not updated
+          stats.statusCounts.CHUA_CAP_NHAT++
+
+          // Format date for display
+          const displayDate = formatShortDate(currentDate, language)
+
+          // Get weekday
+          const weekday = getWeekdayName(currentDate.getDay())
+
+          stats.dailyData.push({
+            date: displayDate,
+            weekday: weekday,
+            checkIn: null,
+            checkOut: null,
+            standardHours: 0,
+            otHours: 0,
+            sundayHours: 0,
+            nightHours: 0,
+            totalHours: 0,
+            status: 'CHUA_CAP_NHAT',
+            lateMinutes: 0,
+            earlyMinutes: 0,
+          })
         }
 
         // Move to next day
@@ -311,7 +338,7 @@ const StatisticsScreen = ({ navigation }) => {
 
       return stats
     },
-    [processDayLogs]
+    []
   )
 
   const formatDateRange = () => {
@@ -345,11 +372,15 @@ const StatisticsScreen = ({ navigation }) => {
       // Get date range
       const { rangeStart, rangeEnd } = getDateRange(timeRange)
 
-      // Load attendance logs
-      const logs = await loadAttendanceLogs(rangeStart, rangeEnd)
+      // Load daily work statuses
+      const workStatuses = await loadDailyWorkStatuses(rangeStart, rangeEnd)
 
       // Calculate statistics
-      const calculatedStats = calculateStatistics(logs, rangeStart, rangeEnd)
+      const calculatedStats = calculateStatistics(
+        workStatuses,
+        rangeStart,
+        rangeEnd
+      )
 
       setStats(calculatedStats)
     } catch (error) {
@@ -357,7 +388,7 @@ const StatisticsScreen = ({ navigation }) => {
     } finally {
       setIsLoading(false)
     }
-  }, [timeRange, calculateStatistics, getDateRange])
+  }, [timeRange, calculateStatistics, getDateRange, loadDailyWorkStatuses])
 
   useEffect(() => {
     loadStatistics()
@@ -451,20 +482,59 @@ const StatisticsScreen = ({ navigation }) => {
     return formatShortWeekday(day, language)
   }
 
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case 'DU_CONG':
+        return '✅'
+      case 'DI_MUON':
+        return '⏰'
+      case 'VE_SOM':
+        return '🏃'
+      case 'DI_MUON_VE_SOM':
+        return 'RV'
+      case 'THIEU_LOG':
+        return '❌'
+      case 'NGHI_PHEP':
+        return 'P'
+      case 'NGHI_BENH':
+        return 'B'
+      case 'NGHI_LE':
+        return 'L'
+      case 'NGHI_THUONG':
+        return 'T'
+      case 'VANG_MAT':
+        return 'V'
+      case 'QUEN_CHECK_OUT':
+        return '❓'
+      default:
+        return '-'
+    }
+  }
+
   const getStatusTranslationKey = (status) => {
     switch (status) {
-      case 'completed':
+      case 'DU_CONG':
         return 'Completed'
-      case 'late':
+      case 'DI_MUON':
         return 'Late'
-      case 'earlyLeave':
+      case 'VE_SOM':
         return 'Early Leave'
-      case 'lateAndEarly':
+      case 'DI_MUON_VE_SOM':
         return 'Late & Early'
-      case 'missingLog':
+      case 'THIEU_LOG':
         return 'Missing Log'
-      case 'leave':
+      case 'NGHI_PHEP':
         return 'Leave'
+      case 'NGHI_BENH':
+        return 'Sick Leave'
+      case 'NGHI_LE':
+        return 'Holiday'
+      case 'NGHI_THUONG':
+        return 'Weekend'
+      case 'VANG_MAT':
+        return 'Absent'
+      case 'QUEN_CHECK_OUT':
+        return 'Forgot Check Out'
       default:
         return 'Not Updated'
     }
@@ -704,7 +774,7 @@ const StatisticsScreen = ({ navigation }) => {
                   { color: theme.textColor },
                 ]}
               >
-                {language === 'vi' ? 'Vào ca' : 'Check in'}
+                {language === 'vi' ? 'Vào' : 'In'}
               </Text>
               <Text
                 style={[
@@ -713,7 +783,7 @@ const StatisticsScreen = ({ navigation }) => {
                   { color: theme.textColor },
                 ]}
               >
-                {language === 'vi' ? 'Tan ca' : 'Check out'}
+                {language === 'vi' ? 'Ra' : 'Out'}
               </Text>
               <Text
                 style={[
@@ -722,7 +792,7 @@ const StatisticsScreen = ({ navigation }) => {
                   { color: theme.textColor },
                 ]}
               >
-                {language === 'vi' ? 'Giờ HC' : 'Work hrs'}
+                {language === 'vi' ? 'Giờ HC' : 'Std hrs'}
               </Text>
               <Text
                 style={[
@@ -733,16 +803,38 @@ const StatisticsScreen = ({ navigation }) => {
               >
                 {language === 'vi' ? 'OT' : 'OT'}
               </Text>
+              <Text
+                style={[
+                  styles.tableHeaderCell,
+                  styles.otCell,
+                  { color: theme.textColor },
+                ]}
+              >
+                {language === 'vi' ? 'CN' : 'Sun'}
+              </Text>
+              <Text
+                style={[
+                  styles.tableHeaderCell,
+                  styles.otCell,
+                  { color: theme.textColor },
+                ]}
+              >
+                {language === 'vi' ? 'Đêm' : 'Night'}
+              </Text>
+              <Text
+                style={[
+                  styles.tableHeaderCell,
+                  styles.statusCell,
+                  { color: theme.textColor },
+                ]}
+              >
+                {language === 'vi' ? 'TT' : 'Status'}
+              </Text>
             </View>
 
             <View style={styles.tableBody}>
               {stats.dailyData.length > 0 ? (
                 stats.dailyData.map((day, index) => {
-                  const date = new Date(day.date.split('/').reverse().join('-'))
-                  const weekday = getWeekdayName(date.getDay())
-                  // Định dạng ngày tháng ngắn gọn (dd/mm hoặc mm/dd)
-                  const shortDate = formatShortDate(date, language)
-
                   return (
                     <View
                       key={index}
@@ -761,7 +853,7 @@ const StatisticsScreen = ({ navigation }) => {
                           { color: theme.textColor },
                         ]}
                       >
-                        {shortDate}
+                        {day.date}
                       </Text>
                       <Text
                         style={[
@@ -770,7 +862,7 @@ const StatisticsScreen = ({ navigation }) => {
                           { color: theme.textColor },
                         ]}
                       >
-                        {weekday}
+                        {day.weekday}
                       </Text>
                       <Text
                         style={[
@@ -779,7 +871,7 @@ const StatisticsScreen = ({ navigation }) => {
                           { color: theme.textColor },
                         ]}
                       >
-                        {day.checkIn ? formatTime(day.checkIn) : '--:--'}
+                        {day.checkIn || '--:--'}
                       </Text>
                       <Text
                         style={[
@@ -788,7 +880,7 @@ const StatisticsScreen = ({ navigation }) => {
                           { color: theme.textColor },
                         ]}
                       >
-                        {day.checkOut ? formatTime(day.checkOut) : '--:--'}
+                        {day.checkOut || '--:--'}
                       </Text>
                       <Text
                         style={[
@@ -797,7 +889,7 @@ const StatisticsScreen = ({ navigation }) => {
                           { color: theme.textColor },
                         ]}
                       >
-                        {formatDecimalHours(day.workTime)}
+                        {formatDecimalHours(day.standardHours * 60)}
                       </Text>
                       <Text
                         style={[
@@ -806,7 +898,34 @@ const StatisticsScreen = ({ navigation }) => {
                           { color: theme.textColor },
                         ]}
                       >
-                        {formatDecimalHours(day.overtime)}
+                        {formatDecimalHours(day.otHours * 60)}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.tableCell,
+                          styles.otCell,
+                          { color: theme.textColor },
+                        ]}
+                      >
+                        {formatDecimalHours(day.sundayHours * 60)}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.tableCell,
+                          styles.otCell,
+                          { color: theme.textColor },
+                        ]}
+                      >
+                        {formatDecimalHours(day.nightHours * 60)}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.tableCell,
+                          styles.statusCell,
+                          { color: theme.textColor },
+                        ]}
+                      >
+                        {getStatusIcon(day.status)}
                       </Text>
                     </View>
                   )
@@ -1176,6 +1295,10 @@ const styles = StyleSheet.create({
   },
   otCell: {
     flex: 1,
+    textAlign: 'center',
+  },
+  statusCell: {
+    flex: 0.6,
     textAlign: 'center',
   },
   statCard: {

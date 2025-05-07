@@ -241,6 +241,15 @@ export const calculateDailyWorkStatus = async (date, shift) => {
         otMinutes: 0,
         lateMinutes: 0,
         earlyMinutes: 0,
+        // Thêm các trường mới cho tính công theo lịch trình
+        standardHoursScheduled: 0,
+        otHoursScheduled: 0,
+        sundayHoursScheduled: 0,
+        nightHoursScheduled: 0,
+        totalHoursScheduled: 0,
+        vaoLogTime: null,
+        raLogTime: null,
+        isHolidayWork: false,
         isManuallyUpdated: false,
         calculatedAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -268,6 +277,15 @@ export const calculateDailyWorkStatus = async (date, shift) => {
         otMinutes: 0,
         lateMinutes: 0,
         earlyMinutes: 0,
+        // Thêm các trường mới cho tính công theo lịch trình
+        standardHoursScheduled: 0,
+        otHoursScheduled: 0,
+        sundayHoursScheduled: 0,
+        nightHoursScheduled: 0,
+        totalHoursScheduled: 0,
+        vaoLogTime: null,
+        raLogTime: null,
+        isHolidayWork: false,
         isManuallyUpdated: false,
         calculatedAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -293,6 +311,134 @@ export const calculateDailyWorkStatus = async (date, shift) => {
     let otMinutes = 0
     let lateMinutes = 0
     let earlyMinutes = 0
+
+    /**
+     * Kiểm tra xem có phải là "Bấm Nhanh" không (thời gian giữa check-in và check-out quá ngắn)
+     * @param {Date} checkInTime Thời gian check-in
+     * @param {Date} checkOutTime Thời gian check-out
+     * @param {number} quickPunchThresholdSeconds Ngưỡng thời gian (giây) để xác định bấm nhanh
+     * @returns {boolean} true nếu là bấm nhanh
+     */
+    const isQuickPunch = (
+      checkInTime,
+      checkOutTime,
+      quickPunchThresholdSeconds = 60
+    ) => {
+      if (!checkInTime || !checkOutTime) return false
+
+      const durationMs = checkOutTime.getTime() - checkInTime.getTime()
+      const durationSeconds = Math.floor(durationMs / 1000)
+
+      return durationSeconds < quickPunchThresholdSeconds
+    }
+
+    /**
+     * Tính toán thời gian làm việc theo lịch trình ca
+     * @param {Object} shift Ca làm việc
+     * @param {Date} baseDate Ngày cơ sở để tính toán
+     * @param {Object} userSettings Cài đặt người dùng
+     * @returns {Object} Thông tin thời gian làm việc theo lịch trình
+     */
+    const calculateScheduledWorkTime = (shift, baseDate, userSettings) => {
+      if (!shift || !baseDate) {
+        return {
+          standardHoursScheduled: 0,
+          otHoursScheduled: 0,
+          sundayHoursScheduled: 0,
+          nightHoursScheduled: 0,
+          totalHoursScheduled: 0,
+          isHolidayWork: false,
+        }
+      }
+
+      // Xác định loại ngày (thường, thứ 7, chủ nhật, lễ)
+      const dayOfWeek = baseDate.getDay() // 0: CN, 1-5: T2-T6, 6: T7
+      const isSunday = dayOfWeek === 0
+      const isHolidayWork = false // Chưa có logic xác định ngày lễ, cần bổ sung sau
+
+      // Parse thời gian ca làm việc
+      const [startHour, startMinute] = shift.startTime.split(':').map(Number)
+      const [officeEndHour, officeEndMinute] = shift.officeEndTime
+        .split(':')
+        .map(Number)
+      const [maxEndHour, maxEndMinute] = shift.endTime
+        ? shift.endTime.split(':').map(Number)
+        : [officeEndHour, officeEndMinute]
+
+      // Tạo đối tượng Date cho thời gian bắt đầu và kết thúc ca
+      const scheduledStartTime = new Date(baseDate)
+      scheduledStartTime.setHours(startHour, startMinute, 0, 0)
+
+      const scheduledOfficeEndTime = new Date(baseDate)
+      scheduledOfficeEndTime.setHours(officeEndHour, officeEndMinute, 0, 0)
+
+      const scheduledEndTime = new Date(baseDate)
+      scheduledEndTime.setHours(maxEndHour, maxEndMinute, 0, 0)
+
+      // Nếu thời gian kết thúc ca nhỏ hơn thời gian bắt đầu, đó là ca qua đêm
+      if (scheduledOfficeEndTime < scheduledStartTime) {
+        scheduledOfficeEndTime.setDate(scheduledOfficeEndTime.getDate() + 1)
+      }
+
+      if (scheduledEndTime < scheduledStartTime) {
+        scheduledEndTime.setDate(scheduledEndTime.getDate() + 1)
+      }
+
+      // Tính thời gian ca làm việc chuẩn (phút)
+      const standardDurationMs =
+        scheduledOfficeEndTime.getTime() - scheduledStartTime.getTime()
+      const standardDurationMinutes = Math.floor(
+        standardDurationMs / (1000 * 60)
+      )
+
+      // Trừ thời gian nghỉ
+      const breakMinutes = shift?.breakMinutes || 0
+      const standardMinutesAfterBreak = Math.max(
+        0,
+        standardDurationMinutes - breakMinutes
+      )
+
+      // Tính thời gian OT theo lịch trình (nếu có)
+      let otMinutes = 0
+      if (shift.endTime && shift.endTime !== shift.officeEndTime) {
+        const otDurationMs =
+          scheduledEndTime.getTime() - scheduledOfficeEndTime.getTime()
+        otMinutes = Math.floor(otDurationMs / (1000 * 60))
+      }
+
+      // Chuyển đổi từ phút sang giờ
+      const standardHoursScheduled = standardMinutesAfterBreak / 60
+      const otHoursScheduled = otMinutes / 60
+      const totalHoursScheduled = standardHoursScheduled + otHoursScheduled
+
+      // Tính giờ làm chủ nhật
+      const sundayHoursScheduled = isSunday ? totalHoursScheduled : 0
+
+      // Tính giờ làm đêm
+      const nightStartTime = userSettings?.nightWorkStartTime || '22:00'
+      const nightEndTime = userSettings?.nightWorkEndTime || '05:00'
+
+      // Tính phần giờ làm đêm trong khoảng [startTime, endTime]
+      const nightMinutes = calculateNightWorkMinutes(
+        scheduledStartTime,
+        scheduledEndTime,
+        nightStartTime,
+        nightEndTime
+      )
+      const nightHoursScheduled = nightMinutes / 60
+
+      return {
+        standardHoursScheduled,
+        otHoursScheduled,
+        sundayHoursScheduled,
+        nightHoursScheduled,
+        totalHoursScheduled,
+        isHolidayWork,
+        scheduledStartTime,
+        scheduledOfficeEndTime,
+        scheduledEndTime,
+      }
+    }
 
     // Hàm tính toán thời gian làm việc từ thời gian bắt đầu và kết thúc ca
     const calculateWorkTimeFromShift = (shift, baseDate) => {
@@ -362,37 +508,61 @@ export const calculateDailyWorkStatus = async (date, shift) => {
       }
     }
 
+    // Khởi tạo các biến cho giờ công theo lịch trình
+    let standardHoursScheduled = 0
+    let otHoursScheduled = 0
+    let sundayHoursScheduled = 0
+    let nightHoursScheduled = 0
+    let totalHoursScheduled = 0
+    let isHolidayWork = false
+
+    // Định dạng thời gian cho vaoLogTime và raLogTime
+    const formatLogTime = (time) => {
+      if (!time) return null
+      return time.toLocaleTimeString('vi-VN', {
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    }
+
+    // Ưu tiên trạng thái thủ công (Nghỉ phép...)
+    // Nếu đã có trạng thái thủ công, lấy trạng thái hiện tại
+    const currentStatus = await storage.getDailyWorkStatus(date)
+    if (currentStatus && currentStatus.isManuallyUpdated) {
+      return currentStatus
+    }
+
     // Xử lý theo chế độ Simple (Chỉ bấm "Đi Làm")
     if (isSimpleMode) {
       // Nếu có log go_work, tính toán dựa trên lịch trình ca
-      if (goWorkLog) {
+      if (goWorkLog && shift) {
         const baseDate = new Date(goWorkLog.timestamp)
-        const shiftTimes = calculateWorkTimeFromShift(shift, baseDate)
+
+        // Tính toán giờ công theo lịch trình
+        const scheduledTimes = calculateScheduledWorkTime(
+          shift,
+          baseDate,
+          userSettings
+        )
 
         // Cập nhật các giá trị theo lịch trình ca
-        workMinutes = shiftTimes.workMinutes
-        otMinutes = shiftTimes.otMinutes
+        standardHoursScheduled = scheduledTimes.standardHoursScheduled
+        otHoursScheduled = scheduledTimes.otHoursScheduled
+        sundayHoursScheduled = scheduledTimes.sundayHoursScheduled
+        nightHoursScheduled = scheduledTimes.nightHoursScheduled
+        totalHoursScheduled = scheduledTimes.totalHoursScheduled
+        isHolidayWork = scheduledTimes.isHolidayWork
+
+        // Trong chế độ Simple, luôn là DU_CONG
         status = WORK_STATUS.DU_CONG
 
         // Trong chế độ Simple, vaoLogTime là thời gian bấm nút "Đi Làm"
-        const vaoLogTime = goWorkTime
+        const vaoLogTime = formatLogTime(goWorkTime)
 
         // Trong chế độ Simple, raLogTime có thể để null hoặc gán bằng scheduledEndTime
         let raLogTime = null
-        if (shiftTimes.shiftMaxEndTime) {
-          raLogTime = shiftTimes.shiftMaxEndTime
-        }
-
-        // Nếu có log punch (Ký công), cập nhật trạng thái
-        if (punchLog) {
-          // Trạng thái vẫn là đủ công
-          status = WORK_STATUS.DU_CONG
-        }
-
-        // Nếu có log complete (Ký công), cập nhật trạng thái
-        if (completeLog) {
-          // Trạng thái vẫn là đủ công
-          status = WORK_STATUS.DU_CONG
+        if (scheduledTimes.scheduledEndTime) {
+          raLogTime = formatLogTime(scheduledTimes.scheduledEndTime)
         }
       }
     }
@@ -401,84 +571,77 @@ export const calculateDailyWorkStatus = async (date, shift) => {
       // Nếu có cả check-in và check-out
       if (checkInTime && checkOutTime && shift) {
         const baseDate = new Date(checkInTime)
-        const shiftTimes = calculateWorkTimeFromShift(shift, baseDate)
 
-        const shiftStartTime = shiftTimes.shiftStartTime
-        const shiftOfficeEndTime = shiftTimes.shiftOfficeEndTime
-        const shiftMaxEndTime = shiftTimes.shiftMaxEndTime
-
-        // Tính thời gian làm việc chuẩn từ lịch trình ca
-        workMinutes = shiftTimes.workMinutes
-
-        // Kiểm tra đi muộn
-        if (checkInTime > shiftStartTime) {
-          const lateMs = checkInTime.getTime() - shiftStartTime.getTime()
-          lateMinutes = Math.floor(lateMs / (1000 * 60))
-
-          // Làm tròn phút phạt
-          if (shift.penaltyRoundingMinutes > 0) {
-            lateMinutes =
-              Math.ceil(lateMinutes / shift.penaltyRoundingMinutes) *
-              shift.penaltyRoundingMinutes
-          }
-        }
-
-        // Kiểm tra về sớm
-        if (checkOutTime < shiftOfficeEndTime) {
-          const earlyMs = shiftOfficeEndTime.getTime() - checkOutTime.getTime()
-          earlyMinutes = Math.floor(earlyMs / (1000 * 60))
-
-          // Làm tròn phút phạt
-          if (shift.penaltyRoundingMinutes > 0) {
-            earlyMinutes =
-              Math.ceil(earlyMinutes / shift.penaltyRoundingMinutes) *
-              shift.penaltyRoundingMinutes
-          }
-        }
-
-        // Tính thời gian OT thực tế
-        if (checkOutTime > shiftOfficeEndTime) {
-          // Giới hạn thời gian OT đến thời gian kết thúc tối đa
-          const otEndTime =
-            checkOutTime < shiftMaxEndTime ? checkOutTime : shiftMaxEndTime
-          const otMs = otEndTime.getTime() - shiftOfficeEndTime.getTime()
-
-          // Đảm bảo không có giá trị âm
-          const rawOtMinutes = Math.max(0, Math.floor(otMs / (1000 * 60)))
-
-          // Làm tròn OT lên 0.5 giờ (30 phút)
-          // Chỉ làm tròn nếu có OT thực tế
-          if (rawOtMinutes > 0) {
-            otMinutes = Math.ceil(rawOtMinutes / 30) * 30
-          } else {
-            otMinutes = 0
-          }
-        }
-
-        // Tính giờ phạt
-        const penaltyMinutes = lateMinutes + earlyMinutes
-        const penaltyDeductionHours = penaltyMinutes / 60
-
-        // Tính giờ hành chính thực tế sau khi trừ phạt
-        const standardHoursComponent = workMinutes / 60
-        const effectiveStandardHours = Math.max(
-          0,
-          standardHoursComponent - penaltyDeductionHours
+        // Tính toán giờ công theo lịch trình
+        const scheduledTimes = calculateScheduledWorkTime(
+          shift,
+          baseDate,
+          userSettings
         )
 
-        // Cập nhật workMinutes sau khi trừ phạt
-        workMinutes = Math.round(effectiveStandardHours * 60)
+        // Cập nhật các giá trị theo lịch trình ca
+        standardHoursScheduled = scheduledTimes.standardHoursScheduled
+        otHoursScheduled = scheduledTimes.otHoursScheduled
+        sundayHoursScheduled = scheduledTimes.sundayHoursScheduled
+        nightHoursScheduled = scheduledTimes.nightHoursScheduled
+        totalHoursScheduled = scheduledTimes.totalHoursScheduled
+        isHolidayWork = scheduledTimes.isHolidayWork
 
-        // Xác định trạng thái dựa trên đi muộn/về sớm
-        if (lateMinutes > 0 && earlyMinutes > 0) {
-          status = WORK_STATUS.DI_MUON_VE_SOM
-        } else if (lateMinutes > 0) {
-          status = WORK_STATUS.DI_MUON
-        } else if (earlyMinutes > 0) {
-          status = WORK_STATUS.VE_SOM
-        } else {
+        // Kiểm tra xem có phải "Bấm Nhanh" không
+        const quickPunchThresholdSeconds =
+          userSettings?.quickPunchThresholdSeconds || 60
+        const isQuickPunchDetected = isQuickPunch(
+          checkInTime,
+          checkOutTime,
+          quickPunchThresholdSeconds
+        )
+
+        // Nếu là "Bấm Nhanh", trạng thái luôn là DU_CONG
+        if (isQuickPunchDetected) {
           status = WORK_STATUS.DU_CONG
         }
+        // Nếu không phải "Bấm Nhanh", kiểm tra đi muộn/về sớm
+        else {
+          const scheduledStartTime = scheduledTimes.scheduledStartTime
+          const scheduledOfficeEndTime = scheduledTimes.scheduledOfficeEndTime
+
+          // Ngưỡng muộn cho phép (phút)
+          const lateThresholdMinutes = userSettings?.lateThresholdMinutes || 0
+
+          // Kiểm tra đi muộn (tính cả ngưỡng muộn cho phép)
+          if (
+            checkInTime.getTime() >
+            scheduledStartTime.getTime() + lateThresholdMinutes * 60 * 1000
+          ) {
+            const lateMs = checkInTime.getTime() - scheduledStartTime.getTime()
+            lateMinutes = Math.floor(lateMs / (1000 * 60))
+
+            // Trừ ngưỡng muộn cho phép
+            lateMinutes = Math.max(0, lateMinutes - lateThresholdMinutes)
+          }
+
+          // Kiểm tra về sớm
+          if (checkOutTime.getTime() < scheduledOfficeEndTime.getTime()) {
+            const earlyMs =
+              scheduledOfficeEndTime.getTime() - checkOutTime.getTime()
+            earlyMinutes = Math.floor(earlyMs / (1000 * 60))
+          }
+
+          // Xác định trạng thái dựa trên đi muộn/về sớm
+          if (lateMinutes > 0 && earlyMinutes > 0) {
+            status = WORK_STATUS.DI_MUON_VE_SOM
+          } else if (lateMinutes > 0) {
+            status = WORK_STATUS.DI_MUON
+          } else if (earlyMinutes > 0) {
+            status = WORK_STATUS.VE_SOM
+          } else {
+            status = WORK_STATUS.DU_CONG
+          }
+        }
+
+        // Lưu thời gian vào/ra thực tế
+        const vaoLogTime = formatLogTime(checkInTime)
+        const raLogTime = formatLogTime(checkOutTime)
       }
       // Nếu chỉ có check-in mà không có check-out
       else if (checkInTime && !checkOutTime) {
@@ -494,10 +657,16 @@ export const calculateDailyWorkStatus = async (date, shift) => {
           // Chưa qua 16 giờ, thiếu log
           status = WORK_STATUS.THIEU_LOG
         }
+
+        // Lưu thời gian vào thực tế
+        const vaoLogTime = formatLogTime(checkInTime)
       }
       // Nếu chỉ có go_work mà không có check-in/check-out
       else if (goWorkLog && !checkInTime && !checkOutTime) {
         status = WORK_STATUS.THIEU_LOG
+
+        // Lưu thời gian vào thực tế
+        const vaoLogTime = formatLogTime(goWorkTime)
       }
     }
 
@@ -824,6 +993,28 @@ export const calculateDailyWorkStatus = async (date, shift) => {
     }
     // Nếu nightOtRule === 'base', giữ nguyên tỷ lệ OT cơ bản
 
+    // Định dạng thời gian vào/ra cho hiển thị
+    const vaoLogTimeFormatted = isSimpleMode
+      ? goWorkTime
+        ? formatLogTime(goWorkTime)
+        : null
+      : checkInTime
+      ? formatLogTime(checkInTime)
+      : null
+
+    const raLogTimeFormatted = isSimpleMode
+      ? shift
+        ? formatLogTime(
+            new Date(
+              goWorkTime.getTime() +
+                (standardHoursScheduled + otHoursScheduled) * 60 * 60 * 1000
+            )
+          )
+        : null
+      : checkOutTime
+      ? formatLogTime(checkOutTime)
+      : null
+
     // Tạo đối tượng trạng thái làm việc
     const workStatus = {
       date,
@@ -842,11 +1033,22 @@ export const calculateDailyWorkStatus = async (date, shift) => {
         : checkOutTime
         ? checkOutTime.toISOString()
         : null,
+      // Thời gian vào/ra thực tế (định dạng HH:MM)
+      vaoLogTime: vaoLogTimeFormatted,
+      raLogTime: raLogTimeFormatted,
+      // Giờ công theo lịch trình
+      standardHoursScheduled,
+      otHoursScheduled,
+      sundayHoursScheduled,
+      nightHoursScheduled,
+      totalHoursScheduled,
+      // Thông tin phụ
       workMinutes,
       breakMinutes: shift?.breakMinutes || 0,
       otMinutes,
       lateMinutes,
       earlyMinutes,
+      isHolidayWork,
       // Thêm các trường mới cho tính toán OT và làm đêm
       otHoursByRate,
       // Thông tin giờ làm đêm
