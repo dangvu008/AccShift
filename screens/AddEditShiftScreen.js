@@ -179,6 +179,7 @@ const AddEditShiftScreen = ({ route, navigation }) => {
           console.log('Loading showPunch value:', shift.showPunch)
 
           // Đảm bảo isActive được xử lý đúng - chỉ true khi giá trị rõ ràng là true
+          console.log('Setting isActive to:', shift.isActive === true)
           setIsActive(shift.isActive === true)
 
           // Kiểm tra cả hai trường để đảm bảo tương thích ngược
@@ -224,7 +225,7 @@ const AddEditShiftScreen = ({ route, navigation }) => {
         validateForm()
       }, 500)
     }
-  }, [shiftId, t, timeStringToDate, validateForm])
+  }, [shiftId, t, timeStringToDate])
 
   useEffect(() => {
     if (isEditing) {
@@ -871,19 +872,33 @@ const AddEditShiftScreen = ({ route, navigation }) => {
                   JSON.stringify(shifts)
                 )
 
-                // Nếu đang cập nhật ca hiện tại, cập nhật trong context
-                if (isCurrentShift) {
-                  // Nếu ca hiện tại bị tắt, hiển thị thông báo
-                  if (!isActive) {
+                // Xử lý cập nhật ca hiện tại trong context
+                if (isActive) {
+                  // Nếu ca này được áp dụng, cập nhật nó làm ca hiện tại
+                  await setCurrentShift(newShift)
+
+                  // Nếu đây không phải là ca hiện tại trước đó, hiển thị thông báo
+                  if (!isCurrentShift) {
                     Alert.alert(
                       t('Thông báo'),
-                      t('Ca làm việc đã bị tắt và không còn được áp dụng nữa.'),
+                      t(
+                        'Ca làm việc này đã được áp dụng. Ca làm việc trước đó (nếu có) đã bị tắt.'
+                      ),
                       [{ text: t('OK') }]
                     )
                   }
+                }
+                // Nếu đang cập nhật ca hiện tại và nó bị tắt
+                else if (isCurrentShift && !isActive) {
+                  // Nếu ca hiện tại bị tắt, hiển thị thông báo
+                  Alert.alert(
+                    t('Thông báo'),
+                    t('Ca làm việc đã bị tắt và không còn được áp dụng nữa.'),
+                    [{ text: t('OK') }]
+                  )
 
-                  // Cập nhật ca hiện tại trong context
-                  await setCurrentShift(isActive ? newShift : null)
+                  // Cập nhật ca hiện tại trong context thành null
+                  await setCurrentShift(null)
                 }
 
                 // Navigate back
@@ -1453,6 +1468,7 @@ const AddEditShiftScreen = ({ route, navigation }) => {
                 console.log('Changing showPunch to:', value)
                 setShowPunch(value)
                 setIsFormDirty(true)
+                setHasInteracted(true) // Đánh dấu người dùng đã tương tác với form
               }}
               trackColor={{ false: '#767577', true: COLORS.PRIMARY }}
               thumbColor={showPunch ? '#f4f3f4' : '#f4f3f4'}
@@ -1474,8 +1490,33 @@ const AddEditShiftScreen = ({ route, navigation }) => {
               value={isActive}
               onValueChange={(value) => {
                 console.log('Changing isActive to:', value)
+                setHasInteracted(true) // Đánh dấu người dùng đã tương tác với form
+
+                // Nếu đang bật ca mới và đã có ca khác đang áp dụng
+                if (value && currentShift && currentShift.id !== shiftId) {
+                  Alert.alert(
+                    t('Xác nhận áp dụng ca mới'),
+                    t(
+                      'Hiện đã có ca khác đang được áp dụng. Nếu áp dụng ca này, ca hiện tại sẽ bị tắt. Bạn có chắc chắn muốn áp dụng ca này không?'
+                    ),
+                    [
+                      {
+                        text: t('Hủy'),
+                        style: 'cancel',
+                      },
+                      {
+                        text: t('Áp dụng'),
+                        onPress: () => {
+                          console.log('Confirmed: setting isActive to true')
+                          setIsActive(true)
+                          setIsFormDirty(true)
+                        },
+                      },
+                    ]
+                  )
+                }
                 // Nếu đang tắt ca hiện tại, hiển thị xác nhận
-                if (isCurrentShift && !value) {
+                else if (isCurrentShift && !value) {
                   Alert.alert(
                     t('Xác nhận tắt ca đang áp dụng'),
                     t(
