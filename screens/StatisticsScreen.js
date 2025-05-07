@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useContext, useCallback } from 'react'
+import { useState, useEffect, useContext, useCallback, useRef } from 'react'
+import { useFocusEffect } from '@react-navigation/native'
 import {
   View,
   Text,
@@ -390,9 +391,34 @@ const StatisticsScreen = ({ navigation }) => {
     }
   }, [timeRange, calculateStatistics, getDateRange, loadDailyWorkStatuses])
 
+  // Tham chiếu để theo dõi thời gian tải dữ liệu gần nhất
+  const lastLoadTimeRef = useRef(0)
+
+  // Tải dữ liệu khi component được mount lần đầu
   useEffect(() => {
+    console.log('StatisticsScreen được mount lần đầu, tải dữ liệu thống kê')
     loadStatistics()
+    lastLoadTimeRef.current = Date.now()
   }, [loadStatistics])
+
+  // Sử dụng useFocusEffect để kiểm soát việc tải lại dữ liệu khi màn hình được focus
+  useFocusEffect(
+    useCallback(() => {
+      const now = Date.now()
+      // Chỉ tải lại dữ liệu nếu đã qua ít nhất 5 giây từ lần tải trước
+      if (now - lastLoadTimeRef.current > 5000) {
+        console.log('StatisticsScreen được focus, tải lại dữ liệu thống kê')
+        loadStatistics()
+        lastLoadTimeRef.current = now
+      } else {
+        console.log('Bỏ qua tải lại dữ liệu thống kê do mới tải gần đây')
+      }
+
+      return () => {
+        // Cleanup khi component bị unfocus
+      }
+    }, [loadStatistics])
+  )
 
   const exportReport = async () => {
     setIsExporting(true)
