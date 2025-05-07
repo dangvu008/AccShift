@@ -721,50 +721,59 @@ const WeatherWidget = ({ onPress }) => {
       </View>
 
       {/* Phần 2: Dự báo 4 giờ tiếp theo */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.forecastScrollView}
-        contentContainerStyle={styles.forecastContainer}
-      >
-        {forecast.map((item, index) => {
-          const time = new Date(item.dt * 1000)
-          const hours = time.getHours()
-          const minutes = time.getMinutes()
-          const formattedTime = `${hours.toString().padStart(2, '0')}:${minutes
-            .toString()
-            .padStart(2, '0')}`
+      <View style={styles.forecastSection}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.forecastScrollView}
+          contentContainerStyle={styles.forecastContainer}
+        >
+          {forecast.map((item, index) => {
+            const time = new Date(item.dt * 1000)
+            const hours = time.getHours()
+            const minutes = time.getMinutes()
+            const formattedTime = `${hours
+              .toString()
+              .padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
 
-          return (
-            <View
-              key={index}
-              style={[
-                styles.forecastItem,
-                {
-                  backgroundColor: darkMode
-                    ? 'rgba(255,255,255,0.05)'
-                    : 'rgba(0,0,0,0.03)',
-                },
-              ]}
-            >
-              <Text
-                style={[styles.forecastTime, { color: theme.subtextColor }]}
+            return (
+              <View
+                key={index}
+                style={[
+                  styles.forecastItem,
+                  {
+                    backgroundColor: darkMode
+                      ? 'rgba(255,255,255,0.1)'
+                      : 'rgba(0,0,0,0.05)',
+                    borderWidth: 1,
+                    borderColor: darkMode
+                      ? 'rgba(255,255,255,0.1)'
+                      : 'rgba(0,0,0,0.05)',
+                  },
+                ]}
               >
-                {formattedTime}
-              </Text>
-              {getWeatherIcon(item.weather[0].icon, 32, theme.textColor)}
-              <Text style={[styles.forecastTemp, { color: theme.textColor }]}>
-                {Math.round(item.main.temp)}°C
-              </Text>
-              <Text
-                style={[styles.forecastDesc, { color: theme.subtextColor }]}
-              >
-                {item.weather[0].main}
-              </Text>
-            </View>
-          )
-        })}
-      </ScrollView>
+                <Text
+                  style={[
+                    styles.forecastTime,
+                    { color: theme.textColor, fontWeight: 'bold' },
+                  ]}
+                >
+                  {formattedTime}
+                </Text>
+                {getWeatherIcon(item.weather[0].icon, 36, theme.textColor)}
+                <Text style={[styles.forecastTemp, { color: theme.textColor }]}>
+                  {Math.round(item.main.temp)}°C
+                </Text>
+                <Text
+                  style={[styles.forecastDesc, { color: theme.subtextColor }]}
+                >
+                  {item.weather[0].main}
+                </Text>
+              </View>
+            )
+          })}
+        </ScrollView>
+      </View>
 
       {/* Phần 3: Cảnh báo thông minh (nếu có) */}
       {smartAlert && (
@@ -861,8 +870,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  forecastScrollView: {
+  forecastSection: {
     marginBottom: 12,
+    marginTop: 4,
+  },
+  forecastScrollView: {
+    marginBottom: 8,
   },
   forecastContainer: {
     paddingVertical: 4,
@@ -873,15 +886,20 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 12,
     marginRight: 12,
-    minWidth: 80,
+    minWidth: 85,
+    shadowColor: COLORS.SHADOW,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
   },
   forecastTime: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: 'bold',
     marginBottom: 8,
   },
   forecastTemp: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
     marginTop: 8,
   },
