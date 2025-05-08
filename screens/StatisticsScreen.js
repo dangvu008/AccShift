@@ -34,6 +34,7 @@ const StatisticsScreen = ({ navigation }) => {
     useContext(AppContext)
   const [timeRange, setTimeRange] = useState('month') // 'week', 'month', 'year', 'custom'
   const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState(null)
   const [stats, setStats] = useState({
     totalWorkTime: 0,
     overtime: 0,
@@ -368,6 +369,7 @@ const StatisticsScreen = ({ navigation }) => {
 
   const loadStatistics = useCallback(async () => {
     setIsLoading(true)
+    setLoadError(null)
 
     try {
       // Get date range
@@ -386,6 +388,31 @@ const StatisticsScreen = ({ navigation }) => {
       setStats(calculatedStats)
     } catch (error) {
       console.error('Error loading statistics:', error)
+      setLoadError(error.message || 'Lỗi khi tải dữ liệu thống kê')
+
+      // Đặt dữ liệu mặc định để tránh màn hình trống
+      setStats({
+        totalWorkTime: 0,
+        overtime: 0,
+        standardHours: 0,
+        otHours: 0,
+        sundayHours: 0,
+        nightHours: 0,
+        statusCounts: {
+          DU_CONG: 0,
+          DI_MUON: 0,
+          VE_SOM: 0,
+          DI_MUON_VE_SOM: 0,
+          THIEU_LOG: 0,
+          NGHI_PHEP: 0,
+          NGHI_BENH: 0,
+          NGHI_LE: 0,
+          NGHI_THUONG: 0,
+          VANG_MAT: 0,
+          CHUA_CAP_NHAT: 0,
+        },
+        dailyData: [],
+      })
     } finally {
       setIsLoading(false)
     }
@@ -393,6 +420,10 @@ const StatisticsScreen = ({ navigation }) => {
 
   // Tham chiếu để theo dõi thời gian tải dữ liệu gần nhất
   const lastLoadTimeRef = useRef(0)
+  // Tham chiếu để theo dõi số lần thử lại liên tiếp
+  const retryCountRef = useRef(0)
+  // Tham chiếu để theo dõi trạng thái đang tải
+  const isLoadingRef = useRef(false)
 
   // Tải dữ liệu khi component được mount lần đầu
   useEffect(() => {
@@ -405,11 +436,45 @@ const StatisticsScreen = ({ navigation }) => {
   useFocusEffect(
     useCallback(() => {
       const now = Date.now()
-      // Chỉ tải lại dữ liệu nếu đã qua ít nhất 5 giây từ lần tải trước
-      if (now - lastLoadTimeRef.current > 5000) {
+
+      // Nếu đang tải, không thực hiện tải lại
+      if (isLoadingRef.current) {
+        console.log('Đang tải dữ liệu, bỏ qua yêu cầu tải lại')
+        return
+      }
+
+      // Chỉ tải lại dữ liệu nếu đã qua ít nhất 10 giây từ lần tải trước
+      // Tăng thời gian chờ lên 10 giây để tránh tải lại quá thường xuyên
+      if (now - lastLoadTimeRef.current > 10000) {
         console.log('StatisticsScreen được focus, tải lại dữ liệu thống kê')
+
+        // Đánh dấu đang tải
+        isLoadingRef.current = true
+
+        // Thực hiện tải dữ liệu
         loadStatistics()
-        lastLoadTimeRef.current = now
+          .then(() => {
+            // Đặt lại số lần thử lại khi tải thành công
+            retryCountRef.current = 0
+          })
+          .catch((error) => {
+            console.error('Lỗi khi tải dữ liệu thống kê:', error)
+            // Tăng số lần thử lại
+            retryCountRef.current++
+
+            // Nếu thử lại quá 3 lần, hiển thị thông báo lỗi
+            if (retryCountRef.current > 3) {
+              setLoadError(
+                'Không thể tải dữ liệu thống kê sau nhiều lần thử lại'
+              )
+            }
+          })
+          .finally(() => {
+            // Cập nhật thời gian tải gần nhất
+            lastLoadTimeRef.current = Date.now()
+            // Đánh dấu đã tải xong
+            isLoadingRef.current = false
+          })
       } else {
         console.log('Bỏ qua tải lại dữ liệu thống kê do mới tải gần đây')
       }
@@ -648,6 +713,21 @@ const StatisticsScreen = ({ navigation }) => {
           <Text style={[styles.loadingText, { color: theme.textColor }]}>
             {t('Đang tải thống kê...')}
           </Text>
+        </View>
+      ) : loadError ? (
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle-outline" size={48} color="#e74c3c" />
+          <Text style={[styles.errorText, { color: theme.textColor }]}>
+            {loadError}
+          </Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => {
+              loadStatistics()
+            }}
+          >
+            <Text style={styles.retryButtonText}>{t('Thử lại')}</Text>
+          </TouchableOpacity>
         </View>
       ) : (
         <>
@@ -1283,6 +1363,27 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 16,
     marginTop: 16,
+  },
+  errorContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+  },
+  errorText: {
+    fontSize: 16,
+    marginTop: 16,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  retryButton: {
+    backgroundColor: '#8a56ff',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
   },
   missingBox: {
     backgroundColor: '#f1c40f',

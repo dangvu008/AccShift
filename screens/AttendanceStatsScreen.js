@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native'
+import { Ionicons } from '@expo/vector-icons'
 import { AppContext } from '../context/AppContext'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { WORK_STATUS } from '../config/appConfig'
@@ -17,6 +18,7 @@ import { WORK_STATUS } from '../config/appConfig'
 const AttendanceStatsScreen = ({ navigation }) => {
   const { t, darkMode } = useContext(AppContext)
   const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState(null)
   const [timeRange, setTimeRange] = useState('month') // 'week', 'month', 'year'
   const [stats, setStats] = useState({
     totalDays: 0,
@@ -152,6 +154,8 @@ const AttendanceStatsScreen = ({ navigation }) => {
 
   const loadAttendanceStats = useCallback(async () => {
     setIsLoading(true)
+    setLoadError(null)
+
     try {
       // Get all keys from AsyncStorage
       const keys = await AsyncStorage.getAllKeys()
@@ -184,6 +188,25 @@ const AttendanceStatsScreen = ({ navigation }) => {
       setStats(calculatedStats)
     } catch (error) {
       console.error('Error loading attendance stats:', error)
+      setLoadError(error.message || 'Lỗi khi tải dữ liệu thống kê')
+
+      // Đặt dữ liệu mặc định để tránh màn hình trống
+      setStats({
+        totalDays: 0,
+        workDays: 0,
+        attendanceRate: 0,
+        statusCounts: {},
+        monthlyTrend: [],
+        weekdayDistribution: {
+          1: { total: 0, present: 0 }, // Monday
+          2: { total: 0, present: 0 },
+          3: { total: 0, present: 0 },
+          4: { total: 0, present: 0 },
+          5: { total: 0, present: 0 },
+          6: { total: 0, present: 0 },
+          7: { total: 0, present: 0 }, // Sunday
+        },
+      })
     } finally {
       setIsLoading(false)
     }
@@ -191,6 +214,10 @@ const AttendanceStatsScreen = ({ navigation }) => {
 
   // Tham chiếu để theo dõi thời gian tải dữ liệu gần nhất
   const lastLoadTimeRef = useRef(0)
+  // Tham chiếu để theo dõi số lần thử lại liên tiếp
+  const retryCountRef = useRef(0)
+  // Tham chiếu để theo dõi trạng thái đang tải
+  const isLoadingRef = useRef(false)
 
   // Tải dữ liệu khi component được mount lần đầu
   useEffect(() => {
@@ -205,13 +232,47 @@ const AttendanceStatsScreen = ({ navigation }) => {
   useFocusEffect(
     useCallback(() => {
       const now = Date.now()
-      // Chỉ tải lại dữ liệu nếu đã qua ít nhất 5 giây từ lần tải trước
-      if (now - lastLoadTimeRef.current > 5000) {
+
+      // Nếu đang tải, không thực hiện tải lại
+      if (isLoadingRef.current) {
+        console.log('Đang tải dữ liệu, bỏ qua yêu cầu tải lại')
+        return
+      }
+
+      // Chỉ tải lại dữ liệu nếu đã qua ít nhất 10 giây từ lần tải trước
+      // Tăng thời gian chờ lên 10 giây để tránh tải lại quá thường xuyên
+      if (now - lastLoadTimeRef.current > 10000) {
         console.log(
           'AttendanceStatsScreen được focus, tải lại dữ liệu thống kê'
         )
+
+        // Đánh dấu đang tải
+        isLoadingRef.current = true
+
+        // Thực hiện tải dữ liệu
         loadAttendanceStats()
-        lastLoadTimeRef.current = now
+          .then(() => {
+            // Đặt lại số lần thử lại khi tải thành công
+            retryCountRef.current = 0
+          })
+          .catch((error) => {
+            console.error('Lỗi khi tải dữ liệu thống kê:', error)
+            // Tăng số lần thử lại
+            retryCountRef.current++
+
+            // Nếu thử lại quá 3 lần, hiển thị thông báo lỗi
+            if (retryCountRef.current > 3) {
+              setLoadError(
+                'Không thể tải dữ liệu thống kê sau nhiều lần thử lại'
+              )
+            }
+          })
+          .finally(() => {
+            // Cập nhật thời gian tải gần nhất
+            lastLoadTimeRef.current = Date.now()
+            // Đánh dấu đã tải xong
+            isLoadingRef.current = false
+          })
       } else {
         console.log('Bỏ qua tải lại dữ liệu thống kê do mới tải gần đây')
       }
@@ -560,6 +621,21 @@ const AttendanceStatsScreen = ({ navigation }) => {
             {t('Loading statistics...')}
           </Text>
         </View>
+      ) : loadError ? (
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle-outline" size={48} color="#e74c3c" />
+          <Text style={[styles.errorText, darkMode && styles.darkText]}>
+            {loadError}
+          </Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => {
+              loadAttendanceStats()
+            }}
+          >
+            <Text style={styles.retryButtonText}>{t('Retry')}</Text>
+          </TouchableOpacity>
+        </View>
       ) : (
         <>
           {/* Summary Cards */}
@@ -662,6 +738,28 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
     color: '#666',
+  },
+  errorContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+  },
+  errorText: {
+    fontSize: 16,
+    marginTop: 16,
+    marginBottom: 20,
+    textAlign: 'center',
+    color: '#666',
+  },
+  retryButton: {
+    backgroundColor: '#8a56ff',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
   },
   summaryContainer: {
     flexDirection: 'row',
