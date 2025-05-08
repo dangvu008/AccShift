@@ -66,10 +66,13 @@ const WeatherWidget = ({ onPress }) => {
           'Quá thời gian chờ khi tải dữ liệu thời tiết. Vui lòng thử lại sau.'
         )
       }
-    }, 45000) // 45 giây timeout (tăng từ 30 giây)
+    }, 30000) // Giảm xuống 30 giây timeout
 
     try {
-      setLoading(true)
+      // Đặt trạng thái loading nếu chưa được đặt
+      if (!loading) {
+        setLoading(true)
+      }
 
       // Kiểm tra quyền vị trí
       if (!locationPermissionGranted) {
@@ -92,12 +95,18 @@ const WeatherWidget = ({ onPress }) => {
       // Nếu yêu cầu làm mới, xóa cache thời tiết trước
       if (forceRefresh) {
         try {
+          console.log('Xóa cache thời tiết trước khi tải dữ liệu mới...')
           await weatherService.clearWeatherCache()
+
+          // Đợi một chút để đảm bảo cache đã được xóa
+          await new Promise((resolve) => setTimeout(resolve, 300))
         } catch (cacheError) {
           console.error('Lỗi khi xóa cache thời tiết:', cacheError)
           // Tiếp tục thực hiện ngay cả khi có lỗi xóa cache
         }
       }
+
+      console.log('Bắt đầu tải dữ liệu thời tiết...')
 
       // Biến để theo dõi dữ liệu thời tiết ở cả hai vị trí
       let homeWeatherData = null
@@ -111,11 +120,19 @@ const WeatherWidget = ({ onPress }) => {
       // 1. Lấy dữ liệu thời tiết cho vị trí nhà (nếu có)
       if (homeLocation) {
         try {
+          console.log('Đang tải dữ liệu thời tiết cho vị trí nhà...')
+
           // Lấy thời tiết hiện tại
           homeWeatherData = await weatherService.getCurrentWeather(
             homeLocation.latitude,
             homeLocation.longitude
           )
+
+          if (homeWeatherData) {
+            console.log(
+              'Đã tải thành công dữ liệu thời tiết hiện tại cho vị trí nhà'
+            )
+          }
 
           // Lấy dự báo theo giờ
           const homeForecast = await weatherService.getHourlyForecast(
@@ -124,6 +141,8 @@ const WeatherWidget = ({ onPress }) => {
           )
 
           if (homeForecast && homeForecast.length > 0) {
+            console.log('Đã tải thành công dự báo theo giờ cho vị trí nhà')
+
             // Lấy thời gian hiện tại
             const now = new Date()
 
@@ -134,6 +153,8 @@ const WeatherWidget = ({ onPress }) => {
               .slice(0, 4)
 
             homeHourlyForecast = filteredForecast
+          } else {
+            console.log('Không có dữ liệu dự báo theo giờ cho vị trí nhà')
           }
 
           // Lấy cảnh báo thời tiết
@@ -144,9 +165,10 @@ const WeatherWidget = ({ onPress }) => {
 
           if (alerts && alerts.length > 0) {
             homeAlerts = alerts
+            console.log('Đã tải thành công cảnh báo thời tiết cho vị trí nhà')
           }
         } catch (error) {
-          console.error('Error fetching home location weather:', error)
+          console.error('Lỗi khi tải dữ liệu thời tiết cho vị trí nhà:', error)
         }
       }
 
@@ -158,11 +180,19 @@ const WeatherWidget = ({ onPress }) => {
           workLocation.longitude !== homeLocation.longitude)
       ) {
         try {
+          console.log('Đang tải dữ liệu thời tiết cho vị trí công ty...')
+
           // Lấy thời tiết hiện tại
           workWeatherData = await weatherService.getCurrentWeather(
             workLocation.latitude,
             workLocation.longitude
           )
+
+          if (workWeatherData) {
+            console.log(
+              'Đã tải thành công dữ liệu thời tiết hiện tại cho vị trí công ty'
+            )
+          }
 
           // Lấy dự báo theo giờ
           const workForecast = await weatherService.getHourlyForecast(
@@ -171,6 +201,8 @@ const WeatherWidget = ({ onPress }) => {
           )
 
           if (workForecast && workForecast.length > 0) {
+            console.log('Đã tải thành công dự báo theo giờ cho vị trí công ty')
+
             // Lấy thời gian hiện tại
             const now = new Date()
 
@@ -181,6 +213,8 @@ const WeatherWidget = ({ onPress }) => {
               .slice(0, 4)
 
             workHourlyForecast = filteredForecast
+          } else {
+            console.log('Không có dữ liệu dự báo theo giờ cho vị trí công ty')
           }
 
           // Lấy cảnh báo thời tiết
@@ -191,9 +225,15 @@ const WeatherWidget = ({ onPress }) => {
 
           if (alerts && alerts.length > 0) {
             workAlerts = alerts
+            console.log(
+              'Đã tải thành công cảnh báo thời tiết cho vị trí công ty'
+            )
           }
         } catch (error) {
-          console.error('Error fetching work location weather:', error)
+          console.error(
+            'Lỗi khi tải dữ liệu thời tiết cho vị trí công ty:',
+            error
+          )
         }
       }
 
@@ -202,30 +242,60 @@ const WeatherWidget = ({ onPress }) => {
       // 3. Cập nhật state với dữ liệu đã lấy được
       // Kiểm tra xem có dữ liệu thời tiết không
       if (!homeWeatherData && !workWeatherData) {
-        console.log('Không có dữ liệu thời tiết từ cả hai vị trí')
+        console.log(
+          'Không có dữ liệu thời tiết từ cả hai vị trí, thử lấy dữ liệu mặc định'
+        )
 
         // Thử lấy dữ liệu thời tiết mặc định từ Hà Nội
         try {
           console.log('Thử lấy dữ liệu thời tiết mặc định từ Hà Nội')
           const defaultWeather = await weatherService.getCurrentWeather()
-          const defaultForecast = await weatherService.getHourlyForecast()
 
           if (defaultWeather) {
-            setCurrentWeather(defaultWeather)
-            setForecast(defaultForecast || [])
-            console.log('Đã lấy được dữ liệu thời tiết mặc định')
+            console.log('Đã tải thành công dữ liệu thời tiết mặc định')
+
+            // Lấy dự báo theo giờ cho vị trí mặc định
+            const defaultForecast = await weatherService.getHourlyForecast()
+
+            if (defaultForecast && defaultForecast.length > 0) {
+              console.log(
+                'Đã tải thành công dự báo theo giờ cho vị trí mặc định'
+              )
+
+              // Lấy thời gian hiện tại
+              const now = new Date()
+
+              // Lọc và sắp xếp dự báo để lấy 4 giờ tiếp theo liên tiếp
+              const filteredForecast = defaultForecast
+                .filter((item) => new Date(item.dt * 1000) > now)
+                .sort((a, b) => a.dt - b.dt)
+                .slice(0, 4)
+
+              setCurrentWeather(defaultWeather)
+              setForecast(filteredForecast)
+            } else {
+              console.log(
+                'Không có dữ liệu dự báo theo giờ cho vị trí mặc định'
+              )
+              setCurrentWeather(defaultWeather)
+              setForecast([])
+            }
           } else {
             throw new Error('Không thể lấy dữ liệu thời tiết mặc định')
           }
         } catch (defaultError) {
           console.error('Lỗi khi lấy dữ liệu thời tiết mặc định:', defaultError)
           // Không hiển thị thông báo lỗi chi tiết nữa
-          setLoading(false)
-          setRefreshing(false)
+          if (isMounted) {
+            setLoading(false)
+            setRefreshing(false)
+          }
           clearTimeout(fetchTimeout)
           return
         }
       } else {
+        console.log('Đã tải thành công dữ liệu thời tiết, cập nhật state')
+
         // Vị trí chính (nhà hoặc công ty)
         setCurrentWeather(homeWeatherData || workWeatherData)
         setForecast(
@@ -267,11 +337,12 @@ const WeatherWidget = ({ onPress }) => {
       clearTimeout(fetchTimeout)
 
       if (isMounted) {
+        console.log('Hoàn thành tải dữ liệu thời tiết')
         setLoading(false)
         setRefreshing(false)
       }
     } catch (error) {
-      console.error('Error in weather data fetching process:', error)
+      console.error('Lỗi trong quá trình tải dữ liệu thời tiết:', error)
 
       // Xóa timeout khi có lỗi
       clearTimeout(fetchTimeout)
@@ -403,10 +474,13 @@ const WeatherWidget = ({ onPress }) => {
     setErrorMessage(null)
     setRefreshing(true)
 
-    // Kiểm tra thời gian từ lần gọi API cuối cùng
+    // Đặt trạng thái loading để hiển thị indicator
+    setLoading(true)
+
+    // Giảm thời gian chờ giữa các lần làm mới xuống 10 giây
     const now = Date.now()
     const timeSinceLastFetch = now - lastFetchTime.current
-    const MIN_REFRESH_INTERVAL = 60 * 1000 // 60 giây
+    const MIN_REFRESH_INTERVAL = 10 * 1000 // 10 giây
 
     if (
       timeSinceLastFetch < MIN_REFRESH_INTERVAL &&
@@ -419,6 +493,7 @@ const WeatherWidget = ({ onPress }) => {
       )
       setTimeout(() => {
         setRefreshing(false)
+        setLoading(false)
       }, 500)
       return
     }
@@ -428,23 +503,63 @@ const WeatherWidget = ({ onPress }) => {
       const granted = await requestLocationPermission()
       if (!granted) {
         setRefreshing(false)
+        setLoading(false)
         return
       }
     }
 
     try {
-      // Xóa cache thời tiết
-      await weatherService.clearWeatherCache()
+      console.log('Bắt đầu làm mới dữ liệu thời tiết...')
+
+      // Xóa dữ liệu hiện tại để tránh hiển thị dữ liệu cũ
+      setCurrentWeather(null)
+      setForecast([])
+
+      // Xóa cache thời tiết - thực hiện 2 lần để đảm bảo cache được xóa hoàn toàn
+      try {
+        await weatherService.clearWeatherCache()
+        console.log('Đã xóa cache thời tiết lần 1')
+
+        // Đợi một chút trước khi xóa lần 2
+        await new Promise((resolve) => setTimeout(resolve, 300))
+
+        await weatherService.clearWeatherCache()
+        console.log('Đã xóa cache thời tiết lần 2')
+      } catch (cacheError) {
+        console.error('Lỗi khi xóa cache thời tiết:', cacheError)
+        // Tiếp tục thực hiện ngay cả khi có lỗi xóa cache
+      }
 
       // Cập nhật thời gian gọi API cuối cùng
       lastFetchTime.current = now
 
-      // Tải lại dữ liệu thời tiết
+      // Tải lại dữ liệu thời tiết với tham số forceRefresh=true
+      console.log('Đang tải lại dữ liệu thời tiết...')
       await fetchWeatherData(true)
+      console.log('Đã tải lại dữ liệu thời tiết thành công')
     } catch (error) {
       console.error('Lỗi khi làm mới dữ liệu thời tiết:', error)
+
+      // Nếu có lỗi, thử tải lại dữ liệu một lần nữa sau 1 giây
+      setTimeout(async () => {
+        try {
+          console.log('Thử tải lại dữ liệu thời tiết lần 2...')
+          await fetchWeatherData(true)
+          console.log('Đã tải lại dữ liệu thời tiết lần 2 thành công')
+        } catch (retryError) {
+          console.error(
+            'Lỗi khi thử tải lại dữ liệu thời tiết lần 2:',
+            retryError
+          )
+          setLoading(false)
+          setRefreshing(false)
+        }
+      }, 1000)
     } finally {
-      setRefreshing(false)
+      // Đặt timeout để đảm bảo trạng thái refreshing được cập nhật sau khi dữ liệu đã được tải
+      setTimeout(() => {
+        setRefreshing(false)
+      }, 500)
     }
   }
 
@@ -637,11 +752,56 @@ const WeatherWidget = ({ onPress }) => {
               borderRadius: 20,
               alignSelf: 'center',
               marginTop: 12,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
             }}
             onPress={refreshWeatherData}
+            disabled={refreshing}
           >
+            {refreshing ? (
+              <ActivityIndicator
+                size="small"
+                color={COLORS.TEXT_DARK}
+                style={{ marginRight: 8 }}
+              />
+            ) : (
+              <Ionicons
+                name="refresh-outline"
+                size={18}
+                color={COLORS.TEXT_DARK}
+                style={{ marginRight: 8 }}
+              />
+            )}
             <Text style={{ color: COLORS.TEXT_DARK, fontWeight: '500' }}>
-              {t('Làm mới')}
+              {refreshing ? t('Đang làm mới...') : t('Làm mới')}
+            </Text>
+          </TouchableOpacity>
+
+          {/* Thêm nút để vào chi tiết thời tiết */}
+          <TouchableOpacity
+            style={{
+              backgroundColor: 'transparent',
+              paddingVertical: 8,
+              paddingHorizontal: 16,
+              borderRadius: 20,
+              alignSelf: 'center',
+              marginTop: 12,
+              borderWidth: 1,
+              borderColor: theme.primaryColor,
+              flexDirection: 'row',
+              alignItems: 'center',
+            }}
+            onPress={onPress}
+          >
+            <Ionicons
+              name="information-circle-outline"
+              size={18}
+              color={theme.primaryColor}
+              style={{ marginRight: 8 }}
+            />
+            <Text style={{ color: theme.primaryColor, fontWeight: '500' }}>
+              {t('Xem chi tiết thời tiết')}
             </Text>
           </TouchableOpacity>
         </View>
