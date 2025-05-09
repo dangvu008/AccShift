@@ -99,7 +99,7 @@ const StatisticsScreen = ({ navigation }) => {
       )
 
       // Giới hạn số lượng ngày để tránh quá tải
-      const MAX_DAYS = 90 // Giới hạn 90 ngày để tránh quá tải
+      const MAX_DAYS = 60 // Giảm xuống 60 ngày để tránh quá tải và cải thiện hiệu suất
 
       // Tính số ngày trong khoảng
       const daysDiff =
@@ -113,14 +113,24 @@ const StatisticsScreen = ({ navigation }) => {
         endDate.setDate(startDate.getDate() + MAX_DAYS - 1)
       }
 
-      // Lấy tất cả keys từ AsyncStorage (với timeout an toàn)
+      // Lấy tất cả keys từ AsyncStorage với timeout an toàn
       let allKeys = []
       try {
-        allKeys = await AsyncStorage.getAllKeys()
+        // Tạo promise với timeout
+        const getAllKeysPromise = AsyncStorage.getAllKeys()
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => {
+            reject(new Error('Lấy keys từ AsyncStorage quá thời gian'))
+          }, 3000) // 3 giây timeout
+        })
+
+        // Đợi kết quả hoặc timeout
+        allKeys = await Promise.race([getAllKeysPromise, timeoutPromise])
         console.log(`Đã lấy ${allKeys.length} keys từ AsyncStorage`)
       } catch (keyError) {
         console.error('Lỗi khi lấy keys từ AsyncStorage:', keyError)
-        return [] // Trả về mảng rỗng nếu không thể lấy keys
+        // Trả về mảng rỗng nếu không thể lấy keys
+        return []
       }
 
       // Lọc các keys liên quan đến trạng thái làm việc
@@ -153,9 +163,43 @@ const StatisticsScreen = ({ navigation }) => {
         return []
       }
 
-      // Lấy dữ liệu với multiGet
-      const statusPairs = await AsyncStorage.multiGet(keysToGet)
-      console.log(`Đã lấy ${statusPairs.length} cặp key-value`)
+      // Lấy dữ liệu với multiGet và timeout an toàn
+      let statusPairs = []
+      try {
+        // Tạo promise với timeout
+        const multiGetPromise = AsyncStorage.multiGet(keysToGet)
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => {
+            reject(new Error('Lấy dữ liệu từ AsyncStorage quá thời gian'))
+          }, 5000) // 5 giây timeout
+        })
+
+        // Đợi kết quả hoặc timeout
+        statusPairs = await Promise.race([multiGetPromise, timeoutPromise])
+        console.log(`Đã lấy ${statusPairs.length} cặp key-value`)
+      } catch (multiGetError) {
+        console.error('Lỗi khi lấy dữ liệu từ AsyncStorage:', multiGetError)
+        // Nếu có lỗi, thử lấy từng key một
+        console.log('Thử lấy từng key một...')
+
+        // Giới hạn số lượng key để tránh quá tải
+        const limitedKeys = keysToGet.slice(0, Math.min(30, keysToGet.length))
+
+        for (const key of limitedKeys) {
+          try {
+            const value = await AsyncStorage.getItem(key)
+            if (value) {
+              statusPairs.push([key, value])
+            }
+          } catch (singleGetError) {
+            console.error(`Lỗi khi lấy dữ liệu cho key ${key}:`, singleGetError)
+          }
+        }
+
+        console.log(
+          `Đã lấy ${statusPairs.length} cặp key-value bằng phương pháp thay thế`
+        )
+      }
 
       // Xử lý dữ liệu
       for (const [key, value] of statusPairs) {
@@ -304,7 +348,7 @@ const StatisticsScreen = ({ navigation }) => {
       const processedDates = []
 
       // Giới hạn số lượng bản ghi để xử lý
-      const MAX_RECORDS = 500
+      const MAX_RECORDS = 300 // Giảm xuống 300 để cải thiện hiệu suất
       const recordsToProcess = workStatuses.slice(0, MAX_RECORDS)
 
       if (workStatuses.length > MAX_RECORDS) {
@@ -317,19 +361,33 @@ const StatisticsScreen = ({ navigation }) => {
         `Xử lý ${recordsToProcess.length} bản ghi trạng thái làm việc`
       )
 
+      // Biến đếm lỗi để theo dõi số lượng lỗi
+      let errorCount = 0
+      const MAX_ERRORS = 10 // Số lỗi tối đa cho phép
+
       // Xử lý từng bản ghi trạng thái làm việc
       for (let i = 0; i < recordsToProcess.length; i++) {
+        // Kiểm tra nếu có quá nhiều lỗi, dừng xử lý
+        if (errorCount >= MAX_ERRORS) {
+          console.error(
+            `Đã vượt quá số lượng lỗi cho phép (${MAX_ERRORS}), dừng xử lý`
+          )
+          break
+        }
+
         const status = recordsToProcess[i]
 
         try {
           // Kiểm tra bản ghi hợp lệ
           if (!status || typeof status !== 'object') {
             console.warn(`Bỏ qua bản ghi không hợp lệ ở vị trí ${i}`)
+            errorCount++
             continue
           }
 
           if (!status.date) {
             console.warn(`Bỏ qua bản ghi không có ngày ở vị trí ${i}`)
+            errorCount++
             continue
           }
 
@@ -343,10 +401,12 @@ const StatisticsScreen = ({ navigation }) => {
             if (isNaN(dateObj.getTime())) {
               console.warn(`Ngày không hợp lệ: ${status.date}`)
               dateObj = new Date() // Sử dụng ngày hiện tại nếu không hợp lệ
+              errorCount++
             }
           } catch (dateError) {
             console.warn(`Lỗi khi chuyển đổi ngày ${status.date}:`, dateError)
             dateObj = new Date() // Sử dụng ngày hiện tại nếu có lỗi
+            errorCount++
           }
 
           const displayDate = formatShortDate(dateObj, language)
@@ -393,11 +453,14 @@ const StatisticsScreen = ({ navigation }) => {
           })
         } catch (itemError) {
           console.error(`Lỗi khi xử lý bản ghi thứ ${i}:`, itemError)
+          errorCount++
           // Tiếp tục với bản ghi tiếp theo
         }
       }
 
-      console.log(`Đã xử lý ${stats.dailyData.length} bản ghi thành công`)
+      console.log(
+        `Đã xử lý ${stats.dailyData.length} bản ghi thành công, có ${errorCount} lỗi`
+      )
 
       // Thêm các ngày thiếu trong khoảng thời gian
       try {
@@ -517,6 +580,8 @@ const StatisticsScreen = ({ navigation }) => {
 
     // Biến để theo dõi timeout
     let timeoutId = null
+    // Biến để theo dõi nếu đã tạo dữ liệu mẫu
+    let sampleDataCreated = false
 
     try {
       // Lấy khoảng thời gian
@@ -530,7 +595,7 @@ const StatisticsScreen = ({ navigation }) => {
         try {
           // Tải dữ liệu trạng thái làm việc
           console.log('Đang tải dữ liệu trạng thái làm việc...')
-          const workStatuses = await loadDailyWorkStatuses(rangeStart, rangeEnd)
+          let workStatuses = await loadDailyWorkStatuses(rangeStart, rangeEnd)
 
           // Kiểm tra nếu component đã unmounted
           if (!isMountedRef.current) {
@@ -547,6 +612,35 @@ const StatisticsScreen = ({ navigation }) => {
             }
           }
 
+          // Nếu không có dữ liệu, tạo dữ liệu mẫu tự động
+          if (workStatuses.length === 0) {
+            console.log('Không có dữ liệu, tạo dữ liệu mẫu tự động...')
+            try {
+              // Import động để tránh circular dependency
+              const {
+                generateSampleWorkStatus,
+              } = require('../utils/sampleDataGenerator')
+
+              // Tạo dữ liệu mẫu cho 30 ngày
+              await generateSampleWorkStatus(30)
+              sampleDataCreated = true
+
+              // Tải lại dữ liệu sau khi tạo mẫu
+              workStatuses = await loadDailyWorkStatuses(rangeStart, rangeEnd)
+
+              // Kiểm tra lại sau khi tạo dữ liệu mẫu
+              if (!Array.isArray(workStatuses) || workStatuses.length === 0) {
+                return {
+                  error: 'Không thể tạo dữ liệu mẫu hoặc không có dữ liệu',
+                  stats: getDefaultStats(),
+                }
+              }
+            } catch (sampleError) {
+              console.error('Lỗi khi tạo dữ liệu mẫu:', sampleError)
+              // Tiếp tục với dữ liệu trống nếu không thể tạo mẫu
+            }
+          }
+
           // Tính toán thống kê
           console.log('Đang tính toán thống kê...')
           const calculatedStats = calculateStatistics(
@@ -557,17 +651,19 @@ const StatisticsScreen = ({ navigation }) => {
 
           return {
             stats: calculatedStats,
+            sampleDataCreated,
           }
         } catch (innerError) {
           console.error('Lỗi trong quá trình tải dữ liệu:', innerError)
           return {
             error: innerError.message || 'Lỗi khi xử lý dữ liệu thống kê',
             stats: getDefaultStats(),
+            sampleDataCreated,
           }
         }
       })()
 
-      // Đặt timeout
+      // Đặt timeout ngắn hơn để tránh treo quá lâu
       const timeoutPromise = new Promise((resolve) => {
         timeoutId = setTimeout(() => {
           console.error('Tải dữ liệu thống kê quá thời gian')
@@ -575,7 +671,7 @@ const StatisticsScreen = ({ navigation }) => {
             error: 'Tải dữ liệu quá thời gian, vui lòng thử lại',
             stats: getDefaultStats(),
           })
-        }, 10000) // 10 giây timeout
+        }, 8000) // 8 giây timeout
       })
 
       // Đợi kết quả hoặc timeout
@@ -602,6 +698,19 @@ const StatisticsScreen = ({ navigation }) => {
         if (result.stats) {
           setStats(result.stats)
         }
+
+        // Hiển thị thông báo nếu đã tạo dữ liệu mẫu
+        if (result.sampleDataCreated) {
+          // Sử dụng setTimeout để đảm bảo thông báo hiển thị sau khi UI đã cập nhật
+          setTimeout(() => {
+            if (isMountedRef.current) {
+              Alert.alert(
+                t('Thông báo'),
+                t('Đã tạo dữ liệu mẫu tự động để hiển thị thống kê')
+              )
+            }
+          }, 500)
+        }
       }
     } catch (error) {
       // Xử lý lỗi ngoài cùng
@@ -617,10 +726,15 @@ const StatisticsScreen = ({ navigation }) => {
         clearTimeout(timeoutId)
       }
 
-      // Cập nhật trạng thái tải
+      // Đảm bảo luôn thoát khỏi trạng thái loading
       if (isMountedRef.current) {
         console.log('Hoàn thành quá trình tải dữ liệu thống kê')
-        setIsLoading(false)
+        // Sử dụng setTimeout để đảm bảo UI được cập nhật
+        setTimeout(() => {
+          if (isMountedRef.current) {
+            setIsLoading(false)
+          }
+        }, 300)
       }
     }
   }, [
@@ -630,6 +744,7 @@ const StatisticsScreen = ({ navigation }) => {
     loadDailyWorkStatuses,
     isLoading,
     isMountedRef,
+    t,
   ])
 
   // Hàm trả về dữ liệu thống kê mặc định
@@ -1863,6 +1978,26 @@ const styles = StyleSheet.create({
   exportProgressText: {
     fontSize: 16,
     marginTop: 12,
+  },
+  // Styles cho nút tạo dữ liệu mẫu
+  sampleDataContainer: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  sampleDataButton: {
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  sampleDataButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 14,
   },
 })
 

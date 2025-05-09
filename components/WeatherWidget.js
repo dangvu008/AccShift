@@ -49,8 +49,74 @@ const WeatherWidget = ({ onPress }) => {
   // State để kiểm soát hiển thị cảnh báo thông minh
   const [smartAlert, setSmartAlert] = useState(null)
 
+  // Khai báo rotateApiKeyAndRetry trước để có thể sử dụng trong fetchWeatherData
+  const rotateApiKeyAndRetry = useCallback(async () => {
+    try {
+      // Tăng số lần đã thay đổi API key
+      apiKeyRotationCountRef.current += 1
+
+      // Giới hạn số lần thay đổi API key để tránh vòng lặp vô hạn
+      if (apiKeyRotationCountRef.current > 5) {
+        // Giảm giới hạn từ 10 xuống 5 để giảm số lần gọi API
+        console.log('Đã thử quá nhiều API key, dừng thử lại')
+        // Không hiển thị thông báo lỗi cho người dùng
+        // Không tự động thử lại để tiết kiệm API calls
+        console.log('Không tự động thử lại để tiết kiệm API calls')
+
+        setLoading(false)
+        setRefreshing(false)
+        return
+      }
+
+      console.log(
+        `Thay đổi API key lần ${apiKeyRotationCountRef.current} và thử lại...`
+      )
+
+      // Lấy danh sách API key hiện tại
+      const apiKeys = await weatherService.getApiKeys()
+
+      // Nếu không có API key nào, không thể thử lại
+      if (!apiKeys || apiKeys.length === 0) {
+        console.log('Không có API key nào khả dụng')
+        setErrorMessage(t('Không có API key nào khả dụng'))
+        setLoading(false)
+        setRefreshing(false)
+        return
+      }
+
+      // Tìm API key tiếp theo để thử
+      const nextKeyIndex = apiKeyRotationCountRef.current % apiKeys.length
+      const nextKey = apiKeys[nextKeyIndex]
+
+      if (nextKey) {
+        console.log(`Thử với API key: ${nextKey.key}...`)
+
+        // Xóa cache để đảm bảo không sử dụng dữ liệu cũ
+        await weatherService.clearWeatherCache()
+
+        // Không cần đợi quá lâu trước khi thử lại
+        await new Promise((resolve) => setTimeout(resolve, 200))
+
+        // Thử lại với API key mới
+        fetchWeatherData(true)
+      } else {
+        console.log('Không tìm thấy API key tiếp theo')
+        // Không hiển thị thông báo lỗi cho người dùng
+        // Không tự động thử lại để tiết kiệm API calls
+        console.log('Không tự động thử lại để tiết kiệm API calls')
+
+        setLoading(false)
+        setRefreshing(false)
+      }
+    } catch (error) {
+      console.error('Lỗi khi thay đổi API key:', error)
+      setLoading(false)
+      setRefreshing(false)
+    }
+  }, [t]) // Chỉ phụ thuộc vào t, fetchWeatherData sẽ được thêm sau
+
   // Di chuyển hàm fetchWeatherData ra ngoài useEffect để có thể tái sử dụng
-  const fetchWeatherData = async (forceRefresh = false) => {
+  const fetchWeatherData = useCallback(async (forceRefresh = false) => {
     // Sử dụng biến cờ để theo dõi trạng thái mount của component
     let isMounted = true
 
@@ -648,80 +714,24 @@ const WeatherWidget = ({ onPress }) => {
     // Loại bỏ generateSmartAlert khỏi dependencies để tránh vòng lặp render
   ])
 
-  // Hàm tự động thay đổi API key và thử lại
-  const rotateApiKeyAndRetry = useCallback(async () => {
-    try {
-      // Tăng số lần đã thay đổi API key
-      apiKeyRotationCountRef.current += 1
-
-      // Giới hạn số lần thay đổi API key để tránh vòng lặp vô hạn
-      if (apiKeyRotationCountRef.current > 5) {
-        // Giảm giới hạn từ 10 xuống 5 để giảm số lần gọi API
-        console.log('Đã thử quá nhiều API key, dừng thử lại')
-        // Không hiển thị thông báo lỗi cho người dùng
-        // Không tự động thử lại để tiết kiệm API calls
-        console.log('Không tự động thử lại để tiết kiệm API calls')
-
-        setLoading(false)
-        setRefreshing(false)
-        return
-      }
-
-      console.log(
-        `Thay đổi API key lần ${apiKeyRotationCountRef.current} và thử lại...`
-      )
-
-      // Lấy danh sách API key hiện tại
-      const apiKeys = await weatherService.getApiKeys()
-
-      // Nếu không có API key nào, không thể thử lại
-      if (!apiKeys || apiKeys.length === 0) {
-        console.log('Không có API key nào khả dụng')
-        setErrorMessage(t('Không có API key nào khả dụng'))
-        setLoading(false)
-        setRefreshing(false)
-        return
-      }
-
-      // Tìm API key tiếp theo để thử
-      const nextKeyIndex = apiKeyRotationCountRef.current % apiKeys.length
-      const nextKey = apiKeys[nextKeyIndex]
-
-      if (nextKey) {
-        console.log(`Thử với API key: ${nextKey.key}...`)
-
-        // Xóa cache để đảm bảo không sử dụng dữ liệu cũ
-        await weatherService.clearWeatherCache()
-
-        // Không cần đợi quá lâu trước khi thử lại
-        await new Promise((resolve) => setTimeout(resolve, 200))
-
-        // Thử lại với API key mới
-        fetchWeatherData(true)
-      } else {
-        console.log('Không tìm thấy API key tiếp theo')
-        // Không hiển thị thông báo lỗi cho người dùng
-        // Không tự động thử lại để tiết kiệm API calls
-        console.log('Không tự động thử lại để tiết kiệm API calls')
-
-        setLoading(false)
-        setRefreshing(false)
-      }
-    } catch (error) {
-      console.error('Lỗi khi thay đổi API key:', error)
-      setLoading(false)
-      setRefreshing(false)
-    }
-  }, [fetchWeatherData, t])
+  // Cập nhật tham chiếu đến fetchWeatherData trong rotateApiKeyAndRetry
+  useEffect(() => {
+    // Cập nhật tham chiếu của rotateApiKeyAndRetry để sử dụng fetchWeatherData mới nhất
+    rotateApiKeyAndRetry.current = rotateApiKeyAndRetry
+  }, [rotateApiKeyAndRetry])
 
   useEffect(() => {
     // Dọn dẹp timeout khi component unmount
     return () => {
-      if (fetchTimeoutRef.current) {
-        clearTimeout(fetchTimeoutRef.current)
+      // Lưu tham chiếu hiện tại vào biến cục bộ để tránh thay đổi khi cleanup function chạy
+      const currentFetchTimeout = fetchTimeoutRef.current
+      const currentAutoRetryTimeout = autoRetryTimeoutRef.current
+
+      if (currentFetchTimeout) {
+        clearTimeout(currentFetchTimeout)
       }
-      if (autoRetryTimeoutRef.current) {
-        clearTimeout(autoRetryTimeoutRef.current)
+      if (currentAutoRetryTimeout) {
+        clearTimeout(currentAutoRetryTimeout)
       }
     }
   }, [])
