@@ -61,12 +61,11 @@ const WeatherWidget = ({ onPress }) => {
         setLoading(false)
         setRefreshing(false)
 
-        // Hiển thị thông báo lỗi timeout
-        setErrorMessage(
-          'Quá thời gian chờ khi tải dữ liệu thời tiết. Vui lòng thử lại sau.'
-        )
+        // Không hiển thị thông báo lỗi timeout cho người dùng
+        // Thay vào đó, tự động thử lại với API key khác
+        rotateApiKeyAndRetry()
       }
-    }, 30000) // Giảm xuống 30 giây timeout
+    }, 15000) // Giảm xuống 15 giây timeout để phản hồi nhanh hơn
 
     try {
       // Đặt trạng thái loading nếu chưa được đặt
@@ -351,6 +350,11 @@ const WeatherWidget = ({ onPress }) => {
         // Không hiển thị thông báo lỗi chi tiết nữa, chỉ ghi log
         console.log(`Lỗi: ${error.message}`)
 
+        // Hủy bỏ timeout hiện tại nếu có
+        if (autoRetryTimeoutRef.current) {
+          clearTimeout(autoRetryTimeoutRef.current)
+        }
+
         // Kiểm tra loại lỗi để quyết định cách xử lý
         if (
           error.message.includes('network') ||
@@ -360,35 +364,23 @@ const WeatherWidget = ({ onPress }) => {
           error.message.includes('429')
         ) {
           console.log(
-            'Lỗi liên quan đến mạng hoặc API key, thử thay đổi API key...'
+            'Lỗi liên quan đến mạng hoặc API key, thử thay đổi API key ngay lập tức...'
           )
 
-          // Hủy bỏ timeout hiện tại nếu có
-          if (autoRetryTimeoutRef.current) {
-            clearTimeout(autoRetryTimeoutRef.current)
-          }
-
-          // Đặt timeout để thay đổi API key và thử lại sau 2 giây
-          autoRetryTimeoutRef.current = setTimeout(() => {
-            if (isMounted) {
-              rotateApiKeyAndRetry()
-            }
-          }, 2000)
+          // Thay đổi API key và thử lại ngay lập tức
+          rotateApiKeyAndRetry()
         } else {
-          // Lỗi khác, đặt timeout để tự động thử lại sau 30 giây
-          console.log('Lỗi khác, sẽ tự động thử lại sau 30 giây...')
-
-          if (autoRetryTimeoutRef.current) {
-            clearTimeout(autoRetryTimeoutRef.current)
-          }
+          // Lỗi khác, đặt timeout để tự động thử lại sau 5 giây
+          console.log('Lỗi khác, sẽ tự động thử lại sau 5 giây...')
 
           autoRetryTimeoutRef.current = setTimeout(() => {
             if (isMounted) {
               console.log('Tự động thử lại sau lỗi...')
               fetchWeatherData(true)
             }
-          }, 30000)
+          }, 5000) // Giảm xuống 5 giây để phản hồi nhanh hơn
 
+          // Không hiển thị trạng thái loading nữa
           setLoading(false)
           setRefreshing(false)
         }
@@ -517,10 +509,13 @@ const WeatherWidget = ({ onPress }) => {
     // Đặt trạng thái loading để hiển thị indicator
     setLoading(true)
 
-    // Giảm thời gian chờ giữa các lần làm mới xuống 10 giây
+    // Reset bộ đếm API key khi người dùng chủ động làm mới
+    apiKeyRotationCountRef.current = 0
+
+    // Giảm thời gian chờ giữa các lần làm mới xuống 3 giây
     const now = Date.now()
     const timeSinceLastFetch = now - lastFetchTime.current
-    const MIN_REFRESH_INTERVAL = 10 * 1000 // 10 giây
+    const MIN_REFRESH_INTERVAL = 3 * 1000 // 3 giây
 
     if (
       timeSinceLastFetch < MIN_REFRESH_INTERVAL &&
@@ -531,10 +526,10 @@ const WeatherWidget = ({ onPress }) => {
           timeSinceLastFetch / 1000
         )}s trước). Đợi thêm.`
       )
+      // Vẫn thử lại sau 1 giây để đáp ứng yêu cầu của người dùng
       setTimeout(() => {
-        setRefreshing(false)
-        setLoading(false)
-      }, 500)
+        fetchWeatherData(true)
+      }, 1000)
       return
     }
 
@@ -617,13 +612,14 @@ const WeatherWidget = ({ onPress }) => {
     const now = Date.now()
     const timeSinceLastFetch = now - lastFetchTime.current
 
-    // Chỉ cho phép gọi API nếu đã qua ít nhất 15 phút từ lần gọi trước
+    // Giảm thời gian giữa các lần gọi API xuống 5 phút để cập nhật thường xuyên hơn
     // hoặc đây là lần gọi đầu tiên (lastFetchTime = 0)
-    const MIN_FETCH_INTERVAL = 15 * 60 * 1000 // 15 phút
+    const MIN_FETCH_INTERVAL = 5 * 60 * 1000 // 5 phút
 
     if (
       timeSinceLastFetch < MIN_FETCH_INTERVAL &&
-      lastFetchTime.current !== 0
+      lastFetchTime.current !== 0 &&
+      currentWeather !== null // Chỉ bỏ qua nếu đã có dữ liệu
     ) {
       console.log(
         `Đã gọi API gần đây (${Math.round(
@@ -652,6 +648,7 @@ const WeatherWidget = ({ onPress }) => {
     homeLocation,
     workLocation,
     locationPermissionGranted,
+    currentWeather, // Thêm currentWeather vào dependencies để khi không có dữ liệu sẽ luôn thử lại
     // Loại bỏ generateSmartAlert khỏi dependencies để tránh vòng lặp render
   ])
 
@@ -662,11 +659,18 @@ const WeatherWidget = ({ onPress }) => {
       apiKeyRotationCountRef.current += 1
 
       // Giới hạn số lần thay đổi API key để tránh vòng lặp vô hạn
-      if (apiKeyRotationCountRef.current > 5) {
+      if (apiKeyRotationCountRef.current > 10) {
+        // Tăng giới hạn từ 5 lên 10
         console.log('Đã thử quá nhiều API key, dừng thử lại')
-        setErrorMessage(
-          t('Không thể kết nối đến dịch vụ thời tiết. Vui lòng thử lại sau.')
-        )
+        // Không hiển thị thông báo lỗi cho người dùng
+        // Thay vào đó, đặt lịch thử lại sau 1 phút
+        setTimeout(() => {
+          // Reset bộ đếm API key
+          apiKeyRotationCountRef.current = 0
+          // Thử lại với API key đầu tiên
+          fetchWeatherData(true)
+        }, 60000)
+
         setLoading(false)
         setRefreshing(false)
         return
@@ -698,16 +702,22 @@ const WeatherWidget = ({ onPress }) => {
         // Xóa cache để đảm bảo không sử dụng dữ liệu cũ
         await weatherService.clearWeatherCache()
 
-        // Đợi một chút trước khi thử lại
-        await new Promise((resolve) => setTimeout(resolve, 500))
+        // Không cần đợi quá lâu trước khi thử lại
+        await new Promise((resolve) => setTimeout(resolve, 200))
 
         // Thử lại với API key mới
         fetchWeatherData(true)
       } else {
         console.log('Không tìm thấy API key tiếp theo')
-        setErrorMessage(
-          t('Không thể kết nối đến dịch vụ thời tiết. Vui lòng thử lại sau.')
-        )
+        // Không hiển thị thông báo lỗi cho người dùng
+        // Thay vào đó, đặt lịch thử lại sau 30 giây
+        setTimeout(() => {
+          // Reset bộ đếm API key
+          apiKeyRotationCountRef.current = 0
+          // Thử lại với API key đầu tiên
+          fetchWeatherData(true)
+        }, 30000)
+
         setLoading(false)
         setRefreshing(false)
       }
@@ -734,9 +744,9 @@ const WeatherWidget = ({ onPress }) => {
   useEffect(() => {
     // Chỉ thiết lập interval khi có quyền vị trí và có vị trí
     if (locationPermissionGranted && (homeLocation || workLocation)) {
-      console.log('Thiết lập tự động tải lại dữ liệu thời tiết mỗi 15 phút')
+      console.log('Thiết lập tự động tải lại dữ liệu thời tiết mỗi 10 phút')
 
-      // Tạo interval để tải lại dữ liệu thời tiết mỗi 15 phút
+      // Tạo interval để tải lại dữ liệu thời tiết mỗi 10 phút
       const intervalId = setInterval(() => {
         console.log('Tự động tải lại dữ liệu thời tiết theo định kỳ...')
 
@@ -745,15 +755,34 @@ const WeatherWidget = ({ onPress }) => {
 
         // Tải lại dữ liệu thời tiết
         fetchWeatherData(true)
-      }, 15 * 60 * 1000) // 15 phút
+      }, 10 * 60 * 1000) // 10 phút thay vì 15 phút
+
+      // Thêm interval thứ hai để kiểm tra dữ liệu thời tiết mỗi 30 giây
+      // Nếu không có dữ liệu thời tiết, thử tải lại
+      const checkIntervalId = setInterval(() => {
+        if (!currentWeather) {
+          console.log('Không có dữ liệu thời tiết, thử tải lại...')
+          // Reset bộ đếm API key
+          apiKeyRotationCountRef.current = 0
+          // Thử lại với API key đầu tiên
+          fetchWeatherData(true)
+        }
+      }, 30 * 1000) // 30 giây
 
       // Dọn dẹp interval khi component unmount
       return () => {
         console.log('Dọn dẹp interval tự động tải lại dữ liệu thời tiết')
         clearInterval(intervalId)
+        clearInterval(checkIntervalId)
       }
     }
-  }, [locationPermissionGranted, homeLocation, workLocation, fetchWeatherData])
+  }, [
+    locationPermissionGranted,
+    homeLocation,
+    workLocation,
+    fetchWeatherData,
+    currentWeather,
+  ])
 
   useEffect(() => {
     // Chỉ fetch dữ liệu khi component được mount lần đầu

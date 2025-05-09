@@ -187,15 +187,17 @@ const AddEditShiftScreen = ({ route, navigation }) => {
           )
           console.log('Loading showPunch value:', shift.showPunch)
 
-          // Đảm bảo isActive được xử lý đúng - chỉ true khi giá trị rõ ràng là true
-          console.log('Setting isActive to:', shift.isActive === true)
-          setIsActive(shift.isActive === true)
-
           // Kiểm tra xem ca này có phải là ca hiện tại không dựa trên dữ liệu từ AsyncStorage
           const isCurrentShiftValue = currentShiftIdFromStorage === shiftId
           console.log('Is current shift (from storage):', isCurrentShiftValue)
+
           // Cập nhật state isCurrentShift
           setIsCurrentShift(isCurrentShiftValue)
+
+          // Khi sửa ca, trạng thái isActive phải dựa vào việc ca đó có phải là ca hiện tại hay không
+          // Nếu ca này là ca hiện tại, thì isActive phải là true
+          console.log('Setting isActive to:', isCurrentShiftValue)
+          setIsActive(isCurrentShiftValue)
 
           // Kiểm tra cả hai trường để đảm bảo tương thích ngược
           // Chỉ true khi giá trị rõ ràng là true
@@ -914,47 +916,37 @@ const AddEditShiftScreen = ({ route, navigation }) => {
                 )
 
                 // Xử lý cập nhật ca hiện tại trong context và AsyncStorage
-                if (isActive) {
-                  // Nếu ca này được áp dụng, cập nhật nó làm ca hiện tại
-                  await setCurrentShift(newShift)
+                if (isEditing) {
+                  // Khi sửa ca, chỉ cập nhật thông tin ca, không thay đổi trạng thái áp dụng
+                  // Nếu ca này là ca hiện tại, cập nhật thông tin mới vào context
+                  if (isCurrentShift) {
+                    await setCurrentShift(newShift)
+                    console.log('Cập nhật thông tin ca hiện tại trong context')
+                  }
+                } else {
+                  // Khi thêm mới ca
+                  if (isActive) {
+                    // Nếu ca mới được áp dụng, cập nhật nó làm ca hiện tại
+                    await setCurrentShift(newShift)
 
-                  // Lưu ID ca hiện tại vào AsyncStorage
-                  await AsyncStorage.setItem(
-                    STORAGE_KEYS.CURRENT_SHIFT,
-                    shiftId || newShift.id
-                  )
+                    // Lưu ID ca hiện tại vào AsyncStorage
+                    await AsyncStorage.setItem(
+                      STORAGE_KEYS.CURRENT_SHIFT,
+                      newShift.id
+                    )
 
-                  // Cập nhật state isCurrentShift để phản ánh trạng thái mới
-                  setIsCurrentShift(true)
+                    // Cập nhật state isCurrentShift để phản ánh trạng thái mới
+                    setIsCurrentShift(true)
 
-                  // Nếu đây không phải là ca hiện tại trước đó, hiển thị thông báo
-                  if (!isCurrentShift) {
+                    // Hiển thị thông báo
                     Alert.alert(
                       t('Thông báo'),
                       t(
-                        'Ca làm việc này đã được áp dụng. Ca làm việc trước đó (nếu có) đã bị tắt.'
+                        'Ca làm việc mới đã được áp dụng. Ca làm việc trước đó (nếu có) đã bị tắt.'
                       ),
                       [{ text: t('OK') }]
                     )
                   }
-                }
-                // Nếu đang cập nhật ca hiện tại và nó bị tắt
-                else if (isCurrentShift && !isActive) {
-                  // Nếu ca hiện tại bị tắt, hiển thị thông báo
-                  Alert.alert(
-                    t('Thông báo'),
-                    t('Ca làm việc đã bị tắt và không còn được áp dụng nữa.'),
-                    [{ text: t('OK') }]
-                  )
-
-                  // Cập nhật ca hiện tại trong context thành null
-                  await setCurrentShift(null)
-
-                  // Xóa ID ca hiện tại khỏi AsyncStorage
-                  await AsyncStorage.removeItem(STORAGE_KEYS.CURRENT_SHIFT)
-
-                  // Cập nhật state isCurrentShift để phản ánh trạng thái mới
-                  setIsCurrentShift(false)
                 }
 
                 // Navigate back
@@ -1563,7 +1555,8 @@ const AddEditShiftScreen = ({ route, navigation }) => {
               {t('Áp dụng')}
             </Text>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              {isEditing && (
+              {isEditing ? (
+                // Khi đang sửa ca, chỉ hiển thị trạng thái, không cho phép thay đổi
                 <Text
                   style={[
                     styles.switchStatus,
@@ -1574,69 +1567,46 @@ const AddEditShiftScreen = ({ route, navigation }) => {
                 >
                   {isActive ? t('Đang áp dụng') : t('Không áp dụng')}
                 </Text>
-              )}
-              <Switch
-                value={isActive}
-                onValueChange={(value) => {
-                  console.log('Changing isActive to:', value)
-                  setHasInteracted(true) // Đánh dấu người dùng đã tương tác với form
+              ) : (
+                // Khi thêm mới ca, cho phép bật/tắt
+                <Switch
+                  value={isActive}
+                  onValueChange={(value) => {
+                    console.log('Changing isActive to:', value)
+                    setHasInteracted(true) // Đánh dấu người dùng đã tương tác với form
 
-                  // Nếu đang bật ca mới và đã có ca khác đang áp dụng
-                  if (value && currentShift && currentShift.id !== shiftId) {
-                    Alert.alert(
-                      t('Xác nhận áp dụng ca mới'),
-                      t(
-                        'Hiện đã có ca khác đang được áp dụng. Nếu áp dụng ca này, ca hiện tại sẽ bị tắt. Bạn có chắc chắn muốn áp dụng ca này không?'
-                      ),
-                      [
-                        {
-                          text: t('Hủy'),
-                          style: 'cancel',
-                        },
-                        {
-                          text: t('Áp dụng'),
-                          onPress: () => {
-                            console.log('Confirmed: setting isActive to true')
-                            setIsActive(true)
-                            setIsFormDirty(true)
+                    // Nếu đang bật ca mới và đã có ca khác đang áp dụng
+                    if (value && currentShift) {
+                      Alert.alert(
+                        t('Xác nhận áp dụng ca mới'),
+                        t(
+                          'Hiện đã có ca khác đang được áp dụng. Nếu áp dụng ca này, ca hiện tại sẽ bị tắt. Bạn có chắc chắn muốn áp dụng ca này không?'
+                        ),
+                        [
+                          {
+                            text: t('Hủy'),
+                            style: 'cancel',
                           },
-                        },
-                      ]
-                    )
-                  }
-                  // Nếu đang tắt ca hiện tại, hiển thị xác nhận
-                  else if (isCurrentShift && !value) {
-                    Alert.alert(
-                      t('Xác nhận tắt ca đang áp dụng'),
-                      t(
-                        'Ca này đang được áp dụng. Nếu tắt, ca này sẽ không còn được áp dụng nữa. Bạn có chắc chắn muốn tắt ca này không?'
-                      ),
-                      [
-                        {
-                          text: t('Hủy'),
-                          style: 'cancel',
-                        },
-                        {
-                          text: t('Tắt ca'),
-                          style: 'destructive',
-                          onPress: () => {
-                            console.log('Confirmed: setting isActive to false')
-                            setIsActive(false)
-                            setIsFormDirty(true)
+                          {
+                            text: t('Áp dụng'),
+                            onPress: () => {
+                              console.log('Confirmed: setting isActive to true')
+                              setIsActive(true)
+                              setIsFormDirty(true)
+                            },
                           },
-                        },
-                      ]
-                    )
-                  } else {
-                    console.log('Setting isActive to:', value)
-                    setIsActive(value)
-                    setIsFormDirty(true)
-                  }
-                }}
-                trackColor={{ false: '#767577', true: COLORS.PRIMARY }}
-                thumbColor={isActive ? '#f4f3f4' : '#f4f3f4'}
-                disabled={false} // Luôn cho phép thay đổi
-              />
+                        ]
+                      )
+                    } else {
+                      console.log('Setting isActive to:', value)
+                      setIsActive(value)
+                      setIsFormDirty(true)
+                    }
+                  }}
+                  trackColor={{ false: '#767577', true: COLORS.PRIMARY }}
+                  thumbColor={isActive ? '#f4f3f4' : '#f4f3f4'}
+                />
+              )}
             </View>
           </View>
 

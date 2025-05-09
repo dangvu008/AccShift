@@ -152,7 +152,24 @@ setInterval(() => {
 const selectApiKey = () => {
   // Lọc các key đang bật
   const enabledKeys = API_KEYS.filter((keyObj) => keyObj.enabled)
-  if (enabledKeys.length === 0) return null
+  if (enabledKeys.length === 0) {
+    // Nếu không có key nào được bật, reset tất cả các key và thử lại
+    console.log('Không có API key nào được bật, reset tất cả các key')
+    API_KEYS.forEach((keyObj) => {
+      keyObj.enabled = true
+      if (keyUsageCounter[keyObj.key]) {
+        keyUsageCounter[keyObj.key].count = 0
+        keyUsageCounter[keyObj.key].lastReset = Date.now()
+      }
+    })
+
+    // Lọc lại các key đang bật
+    const resetEnabledKeys = API_KEYS.filter((keyObj) => keyObj.enabled)
+    if (resetEnabledKeys.length === 0) return null
+
+    // Sắp xếp theo ưu tiên (số nhỏ = ưu tiên cao)
+    return resetEnabledKeys[0].key
+  }
 
   // Sắp xếp theo ưu tiên (số nhỏ = ưu tiên cao)
   const sortedKeys = [...enabledKeys].sort((a, b) => a.priority - b.priority)
@@ -202,8 +219,27 @@ const markKeyError = (key, disable = false) => {
   const keyIndex = API_KEYS.findIndex((keyObj) => keyObj.key === key)
   if (keyIndex !== -1) {
     if (disable) {
-      API_KEYS[keyIndex].enabled = false
-      console.warn(`API key ${maskString(key, 3)}... đã bị vô hiệu hóa do lỗi`)
+      // Kiểm tra xem có còn key nào khác đang bật không
+      const otherEnabledKeys = API_KEYS.filter(
+        (keyObj) => keyObj.enabled && keyObj.key !== key
+      )
+
+      // Chỉ vô hiệu hóa key nếu còn ít nhất một key khác đang bật
+      if (otherEnabledKeys.length > 0) {
+        API_KEYS[keyIndex].enabled = false
+        console.warn(
+          `API key ${maskString(key, 3)}... đã bị vô hiệu hóa do lỗi`
+        )
+      } else {
+        // Nếu đây là key cuối cùng, chỉ tăng bộ đếm lên max
+        keyUsageCounter[key].count = API_CONFIG.KEY_USAGE_LIMIT_PER_MINUTE
+        console.warn(
+          `API key ${maskString(
+            key,
+            3
+          )}... tạm thời không được sử dụng (key cuối cùng)`
+        )
+      }
     } else {
       // Tăng bộ đếm lên max để tạm thời không dùng key này
       keyUsageCounter[key].count = API_CONFIG.KEY_USAGE_LIMIT_PER_MINUTE
@@ -211,6 +247,20 @@ const markKeyError = (key, disable = false) => {
         `API key ${maskString(key, 3)}... tạm thời không được sử dụng`
       )
     }
+
+    // Lên lịch reset key sau 5 phút
+    setTimeout(() => {
+      if (keyIndex !== -1 && !API_KEYS[keyIndex].enabled) {
+        console.log(
+          `Tự động kích hoạt lại API key ${maskString(key, 3)}... sau 5 phút`
+        )
+        API_KEYS[keyIndex].enabled = true
+      }
+      if (keyUsageCounter[key]) {
+        keyUsageCounter[key].count = 0
+        keyUsageCounter[key].lastReset = Date.now()
+      }
+    }, 5 * 60 * 1000) // 5 phút
   }
 }
 

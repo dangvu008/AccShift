@@ -19,17 +19,17 @@ export const API_CONFIG = {
   WEATHER_BASE_URL: 'https://api.openweathermap.org/data/2.5',
 
   // Cấu hình cache
-  CACHE_TTL: 30 * 60 * 1000, // 30 phút (giảm từ 1 giờ để cập nhật thường xuyên hơn)
+  CACHE_TTL: 20 * 60 * 1000, // 20 phút (giảm từ 30 phút để cập nhật thường xuyên hơn)
   CACHE_TTL_FALLBACK: 7 * 24 * 60 * 60 * 1000, // 7 ngày (cache dự phòng khi không có mạng)
 
   // Cấu hình API key
-  KEY_USAGE_LIMIT_PER_MINUTE: 20, // Giảm từ 30 để tránh đạt giới hạn
-  KEY_USAGE_RESET_INTERVAL: 60 * 1000, // 1 phút
+  KEY_USAGE_LIMIT_PER_MINUTE: 25, // Tăng từ 20 lên 25 để có thể sử dụng nhiều hơn
+  KEY_USAGE_RESET_INTERVAL: 30 * 1000, // 30 giây (giảm từ 1 phút để reset nhanh hơn)
 
   // Cấu hình timeout và retry
-  REQUEST_TIMEOUT: 15000, // 15 giây timeout (giảm từ 25 giây)
-  MAX_RETRY_COUNT: 3, // Giảm số lần thử lại để tránh quá nhiều request
-  RETRY_DELAY: 1000, // 1 giây delay giữa các lần thử lại
+  REQUEST_TIMEOUT: 10000, // 10 giây timeout (giảm từ 15 giây)
+  MAX_RETRY_COUNT: 5, // Tăng số lần thử lại từ 3 lên 5
+  RETRY_DELAY: 500, // 0.5 giây delay giữa các lần thử lại (giảm từ 1 giây)
 
   // Vị trí mặc định
   DEFAULT_LOCATION: {
