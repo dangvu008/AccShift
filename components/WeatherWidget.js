@@ -370,15 +370,11 @@ const WeatherWidget = ({ onPress }) => {
           // Thay đổi API key và thử lại ngay lập tức
           rotateApiKeyAndRetry()
         } else {
-          // Lỗi khác, đặt timeout để tự động thử lại sau 5 giây
-          console.log('Lỗi khác, sẽ tự động thử lại sau 5 giây...')
+          // Lỗi khác, không tự động thử lại để tránh gọi API quá thường xuyên
+          console.log('Lỗi khác, không tự động thử lại để tiết kiệm API calls')
 
-          autoRetryTimeoutRef.current = setTimeout(() => {
-            if (isMounted) {
-              console.log('Tự động thử lại sau lỗi...')
-              fetchWeatherData(true)
-            }
-          }, 5000) // Giảm xuống 5 giây để phản hồi nhanh hơn
+          // Không thiết lập timeout để tự động thử lại
+          // Người dùng có thể làm mới thủ công nếu cần
 
           // Không hiển thị trạng thái loading nữa
           setLoading(false)
@@ -512,10 +508,10 @@ const WeatherWidget = ({ onPress }) => {
     // Reset bộ đếm API key khi người dùng chủ động làm mới
     apiKeyRotationCountRef.current = 0
 
-    // Giảm thời gian chờ giữa các lần làm mới xuống 3 giây
+    // Tăng thời gian chờ giữa các lần làm mới lên 30 giây để tránh gọi API quá thường xuyên
     const now = Date.now()
     const timeSinceLastFetch = now - lastFetchTime.current
-    const MIN_REFRESH_INTERVAL = 3 * 1000 // 3 giây
+    const MIN_REFRESH_INTERVAL = 30 * 1000 // 30 giây
 
     if (
       timeSinceLastFetch < MIN_REFRESH_INTERVAL &&
@@ -612,9 +608,9 @@ const WeatherWidget = ({ onPress }) => {
     const now = Date.now()
     const timeSinceLastFetch = now - lastFetchTime.current
 
-    // Giảm thời gian giữa các lần gọi API xuống 5 phút để cập nhật thường xuyên hơn
+    // Tăng thời gian giữa các lần gọi API lên 60 phút để giảm số lần gọi API
     // hoặc đây là lần gọi đầu tiên (lastFetchTime = 0)
-    const MIN_FETCH_INTERVAL = 5 * 60 * 1000 // 5 phút
+    const MIN_FETCH_INTERVAL = 60 * 60 * 1000 // 60 phút
 
     if (
       timeSinceLastFetch < MIN_FETCH_INTERVAL &&
@@ -659,17 +655,12 @@ const WeatherWidget = ({ onPress }) => {
       apiKeyRotationCountRef.current += 1
 
       // Giới hạn số lần thay đổi API key để tránh vòng lặp vô hạn
-      if (apiKeyRotationCountRef.current > 10) {
-        // Tăng giới hạn từ 5 lên 10
+      if (apiKeyRotationCountRef.current > 5) {
+        // Giảm giới hạn từ 10 xuống 5 để giảm số lần gọi API
         console.log('Đã thử quá nhiều API key, dừng thử lại')
         // Không hiển thị thông báo lỗi cho người dùng
-        // Thay vào đó, đặt lịch thử lại sau 1 phút
-        setTimeout(() => {
-          // Reset bộ đếm API key
-          apiKeyRotationCountRef.current = 0
-          // Thử lại với API key đầu tiên
-          fetchWeatherData(true)
-        }, 60000)
+        // Không tự động thử lại để tiết kiệm API calls
+        console.log('Không tự động thử lại để tiết kiệm API calls')
 
         setLoading(false)
         setRefreshing(false)
@@ -710,13 +701,8 @@ const WeatherWidget = ({ onPress }) => {
       } else {
         console.log('Không tìm thấy API key tiếp theo')
         // Không hiển thị thông báo lỗi cho người dùng
-        // Thay vào đó, đặt lịch thử lại sau 30 giây
-        setTimeout(() => {
-          // Reset bộ đếm API key
-          apiKeyRotationCountRef.current = 0
-          // Thử lại với API key đầu tiên
-          fetchWeatherData(true)
-        }, 30000)
+        // Không tự động thử lại để tiết kiệm API calls
+        console.log('Không tự động thử lại để tiết kiệm API calls')
 
         setLoading(false)
         setRefreshing(false)
@@ -744,36 +730,25 @@ const WeatherWidget = ({ onPress }) => {
   useEffect(() => {
     // Chỉ thiết lập interval khi có quyền vị trí và có vị trí
     if (locationPermissionGranted && (homeLocation || workLocation)) {
-      console.log('Thiết lập tự động tải lại dữ liệu thời tiết mỗi 10 phút')
+      console.log(
+        'Không thiết lập tự động tải lại dữ liệu thời tiết để tiết kiệm API calls'
+      )
 
-      // Tạo interval để tải lại dữ liệu thời tiết mỗi 10 phút
-      const intervalId = setInterval(() => {
-        console.log('Tự động tải lại dữ liệu thời tiết theo định kỳ...')
-
-        // Đặt lại số lần thay đổi API key
+      // Chỉ kiểm tra dữ liệu thời tiết khi không có dữ liệu
+      // Nếu không có dữ liệu thời tiết, thử tải lại một lần
+      if (!currentWeather) {
+        console.log('Không có dữ liệu thời tiết, thử tải lại một lần...')
+        // Reset bộ đếm API key
         apiKeyRotationCountRef.current = 0
-
-        // Tải lại dữ liệu thời tiết
+        // Thử lại với API key đầu tiên
         fetchWeatherData(true)
-      }, 10 * 60 * 1000) // 10 phút thay vì 15 phút
+      }
 
-      // Thêm interval thứ hai để kiểm tra dữ liệu thời tiết mỗi 30 giây
-      // Nếu không có dữ liệu thời tiết, thử tải lại
-      const checkIntervalId = setInterval(() => {
-        if (!currentWeather) {
-          console.log('Không có dữ liệu thời tiết, thử tải lại...')
-          // Reset bộ đếm API key
-          apiKeyRotationCountRef.current = 0
-          // Thử lại với API key đầu tiên
-          fetchWeatherData(true)
-        }
-      }, 30 * 1000) // 30 giây
-
-      // Dọn dẹp interval khi component unmount
+      // Không cần dọn dẹp vì không có interval nào được thiết lập
       return () => {
-        console.log('Dọn dẹp interval tự động tải lại dữ liệu thời tiết')
-        clearInterval(intervalId)
-        clearInterval(checkIntervalId)
+        console.log(
+          'Không có interval tự động tải lại dữ liệu thời tiết để dọn dẹp'
+        )
       }
     }
   }, [

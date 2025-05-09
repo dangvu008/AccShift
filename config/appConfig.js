@@ -19,7 +19,7 @@ export const API_CONFIG = {
   WEATHER_BASE_URL: 'https://api.openweathermap.org/data/2.5',
 
   // Cấu hình cache
-  CACHE_TTL: 20 * 60 * 1000, // 20 phút (giảm từ 30 phút để cập nhật thường xuyên hơn)
+  CACHE_TTL: 60 * 60 * 1000, // 60 phút (tăng từ 20 phút để giảm số lần gọi API)
   CACHE_TTL_FALLBACK: 7 * 24 * 60 * 60 * 1000, // 7 ngày (cache dự phòng khi không có mạng)
 
   // Cấu hình API key
