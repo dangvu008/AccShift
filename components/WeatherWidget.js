@@ -480,68 +480,8 @@ const WeatherWidget = ({ onPress }) => {
     refreshing
   ]),
 
-  // Hàm tạo cảnh báo thông minh dựa trên dữ liệu thời tiết ở cả hai vị trí
-  function generateSmartAlert(
-    homeWeather,
-    homeForecast,
-    workWeather,
-    workForecast
-  ) {
-    // Nếu không có dữ liệu thời tiết ở cả hai vị trí, không tạo cảnh báo
-    if (!homeWeather && !workWeather) {
-      setSmartAlert(null)
-      return
-    }
-
-    // Kiểm tra xem có mưa ở vị trí nhà không
-    const isRainingAtHome = checkForRain(homeWeather, homeForecast)
-
-    // Kiểm tra xem có mưa ở vị trí công ty không
-    const isRainingAtWork = checkForRain(workWeather, workForecast)
-
-    // Nếu có mưa ở cả hai vị trí
-    if (isRainingAtHome.willRain && isRainingAtWork.willRain) {
-      const message = `${t('Rain expected at home')} (~${
-        isRainingAtHome.time
-      }). ${t('Note: It will also rain at work')} (~${
-        isRainingAtWork.time
-      }), ${t('remember to bring an umbrella from home')}!`
-      setSmartAlert({
-        type: 'rain',
-        message,
-        severity: 'warning',
-      })
-    }
-    // Nếu chỉ có mưa ở vị trí nhà
-    else if (isRainingAtHome.willRain) {
-      const message = `${t('Rain expected at home')} (~${
-        isRainingAtHome.time
-      }).`
-      setSmartAlert({
-        type: 'rain',
-        message,
-        severity: 'info',
-      })
-    }
-    // Nếu chỉ có mưa ở vị trí công ty
-    else if (isRainingAtWork.willRain) {
-      const message = `${t('Rain expected at work')} (~${
-        isRainingAtWork.time
-      }). ${t('Consider bringing an umbrella')}!`
-      setSmartAlert({
-        type: 'rain',
-        message,
-        severity: 'warning',
-      })
-    }
-    // Nếu không có mưa ở cả hai vị trí
-    else {
-      setSmartAlert(null)
-    }
-  }
-
   // Hàm kiểm tra xem có mưa không dựa trên dữ liệu thời tiết
-  const checkForRain = (currentWeather, forecast) => {
+  const checkForRain = useCallback((currentWeather, forecast) => {
     const result = { willRain: false, time: '' }
 
     // Kiểm tra thời tiết hiện tại
@@ -578,7 +518,65 @@ const WeatherWidget = ({ onPress }) => {
     }
 
     return result
-  }
+  }, [t])
+
+  // Hàm tạo cảnh báo thông minh dựa trên dữ liệu thời tiết ở cả hai vị trí
+  const generateSmartAlert = useCallback(
+    (homeWeather, homeForecast, workWeather, workForecast) => {
+      // Nếu không có dữ liệu thời tiết ở cả hai vị trí, không tạo cảnh báo
+      if (!homeWeather && !workWeather) {
+        setSmartAlert(null)
+        return
+      }
+
+      // Kiểm tra xem có mưa ở vị trí nhà không
+      const isRainingAtHome = checkForRain(homeWeather, homeForecast)
+
+      // Kiểm tra xem có mưa ở vị trí công ty không
+      const isRainingAtWork = checkForRain(workWeather, workForecast)
+
+      // Nếu có mưa ở cả hai vị trí
+      if (isRainingAtHome.willRain && isRainingAtWork.willRain) {
+        const message = `${t('Rain expected at home')} (~${
+          isRainingAtHome.time
+        }). ${t('Note: It will also rain at work')} (~${
+          isRainingAtWork.time
+        }), ${t('remember to bring an umbrella from home')}!`
+        setSmartAlert({
+          type: 'rain',
+          message,
+          severity: 'warning',
+        })
+      }
+      // Nếu chỉ có mưa ở vị trí nhà
+      else if (isRainingAtHome.willRain) {
+        const message = `${t('Rain expected at home')} (~${
+          isRainingAtHome.time
+        }).`
+        setSmartAlert({
+          type: 'rain',
+          message,
+          severity: 'info',
+        })
+      }
+      // Nếu chỉ có mưa ở vị trí công ty
+      else if (isRainingAtWork.willRain) {
+        const message = `${t('Rain expected at work')} (~${
+          isRainingAtWork.time
+        }). ${t('Consider bringing an umbrella')}!`
+        setSmartAlert({
+          type: 'rain',
+          message,
+          severity: 'warning',
+        })
+      }
+      // Nếu không có mưa ở cả hai vị trí
+      else {
+        setSmartAlert(null)
+      }
+    },
+    [t, checkForRain, setSmartAlert]
+  )
 
   // Hàm làm mới dữ liệu thời tiết
   const refreshWeatherData = async () => {

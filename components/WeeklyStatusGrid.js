@@ -46,7 +46,7 @@ const WeeklyStatusGrid = () => {
   useEffect(() => {
     generateWeekDays()
     loadDailyStatuses()
-  }, [])
+  }, [generateWeekDays, loadDailyStatuses])
 
   // Thêm hàm refresh để làm mới dữ liệu
   const refreshData = useCallback(() => {

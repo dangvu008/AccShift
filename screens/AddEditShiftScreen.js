@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useContext, useCallback } from 'react'
+import { useState, useEffect, useContext, useCallback, useRef } from 'react'
 import {
   View,
   Text,
@@ -80,6 +80,9 @@ const AddEditShiftScreen = ({ route, navigation }) => {
   // Validation state
   const [errors, setErrors] = useState({})
   const [isFormValid, setIsFormValid] = useState(false)
+
+  // Tham chiếu đến validateForm để tránh lỗi circular dependency
+  const validateFormRef = useRef(null)
 
   // Days of week options
   const daysOfWeek = [
@@ -251,7 +254,9 @@ const AddEditShiftScreen = ({ route, navigation }) => {
       // Vẫn chạy validation nhưng không hiển thị lỗi
       setTimeout(() => {
         console.log('Running silent validation after data load...')
-        validateForm()
+        if (validateFormRef.current) {
+          validateFormRef.current()
+        }
       }, 500)
     }
 
@@ -1029,6 +1034,11 @@ const AddEditShiftScreen = ({ route, navigation }) => {
       setIsLoading(false)
     }
   }
+
+  // Cập nhật tham chiếu validateFormRef khi validateForm thay đổi
+  useEffect(() => {
+    validateFormRef.current = validateForm
+  }, [validateForm])
 
   // Run validation on form changes
   useEffect(() => {

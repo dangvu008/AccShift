@@ -91,178 +91,187 @@ const StatisticsScreen = ({ navigation }) => {
     [startDate, endDate]
   )
 
-  const loadDailyWorkStatuses = async (startDate, endDate) => {
-    try {
-      console.log('Bắt đầu tải dữ liệu trạng thái làm việc hàng ngày...')
-      console.log(
-        `Khoảng thời gian: ${formatDate(startDate)} - ${formatDate(endDate)}`
-      )
-
-      // Giới hạn số lượng ngày để tránh quá tải
-      const MAX_DAYS = 20 // Giảm xuống 20 ngày để tránh quá tải và cải thiện hiệu suất
-
-      // Tính số ngày trong khoảng
-      const daysDiff =
-        Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1
-      if (daysDiff > MAX_DAYS) {
-        console.warn(
-          `Khoảng thời gian quá lớn (${daysDiff} ngày), giới hạn xuống ${MAX_DAYS} ngày`
-        )
-        // Điều chỉnh ngày kết thúc
-        endDate = new Date(startDate)
-        endDate.setDate(startDate.getDate() + MAX_DAYS - 1)
-      }
-
-      // Chuẩn bị danh sách các ngày cần xử lý
-      const daysToProcess = []
-      const currentDate = new Date(startDate)
-      while (currentDate <= endDate) {
-        daysToProcess.push(formatDate(currentDate))
-        currentDate.setDate(currentDate.getDate() + 1)
-      }
-      console.log(`Cần xử lý ${daysToProcess.length} ngày`)
-
-      // Tạo danh sách keys cần lấy trực tiếp từ ngày, không cần getAllKeys
-      const keysToGet = daysToProcess.map(
-        (dateKey) => `${STORAGE_KEYS.DAILY_WORK_STATUS_PREFIX}${dateKey}`
-      )
-
-      console.log(`Đang lấy dữ liệu cho ${keysToGet.length} keys...`)
-
-      if (keysToGet.length === 0) {
-        console.log('Không có dữ liệu nào trong khoảng thời gian này')
-        return []
-      }
-
-      // Kiểm tra xem có dữ liệu thực tế không
-      let hasRealData = false
+  const loadDailyWorkStatuses = useCallback(
+    async (startDate, endDate) => {
       try {
-        // Chỉ kiểm tra một vài key để xác định có dữ liệu không
-        const sampleKeys = keysToGet.slice(0, Math.min(5, keysToGet.length))
-        const sampleData = await AsyncStorage.multiGet(sampleKeys)
-        hasRealData = sampleData.some(([_, value]) => value !== null)
-        console.log(`Kiểm tra dữ liệu thực tế: ${hasRealData ? 'Có' : 'Không'}`)
-      } catch (checkError) {
-        console.warn('Lỗi khi kiểm tra dữ liệu thực tế:', checkError)
-      }
+        console.log('Bắt đầu tải dữ liệu trạng thái làm việc hàng ngày...')
+        console.log(
+          `Khoảng thời gian: ${formatDate(startDate)} - ${formatDate(endDate)}`
+        )
 
-      // Chia nhỏ danh sách keys thành các batch để tránh quá tải
-      const BATCH_SIZE = 5 // Giảm kích thước batch xuống 5 để tránh quá tải
-      const batches = []
-      for (let i = 0; i < keysToGet.length; i += BATCH_SIZE) {
-        batches.push(keysToGet.slice(i, i + BATCH_SIZE))
-      }
+        // Giới hạn số lượng ngày để tránh quá tải
+        const MAX_DAYS = 20 // Giảm xuống 20 ngày để tránh quá tải và cải thiện hiệu suất
 
-      // Lấy dữ liệu theo từng batch
-      const filteredStatusData = []
-      let successfulBatches = 0
-      let failedBatches = 0
+        // Tính số ngày trong khoảng
+        const daysDiff =
+          Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1
+        if (daysDiff > MAX_DAYS) {
+          console.warn(
+            `Khoảng thời gian quá lớn (${daysDiff} ngày), giới hạn xuống ${MAX_DAYS} ngày`
+          )
+          // Điều chỉnh ngày kết thúc
+          endDate = new Date(startDate)
+          endDate.setDate(startDate.getDate() + MAX_DAYS - 1)
+        }
 
-      for (let i = 0; i < batches.length; i++) {
-        const batch = batches[i]
+        // Chuẩn bị danh sách các ngày cần xử lý
+        const daysToProcess = []
+        const currentDate = new Date(startDate)
+        while (currentDate <= endDate) {
+          daysToProcess.push(formatDate(currentDate))
+          currentDate.setDate(currentDate.getDate() + 1)
+        }
+        console.log(`Cần xử lý ${daysToProcess.length} ngày`)
+
+        // Tạo danh sách keys cần lấy trực tiếp từ ngày, không cần getAllKeys
+        const keysToGet = daysToProcess.map(
+          (dateKey) => `${STORAGE_KEYS.DAILY_WORK_STATUS_PREFIX}${dateKey}`
+        )
+
+        console.log(`Đang lấy dữ liệu cho ${keysToGet.length} keys...`)
+
+        if (keysToGet.length === 0) {
+          console.log('Không có dữ liệu nào trong khoảng thời gian này')
+          return []
+        }
+
+        // Kiểm tra xem có dữ liệu thực tế không
+        let hasRealData = false
         try {
-          // Tạo promise với timeout
-          const multiGetPromise = AsyncStorage.multiGet(batch)
-          const timeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => {
-              reject(
-                new Error(
-                  `Lấy dữ liệu batch ${i + 1}/${batches.length} quá thời gian`
+          // Chỉ kiểm tra một vài key để xác định có dữ liệu không
+          const sampleKeys = keysToGet.slice(0, Math.min(5, keysToGet.length))
+          const sampleData = await AsyncStorage.multiGet(sampleKeys)
+          hasRealData = sampleData.some(([_, value]) => value !== null)
+          console.log(
+            `Kiểm tra dữ liệu thực tế: ${hasRealData ? 'Có' : 'Không'}`
+          )
+        } catch (checkError) {
+          console.warn('Lỗi khi kiểm tra dữ liệu thực tế:', checkError)
+        }
+
+        // Chia nhỏ danh sách keys thành các batch để tránh quá tải
+        const BATCH_SIZE = 5 // Giảm kích thước batch xuống 5 để tránh quá tải
+        const batches = []
+        for (let i = 0; i < keysToGet.length; i += BATCH_SIZE) {
+          batches.push(keysToGet.slice(i, i + BATCH_SIZE))
+        }
+
+        // Lấy dữ liệu theo từng batch
+        const filteredStatusData = []
+        let successfulBatches = 0
+        let failedBatches = 0
+
+        for (let i = 0; i < batches.length; i++) {
+          const batch = batches[i]
+          try {
+            // Tạo promise với timeout
+            const multiGetPromise = AsyncStorage.multiGet(batch)
+            const timeoutPromise = new Promise((_, reject) => {
+              setTimeout(() => {
+                reject(
+                  new Error(
+                    `Lấy dữ liệu batch ${i + 1}/${batches.length} quá thời gian`
+                  )
                 )
-              )
-            }, 1500) // 1.5 giây timeout cho mỗi batch (giảm từ 2 giây)
-          })
+              }, 1500) // 1.5 giây timeout cho mỗi batch (giảm từ 2 giây)
+            })
 
-          // Đợi kết quả hoặc timeout
-          const statusPairs = await Promise.race([
-            multiGetPromise,
-            timeoutPromise,
-          ])
+            // Đợi kết quả hoặc timeout
+            const statusPairs = await Promise.race([
+              multiGetPromise,
+              timeoutPromise,
+            ])
 
-          // Xử lý dữ liệu trong batch
-          let validItemsInBatch = 0
-          for (const [key, value] of statusPairs) {
-            if (!value) continue
+            // Xử lý dữ liệu trong batch
+            let validItemsInBatch = 0
+            for (const [key, value] of statusPairs) {
+              if (!value) continue
 
-            try {
-              const dateKey = key.replace(
-                STORAGE_KEYS.DAILY_WORK_STATUS_PREFIX,
-                ''
-              )
-              const status = JSON.parse(value)
+              try {
+                const dateKey = key.replace(
+                  STORAGE_KEYS.DAILY_WORK_STATUS_PREFIX,
+                  ''
+                )
+                const status = JSON.parse(value)
 
-              // Kiểm tra dữ liệu hợp lệ
-              if (!status || typeof status !== 'object') {
-                console.warn(`Bỏ qua dữ liệu không hợp lệ cho key ${key}`)
-                continue
+                // Kiểm tra dữ liệu hợp lệ
+                if (!status || typeof status !== 'object') {
+                  console.warn(`Bỏ qua dữ liệu không hợp lệ cho key ${key}`)
+                  continue
+                }
+
+                // Thêm trường date nếu chưa có
+                if (!status.date) {
+                  status.date = dateKey
+                }
+
+                // Kiểm tra các trường bắt buộc
+                if (!status.status) {
+                  status.status = 'CHUA_CAP_NHAT'
+                }
+
+                filteredStatusData.push(status)
+                validItemsInBatch++
+              } catch (parseError) {
+                console.error(
+                  `Lỗi khi phân tích dữ liệu cho key ${key}:`,
+                  parseError
+                )
+                // Tiếp tục với key tiếp theo
               }
-
-              // Thêm trường date nếu chưa có
-              if (!status.date) {
-                status.date = dateKey
-              }
-
-              // Kiểm tra các trường bắt buộc
-              if (!status.status) {
-                status.status = 'CHUA_CAP_NHAT'
-              }
-
-              filteredStatusData.push(status)
-              validItemsInBatch++
-            } catch (parseError) {
-              console.error(
-                `Lỗi khi phân tích dữ liệu cho key ${key}:`,
-                parseError
-              )
-              // Tiếp tục với key tiếp theo
             }
+
+            console.log(
+              `Batch ${i + 1}/${
+                batches.length
+              }: ${validItemsInBatch} mục hợp lệ`
+            )
+            successfulBatches++
+          } catch (batchError) {
+            console.error(
+              `Lỗi khi lấy dữ liệu batch ${i + 1}/${batches.length}:`,
+              batchError
+            )
+            failedBatches++
+            // Tiếp tục với batch tiếp theo
           }
 
-          console.log(
-            `Batch ${i + 1}/${batches.length}: ${validItemsInBatch} mục hợp lệ`
-          )
-          successfulBatches++
-        } catch (batchError) {
-          console.error(
-            `Lỗi khi lấy dữ liệu batch ${i + 1}/${batches.length}:`,
-            batchError
-          )
-          failedBatches++
-          // Tiếp tục với batch tiếp theo
+          // Thêm một khoảng thời gian nhỏ giữa các batch để tránh treo UI
+          if (i < batches.length - 1) {
+            await new Promise((resolve) => setTimeout(resolve, 10))
+          }
         }
 
-        // Thêm một khoảng thời gian nhỏ giữa các batch để tránh treo UI
-        if (i < batches.length - 1) {
-          await new Promise((resolve) => setTimeout(resolve, 10))
+        console.log(
+          `Đã lọc được ${filteredStatusData.length} bản ghi có dữ liệu`
+        )
+        console.log(
+          `Batches thành công: ${successfulBatches}/${batches.length}, thất bại: ${failedBatches}/${batches.length}`
+        )
+
+        // Sắp xếp dữ liệu theo ngày để đảm bảo thứ tự đúng
+        filteredStatusData.sort((a, b) => {
+          if (!a.date || !b.date) return 0
+          return a.date.localeCompare(b.date)
+        })
+
+        return {
+          data: filteredStatusData,
+          hasRealData,
+          successRate:
+            batches.length > 0 ? successfulBatches / batches.length : 0,
         }
+      } catch (error) {
+        console.error('Lỗi khi tải dữ liệu trạng thái làm việc:', error)
+        return {
+          data: [],
+          hasRealData: false,
+          successRate: 0,
+        } // Trả về đối tượng với mảng rỗng trong trường hợp có lỗi
       }
-
-      console.log(`Đã lọc được ${filteredStatusData.length} bản ghi có dữ liệu`)
-      console.log(
-        `Batches thành công: ${successfulBatches}/${batches.length}, thất bại: ${failedBatches}/${batches.length}`
-      )
-
-      // Sắp xếp dữ liệu theo ngày để đảm bảo thứ tự đúng
-      filteredStatusData.sort((a, b) => {
-        if (!a.date || !b.date) return 0
-        return a.date.localeCompare(b.date)
-      })
-
-      return {
-        data: filteredStatusData,
-        hasRealData,
-        successRate:
-          batches.length > 0 ? successfulBatches / batches.length : 0,
-      }
-    } catch (error) {
-      console.error('Lỗi khi tải dữ liệu trạng thái làm việc:', error)
-      return {
-        data: [],
-        hasRealData: false,
-        successRate: 0,
-      } // Trả về đối tượng với mảng rỗng trong trường hợp có lỗi
-    }
-  }
+    },
+    [formatDate, STORAGE_KEYS.DAILY_WORK_STATUS_PREFIX]
+  )
 
   const processDayLogs = useCallback(
     (logs) => {
@@ -1220,10 +1229,13 @@ const StatisticsScreen = ({ navigation }) => {
       .padStart(2, '0')}`
   }
 
-  const getWeekdayName = (day) => {
-    // Sử dụng hàm formatShortWeekday để lấy tên viết tắt của thứ
-    return formatShortWeekday(day, language)
-  }
+  const getWeekdayName = useCallback(
+    (day) => {
+      // Sử dụng hàm formatShortWeekday để lấy tên viết tắt của thứ
+      return formatShortWeekday(day, language)
+    },
+    [language, formatShortWeekday]
+  )
 
   const getStatusIcon = (status) => {
     switch (status) {
@@ -2055,11 +2067,7 @@ const styles = StyleSheet.create({
   leaveBox: {
     backgroundColor: '#34495e',
   },
-  loadingContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 40,
-  },
+
   // Overlay loading container để hiển thị loading indicator trên dữ liệu
   overlayLoadingContainer: {
     position: 'absolute',
@@ -2268,26 +2276,6 @@ const styles = StyleSheet.create({
   exportProgressText: {
     fontSize: 16,
     marginTop: 12,
-  },
-  // Styles cho nút tạo dữ liệu mẫu
-  sampleDataContainer: {
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  sampleDataButton: {
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  sampleDataButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 14,
   },
 })
 

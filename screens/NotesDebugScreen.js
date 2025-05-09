@@ -223,7 +223,7 @@ const NotesDebugScreen = ({ navigation }) => {
   // Tải dữ liệu khi màn hình được mount
   useEffect(() => {
     loadNotes()
-  }, [])
+  }, [loadNotes])
 
   return (
     <View style={[styles.container, darkMode && styles.darkContainer]}>
