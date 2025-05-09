@@ -261,6 +261,47 @@ const WeeklyStatusGrid = () => {
       return !currentShift.daysApplied.includes(dayCode)
     }
 
+    // Kiểm tra xem ca làm việc có phải là ca qua đêm không
+    const isOvernightShift = () => {
+      if (!currentShift) return false
+
+      // Kiểm tra xem ca có phải là ca qua đêm không
+      const startTimeParts = currentShift.startTime.split(':').map(Number)
+      const endTimeParts = currentShift.endTime.split(':').map(Number)
+
+      // Ca qua đêm khi giờ kết thúc < giờ bắt đầu hoặc giờ bằng nhau nhưng phút kết thúc < phút bắt đầu
+      return (
+        endTimeParts[0] < startTimeParts[0] ||
+        (endTimeParts[0] === startTimeParts[0] &&
+          endTimeParts[1] < startTimeParts[1])
+      )
+    }
+
+    // Kiểm tra xem ngày hiện tại có phải là ngày kết thúc của ca qua đêm bắt đầu từ ngày hôm trước không
+    const isPreviousDayOvernightShiftEndDay = () => {
+      if (!currentShift || !isOvernightShift()) return false
+
+      // Lấy ngày hôm trước
+      const previousDay = new Date(day.date)
+      previousDay.setDate(previousDay.getDate() - 1)
+      const previousDayKey = formatDateKey(previousDay)
+
+      // Lấy trạng thái của ngày hôm trước
+      const previousDayStatus = dailyStatuses[previousDayKey]
+
+      // Kiểm tra xem ngày hôm trước có ca làm việc qua đêm không
+      if (previousDayStatus && previousDayStatus.shiftId === currentShift.id) {
+        // Lấy thứ trong tuần của ngày hôm trước
+        const previousDayOfWeek = previousDay.getDay()
+        const previousDayCode = weekdayNames[previousDayOfWeek]
+
+        // Kiểm tra xem ngày hôm trước có trong daysApplied của ca làm việc không
+        return currentShift.daysApplied.includes(previousDayCode)
+      }
+
+      return false
+    }
+
     // Ngày tương lai luôn hiển thị NGAY_TUONG_LAI trừ khi đã được cập nhật thủ công
     if (day.isFuture) {
       // Nếu đã có trạng thái được cập nhật thủ công, hiển thị trạng thái đó
@@ -293,6 +334,13 @@ const WeeklyStatusGrid = () => {
       if (isRegularDayOff()) {
         return WORK_STATUS.NGHI_THUONG
       }
+
+      // Kiểm tra xem ngày này có phải là ngày kết thúc của ca qua đêm không
+      if (isPreviousDayOvernightShiftEndDay()) {
+        // Nếu là ngày kết thúc của ca qua đêm, trạng thái sẽ được hiển thị ở ngày bắt đầu ca
+        return WORK_STATUS.NGHI_THUONG
+      }
+
       return WORK_STATUS.CHUA_CAP_NHAT
     }
 

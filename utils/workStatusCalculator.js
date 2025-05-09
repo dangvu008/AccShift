@@ -7,6 +7,13 @@ import {
   durationInHours,
   sumDurationInHours,
   createNightInterval,
+  isOvernightShift,
+  createFullTimestamp,
+  createShiftInterval,
+  createNightIntervalsForShift,
+  calculateSundayHours,
+  calculateTotalNightHours,
+  adjustLogTimeForOvernightShift,
 } from './timeIntervalUtils'
 
 /**
@@ -356,76 +363,113 @@ export const calculateDailyWorkStatus = async (date, shift) => {
       const isSunday = dayOfWeek === 0
       const isHolidayWork = false // Chưa có logic xác định ngày lễ, cần bổ sung sau
 
-      // Parse thời gian ca làm việc
-      const [startHour, startMinute] = shift.startTime.split(':').map(Number)
-      const [officeEndHour, officeEndMinute] = shift.officeEndTime
-        .split(':')
-        .map(Number)
-      const [maxEndHour, maxEndMinute] = shift.endTime
-        ? shift.endTime.split(':').map(Number)
-        : [officeEndHour, officeEndMinute]
+      // Kiểm tra xem ca làm việc có phải là ca qua đêm không
+      const isOvernight = isOvernightShift(shift.startTime, shift.endTime)
 
-      // Tạo đối tượng Date cho thời gian bắt đầu và kết thúc ca
-      const scheduledStartTime = new Date(baseDate)
-      scheduledStartTime.setHours(startHour, startMinute, 0, 0)
-
-      const scheduledOfficeEndTime = new Date(baseDate)
-      scheduledOfficeEndTime.setHours(officeEndHour, officeEndMinute, 0, 0)
-
-      const scheduledEndTime = new Date(baseDate)
-      scheduledEndTime.setHours(maxEndHour, maxEndMinute, 0, 0)
-
-      // Nếu thời gian kết thúc ca nhỏ hơn thời gian bắt đầu, đó là ca qua đêm
-      if (scheduledOfficeEndTime < scheduledStartTime) {
-        scheduledOfficeEndTime.setDate(scheduledOfficeEndTime.getDate() + 1)
-      }
-
-      if (scheduledEndTime < scheduledStartTime) {
-        scheduledEndTime.setDate(scheduledEndTime.getDate() + 1)
-      }
-
-      // Tính thời gian ca làm việc chuẩn (phút)
-      const standardDurationMs =
-        scheduledOfficeEndTime.getTime() - scheduledStartTime.getTime()
-      const standardDurationMinutes = Math.floor(
-        standardDurationMs / (1000 * 60)
+      // Tạo khoảng thời gian đầy đủ cho ca làm việc
+      const shiftInterval = createShiftInterval(
+        baseDate,
+        shift.startTime,
+        shift.endTime
       )
 
-      // Trừ thời gian nghỉ
-      const breakMinutes = shift?.breakMinutes || 0
-      const standardMinutesAfterBreak = Math.max(
-        0,
-        standardDurationMinutes - breakMinutes
+      // Tạo khoảng thời gian đầy đủ cho giờ làm việc hành chính
+      const officeShiftInterval = createShiftInterval(
+        baseDate,
+        shift.startTime,
+        shift.officeEndTime
       )
 
-      // Tính thời gian OT theo lịch trình (nếu có)
-      let otMinutes = 0
+      // Tạo khoảng thời gian đầy đủ cho giờ OT
+      let otInterval = null
       if (shift.endTime && shift.endTime !== shift.officeEndTime) {
-        const otDurationMs =
-          scheduledEndTime.getTime() - scheduledOfficeEndTime.getTime()
-        otMinutes = Math.floor(otDurationMs / (1000 * 60))
+        // Tạo timestamp đầy đủ cho thời gian kết thúc giờ hành chính
+        const officeEndTime = createFullTimestamp(
+          baseDate,
+          shift.officeEndTime,
+          isOvernight &&
+            new Date(`1970-01-01T${shift.officeEndTime}:00`).getHours() <
+              new Date(`1970-01-01T${shift.startTime}:00`).getHours()
+        )
+
+        // Tạo timestamp đầy đủ cho thời gian kết thúc ca
+        const endTime = createFullTimestamp(
+          baseDate,
+          shift.endTime,
+          isOvernight
+        )
+
+        otInterval = { start: officeEndTime, end: endTime }
       }
 
-      // Chuyển đổi từ phút sang giờ
-      const standardHoursScheduled = standardMinutesAfterBreak / 60
-      const otHoursScheduled = otMinutes / 60
+      // Tính thời gian ca làm việc chuẩn (giờ)
+      const standardHoursScheduled = Math.max(
+        0,
+        durationInHours(officeShiftInterval) - (shift.breakMinutes || 0) / 60
+      )
+
+      // Tính thời gian OT theo lịch trình (giờ)
+      const otHoursScheduled = otInterval ? durationInHours(otInterval) : 0
+
+      // Tính tổng thời gian làm việc theo lịch trình (giờ)
       const totalHoursScheduled = standardHoursScheduled + otHoursScheduled
 
       // Tính giờ làm chủ nhật
-      const sundayHoursScheduled = isSunday ? totalHoursScheduled : 0
+      let sundayHoursScheduled = 0
+      if (isSunday) {
+        // Nếu ngày bắt đầu ca là chủ nhật, tính toàn bộ giờ làm việc là giờ chủ nhật
+        sundayHoursScheduled = totalHoursScheduled
+      } else if (isOvernight) {
+        // Nếu ca qua đêm và ngày tiếp theo là chủ nhật, tính phần giờ làm việc vào chủ nhật
+        const nextDay = new Date(baseDate)
+        nextDay.setDate(nextDay.getDate() + 1)
+        if (nextDay.getDay() === 0) {
+          // Tạo timestamp cho 00:00 của ngày tiếp theo (chủ nhật)
+          const sundayStart = new Date(nextDay)
+          sundayStart.setHours(0, 0, 0, 0)
+
+          // Tạo khoảng thời gian làm việc vào chủ nhật
+          const sundayWorkInterval = {
+            start: sundayStart,
+            end: shiftInterval.end,
+          }
+
+          // Tính giờ làm việc vào chủ nhật
+          sundayHoursScheduled = durationInHours(sundayWorkInterval)
+        }
+      }
 
       // Tính giờ làm đêm
       const nightStartTime = userSettings?.nightWorkStartTime || '22:00'
       const nightEndTime = userSettings?.nightWorkEndTime || '05:00'
 
-      // Tính phần giờ làm đêm trong khoảng [startTime, endTime]
-      const nightMinutes = calculateNightWorkMinutes(
-        scheduledStartTime,
-        scheduledEndTime,
+      // Sử dụng hàm mới để tính giờ làm đêm
+      const nightHoursScheduled = calculateTotalNightHours(
+        baseDate,
+        shift.startTime,
+        shift.endTime,
         nightStartTime,
         nightEndTime
       )
-      const nightHoursScheduled = nightMinutes / 60
+
+      // Tạo các timestamp đầy đủ cho thời gian bắt đầu và kết thúc ca
+      const scheduledStartTime = createFullTimestamp(
+        baseDate,
+        shift.startTime,
+        false
+      )
+      const scheduledOfficeEndTime = createFullTimestamp(
+        baseDate,
+        shift.officeEndTime,
+        isOvernight &&
+          new Date(`1970-01-01T${shift.officeEndTime}:00`).getHours() <
+            new Date(`1970-01-01T${shift.startTime}:00`).getHours()
+      )
+      const scheduledEndTime = createFullTimestamp(
+        baseDate,
+        shift.endTime,
+        isOvernight
+      )
 
       return {
         standardHoursScheduled,
@@ -437,6 +481,7 @@ export const calculateDailyWorkStatus = async (date, shift) => {
         scheduledStartTime,
         scheduledOfficeEndTime,
         scheduledEndTime,
+        isOvernight, // Thêm thông tin về ca qua đêm
       }
     }
 
@@ -451,33 +496,45 @@ export const calculateDailyWorkStatus = async (date, shift) => {
           status: WORK_STATUS.DU_CONG,
         }
 
-      // Parse thời gian ca làm việc
-      const [startHour, startMinute] = shift.startTime.split(':').map(Number)
-      const [officeEndHour, officeEndMinute] = shift.officeEndTime
-        .split(':')
-        .map(Number)
-      const [maxEndHour, maxEndMinute] = shift.endTime
-        ? shift.endTime.split(':').map(Number)
-        : [officeEndHour, officeEndMinute]
+      // Kiểm tra xem ca làm việc có phải là ca qua đêm không
+      const isOvernight = isOvernightShift(shift.startTime, shift.endTime)
 
-      // Tạo đối tượng Date cho thời gian bắt đầu và kết thúc ca
-      const shiftStartTime = new Date(baseDate)
-      shiftStartTime.setHours(startHour, startMinute, 0, 0)
+      // Tạo khoảng thời gian đầy đủ cho ca làm việc
+      const shiftInterval = createShiftInterval(
+        baseDate,
+        shift.startTime,
+        shift.endTime
+      )
 
-      const shiftOfficeEndTime = new Date(baseDate)
-      shiftOfficeEndTime.setHours(officeEndHour, officeEndMinute, 0, 0)
+      // Tạo khoảng thời gian đầy đủ cho giờ làm việc hành chính
+      const officeShiftInterval = createShiftInterval(
+        baseDate,
+        shift.startTime,
+        shift.officeEndTime
+      )
 
-      const shiftMaxEndTime = new Date(baseDate)
-      shiftMaxEndTime.setHours(maxEndHour, maxEndMinute, 0, 0)
+      // Tạo timestamp đầy đủ cho thời gian bắt đầu ca
+      const shiftStartTime = createFullTimestamp(
+        baseDate,
+        shift.startTime,
+        false
+      )
 
-      // Nếu thời gian kết thúc ca nhỏ hơn thời gian bắt đầu, đó là ca qua đêm
-      if (shiftOfficeEndTime < shiftStartTime) {
-        shiftOfficeEndTime.setDate(shiftOfficeEndTime.getDate() + 1)
-      }
+      // Tạo timestamp đầy đủ cho thời gian kết thúc giờ hành chính
+      const shiftOfficeEndTime = createFullTimestamp(
+        baseDate,
+        shift.officeEndTime,
+        isOvernight &&
+          new Date(`1970-01-01T${shift.officeEndTime}:00`).getHours() <
+            new Date(`1970-01-01T${shift.startTime}:00`).getHours()
+      )
 
-      if (shiftMaxEndTime < shiftStartTime) {
-        shiftMaxEndTime.setDate(shiftMaxEndTime.getDate() + 1)
-      }
+      // Tạo timestamp đầy đủ cho thời gian kết thúc ca
+      const shiftMaxEndTime = createFullTimestamp(
+        baseDate,
+        shift.endTime || shift.officeEndTime,
+        isOvernight
+      )
 
       // Tính thời gian ca làm việc chuẩn (phút)
       const shiftDurationMs =
@@ -505,6 +562,7 @@ export const calculateDailyWorkStatus = async (date, shift) => {
         shiftStartTime,
         shiftOfficeEndTime,
         shiftMaxEndTime,
+        isOvernight, // Thêm thông tin về ca qua đêm
       }
     }
 
@@ -587,6 +645,9 @@ export const calculateDailyWorkStatus = async (date, shift) => {
         totalHoursScheduled = scheduledTimes.totalHoursScheduled
         isHolidayWork = scheduledTimes.isHolidayWork
 
+        // Lấy thông tin về ca qua đêm
+        const isOvernight = scheduledTimes.isOvernight
+
         // Kiểm tra xem có phải "Bấm Nhanh" không
         const quickPunchThresholdSeconds =
           userSettings?.quickPunchThresholdSeconds || 60
@@ -605,15 +666,42 @@ export const calculateDailyWorkStatus = async (date, shift) => {
           const scheduledStartTime = scheduledTimes.scheduledStartTime
           const scheduledOfficeEndTime = scheduledTimes.scheduledOfficeEndTime
 
+          // Điều chỉnh thời gian check-in/check-out cho ca qua đêm nếu cần
+          let adjustedCheckInTime = checkInTime
+          let adjustedCheckOutTime = checkOutTime
+
+          if (isOvernight) {
+            // Điều chỉnh thời gian check-out nếu nó nằm trong phần qua đêm của ca
+            adjustedCheckOutTime = adjustLogTimeForOvernightShift(
+              checkOutTime,
+              baseDate,
+              shift.startTime,
+              shift.endTime
+            )
+
+            // Kiểm tra xem check-out có nằm trong ngày tiếp theo không
+            const nextDay = new Date(baseDate)
+            nextDay.setDate(nextDay.getDate() + 1)
+            nextDay.setHours(0, 0, 0, 0)
+
+            if (
+              adjustedCheckOutTime >= nextDay &&
+              adjustedCheckOutTime <= scheduledOfficeEndTime
+            ) {
+              console.log('Check-out nằm trong phần qua đêm của ca')
+            }
+          }
+
           // Ngưỡng muộn cho phép (phút)
           const lateThresholdMinutes = userSettings?.lateThresholdMinutes || 0
 
           // Kiểm tra đi muộn (tính cả ngưỡng muộn cho phép)
           if (
-            checkInTime.getTime() >
+            adjustedCheckInTime.getTime() >
             scheduledStartTime.getTime() + lateThresholdMinutes * 60 * 1000
           ) {
-            const lateMs = checkInTime.getTime() - scheduledStartTime.getTime()
+            const lateMs =
+              adjustedCheckInTime.getTime() - scheduledStartTime.getTime()
             lateMinutes = Math.floor(lateMs / (1000 * 60))
 
             // Trừ ngưỡng muộn cho phép
@@ -621,9 +709,11 @@ export const calculateDailyWorkStatus = async (date, shift) => {
           }
 
           // Kiểm tra về sớm
-          if (checkOutTime.getTime() < scheduledOfficeEndTime.getTime()) {
+          if (
+            adjustedCheckOutTime.getTime() < scheduledOfficeEndTime.getTime()
+          ) {
             const earlyMs =
-              scheduledOfficeEndTime.getTime() - checkOutTime.getTime()
+              scheduledOfficeEndTime.getTime() - adjustedCheckOutTime.getTime()
             earlyMinutes = Math.floor(earlyMs / (1000 * 60))
           }
 
@@ -1261,33 +1351,34 @@ const calculateDetailedWorkHours = (
     end: lastCheckOutTime,
   }
 
-  // Xác định thời gian bắt đầu và kết thúc ca chuẩn
-  const [startHour, startMinute] = shift.startTime.split(':').map(Number)
-  const [endHour, endMinute] = shift.officeEndTime.split(':').map(Number)
+  // Kiểm tra xem ca làm việc có phải là ca qua đêm không
+  const isOvernight = isOvernightShift(shift.startTime, shift.endTime)
 
-  // Tạo đối tượng Date cho thời gian bắt đầu và kết thúc ca chuẩn
-  const scheduledStartTime = new Date(firstCheckInTime)
-  scheduledStartTime.setHours(startHour, startMinute, 0, 0)
+  // Tạo khoảng thời gian đầy đủ cho ca làm việc
+  const baseDate = new Date(firstCheckInTime)
+  baseDate.setHours(0, 0, 0, 0)
 
-  const scheduledOfficeEndTime = new Date(firstCheckInTime)
-  scheduledOfficeEndTime.setHours(endHour, endMinute, 0, 0)
+  // Tạo timestamp đầy đủ cho thời gian bắt đầu ca
+  const scheduledStartTime = createFullTimestamp(
+    baseDate,
+    shift.startTime,
+    false
+  )
 
-  // Nếu thời gian kết thúc ca nhỏ hơn thời gian bắt đầu, đó là ca qua đêm
-  if (scheduledOfficeEndTime < scheduledStartTime) {
-    scheduledOfficeEndTime.setDate(scheduledOfficeEndTime.getDate() + 1)
-  }
+  // Tạo timestamp đầy đủ cho thời gian kết thúc giờ hành chính
+  const scheduledOfficeEndTime = createFullTimestamp(
+    baseDate,
+    shift.officeEndTime,
+    isOvernight &&
+      new Date(`1970-01-01T${shift.officeEndTime}:00`).getHours() <
+        new Date(`1970-01-01T${shift.startTime}:00`).getHours()
+  )
 
   // Xác định thời gian kết thúc ca tối đa (bao gồm OT)
   let scheduledEndTime
   if (shift.endTime && shift.endTime !== shift.officeEndTime) {
-    const [maxEndHour, maxEndMinute] = shift.endTime.split(':').map(Number)
-    scheduledEndTime = new Date(firstCheckInTime)
-    scheduledEndTime.setHours(maxEndHour, maxEndMinute, 0, 0)
-
-    // Nếu thời gian kết thúc tối đa nhỏ hơn thời gian bắt đầu, đó là ca qua đêm
-    if (scheduledEndTime < scheduledStartTime) {
-      scheduledEndTime.setDate(scheduledEndTime.getDate() + 1)
-    }
+    // Tạo timestamp đầy đủ cho thời gian kết thúc ca
+    scheduledEndTime = createFullTimestamp(baseDate, shift.endTime, isOvernight)
   } else {
     // Nếu không có thời gian kết thúc tối đa, sử dụng thời gian kết thúc ca chuẩn
     scheduledEndTime = new Date(scheduledOfficeEndTime)
@@ -1319,8 +1410,12 @@ const calculateDetailedWorkHours = (
   // Xác định khoảng thời gian làm đêm
   const nightStartTime = userSettings?.nightWorkStartTime || '22:00'
   const nightEndTime = userSettings?.nightWorkEndTime || '05:00'
-  const nightInterval = createNightInterval(
-    firstCheckInTime,
+
+  // Tạo các khoảng thời gian làm đêm cho ca làm việc
+  const nightIntervals = createNightIntervalsForShift(
+    baseDate,
+    shift.startTime,
+    shift.endTime,
     nightStartTime,
     nightEndTime
   )
@@ -1332,19 +1427,35 @@ const calculateDetailedWorkHours = (
   let otNightIntervals = []
 
   if (actualStandardWorkInterval) {
-    // Tìm phần giao và phần chênh lệch của khoảng thời gian chuẩn với khoảng thời gian đêm
-    standardNightIntervals = [
-      intersection(actualStandardWorkInterval, nightInterval),
-    ].filter(Boolean)
-    standardDayIntervals = difference(actualStandardWorkInterval, nightInterval)
+    // Tìm phần giao của khoảng thời gian chuẩn với các khoảng thời gian đêm
+    standardNightIntervals = nightIntervals
+      .map((nightInterval) =>
+        intersection(actualStandardWorkInterval, nightInterval)
+      )
+      .filter(Boolean)
+
+    // Tìm phần chênh lệch của khoảng thời gian chuẩn với các khoảng thời gian đêm
+    standardDayIntervals = [actualStandardWorkInterval]
+    for (const nightInterval of nightIntervals) {
+      standardDayIntervals = standardDayIntervals.flatMap((interval) =>
+        difference(interval, nightInterval)
+      )
+    }
   }
 
   if (actualOtWorkInterval) {
-    // Tìm phần giao và phần chênh lệch của khoảng thời gian OT với khoảng thời gian đêm
-    otNightIntervals = [
-      intersection(actualOtWorkInterval, nightInterval),
-    ].filter(Boolean)
-    otDayIntervals = difference(actualOtWorkInterval, nightInterval)
+    // Tìm phần giao của khoảng thời gian OT với các khoảng thời gian đêm
+    otNightIntervals = nightIntervals
+      .map((nightInterval) => intersection(actualOtWorkInterval, nightInterval))
+      .filter(Boolean)
+
+    // Tìm phần chênh lệch của khoảng thời gian OT với các khoảng thời gian đêm
+    otDayIntervals = [actualOtWorkInterval]
+    for (const nightInterval of nightIntervals) {
+      otDayIntervals = otDayIntervals.flatMap((interval) =>
+        difference(interval, nightInterval)
+      )
+    }
   }
 
   // Tính tổng thời lượng (giờ) cho từng phân loại
@@ -1364,12 +1475,116 @@ const calculateDetailedWorkHours = (
 
   // Phân bổ lại giờ HC sau khi trừ
   if (totalStandardDuration > 0) {
-    stdDayHrs =
-      effectiveTotalStandardDuration *
-      (totalStandardDayDuration / totalStandardDuration)
-    stdNightHrs =
-      effectiveTotalStandardDuration *
-      (totalStandardNightDuration / totalStandardDuration)
+    // Nếu ca qua đêm và ngày tiếp theo là chủ nhật, cần xử lý đặc biệt
+    const isNextDaySunday =
+      isOvernight &&
+      new Date(baseDate.getTime() + 24 * 60 * 60 * 1000).getDay() === 0
+
+    if (isNextDaySunday && isOvernight) {
+      // Tìm thời điểm nửa đêm (00:00) của ngày tiếp theo
+      const midnight = new Date(baseDate)
+      midnight.setDate(midnight.getDate() + 1)
+      midnight.setHours(0, 0, 0, 0)
+
+      // Tính giờ chuẩn trước và sau nửa đêm
+      const beforeMidnightStandardIntervals = standardDayIntervals
+        .filter((interval) => interval.end <= midnight)
+        .concat(
+          standardNightIntervals.filter((interval) => interval.end <= midnight)
+        )
+
+      const afterMidnightStandardIntervals = standardDayIntervals
+        .filter((interval) => interval.start >= midnight)
+        .concat(
+          standardNightIntervals.filter(
+            (interval) => interval.start >= midnight
+          )
+        )
+
+      const beforeMidnightDuration = sumDurationInHours(
+        beforeMidnightStandardIntervals
+      )
+      const afterMidnightDuration = sumDurationInHours(
+        afterMidnightStandardIntervals
+      )
+
+      // Phân bổ giờ nghỉ và phạt theo tỷ lệ
+      if (beforeMidnightDuration + afterMidnightDuration > 0) {
+        const beforeMidnightDeduction =
+          totalDeduction * (beforeMidnightDuration / totalStandardDuration)
+        const afterMidnightDeduction =
+          totalDeduction * (afterMidnightDuration / totalStandardDuration)
+
+        // Tính giờ chuẩn hiệu quả cho từng phần
+        const effectiveBeforeMidnightDuration = Math.max(
+          0,
+          beforeMidnightDuration - beforeMidnightDeduction
+        )
+        const effectiveAfterMidnightDuration = Math.max(
+          0,
+          afterMidnightDuration - afterMidnightDeduction
+        )
+
+        // Phân loại giờ chuẩn theo ngày/đêm và trước/sau nửa đêm
+        const beforeMidnightDayIntervals = standardDayIntervals.filter(
+          (interval) => interval.end <= midnight
+        )
+        const beforeMidnightNightIntervals = standardNightIntervals.filter(
+          (interval) => interval.end <= midnight
+        )
+        const afterMidnightDayIntervals = standardDayIntervals.filter(
+          (interval) => interval.start >= midnight
+        )
+        const afterMidnightNightIntervals = standardNightIntervals.filter(
+          (interval) => interval.start >= midnight
+        )
+
+        // Tính tỷ lệ ngày/đêm cho từng phần
+        const beforeMidnightDayDuration = sumDurationInHours(
+          beforeMidnightDayIntervals
+        )
+        const beforeMidnightNightDuration = sumDurationInHours(
+          beforeMidnightNightIntervals
+        )
+        const afterMidnightDayDuration = sumDurationInHours(
+          afterMidnightDayIntervals
+        )
+        const afterMidnightNightDuration = sumDurationInHours(
+          afterMidnightNightIntervals
+        )
+
+        // Phân bổ giờ chuẩn hiệu quả
+        if (beforeMidnightDuration > 0) {
+          stdDayHrs =
+            effectiveBeforeMidnightDuration *
+            (beforeMidnightDayDuration / beforeMidnightDuration)
+          stdNightHrs =
+            effectiveBeforeMidnightDuration *
+            (beforeMidnightNightDuration / beforeMidnightDuration)
+        } else {
+          stdDayHrs = 0
+          stdNightHrs = 0
+        }
+
+        // Giờ làm chủ nhật (sau nửa đêm) được tính vào giờ OT chủ nhật
+        if (afterMidnightDuration > 0) {
+          otSundayDayHrs +=
+            effectiveAfterMidnightDuration *
+            (afterMidnightDayDuration / afterMidnightDuration)
+          otSundayNightHrs +=
+            effectiveAfterMidnightDuration *
+            (afterMidnightNightDuration / afterMidnightDuration)
+        }
+      }
+    } else {
+      // Xử lý bình thường cho các trường hợp khác
+      stdDayHrs =
+        effectiveTotalStandardDuration *
+        (totalStandardDayDuration / totalStandardDuration)
+      stdNightHrs =
+        effectiveTotalStandardDuration *
+        (totalStandardNightDuration / totalStandardDuration)
+    }
   } else {
     stdDayHrs = 0
     stdNightHrs = 0
@@ -1384,13 +1599,75 @@ const calculateDetailedWorkHours = (
   const isSunday = dayType === 'sunday'
   const isSaturday = dayType === 'saturday'
 
+  // Kiểm tra xem ca có qua đêm không và ngày tiếp theo có phải là chủ nhật không
+  const isNextDaySunday =
+    isOvernight &&
+    new Date(baseDate.getTime() + 24 * 60 * 60 * 1000).getDay() === 0
+
   if (isHolidayWork) {
+    // Nếu ngày hiện tại là ngày lễ
     otHolidayDayHrs = totalOtDayDuration
     otHolidayNightHrs = totalOtNightDuration
   } else if (isSunday) {
+    // Nếu ngày hiện tại là chủ nhật
     otSundayDayHrs = totalOtDayDuration
     otSundayNightHrs = totalOtNightDuration
+  } else if (isNextDaySunday && isOvernight) {
+    // Nếu ca qua đêm và ngày tiếp theo là chủ nhật, phân chia giờ OT
+    // Tìm thời điểm nửa đêm (00:00) của ngày tiếp theo
+    const midnight = new Date(baseDate)
+    midnight.setDate(midnight.getDate() + 1)
+    midnight.setHours(0, 0, 0, 0)
+
+    // Phân chia giờ OT trước và sau nửa đêm
+    if (actualOtWorkInterval) {
+      // Giờ OT trước nửa đêm (thuộc ngày hiện tại)
+      const beforeMidnightOtInterval = {
+        start: actualOtWorkInterval.start,
+        end:
+          midnight > actualOtWorkInterval.start
+            ? midnight
+            : actualOtWorkInterval.start,
+      }
+
+      // Giờ OT sau nửa đêm (thuộc chủ nhật)
+      const afterMidnightOtInterval = {
+        start:
+          midnight < actualOtWorkInterval.end
+            ? midnight
+            : actualOtWorkInterval.end,
+        end: actualOtWorkInterval.end,
+      }
+
+      // Tính giờ OT cho từng phần
+      if (isSaturday) {
+        // Nếu ngày hiện tại là thứ 7, phần trước nửa đêm là giờ OT thứ 7
+        otSaturdayDayHrs = sumDurationInHours(
+          otDayIntervals.filter((interval) => interval.end <= midnight)
+        )
+        otSaturdayNightHrs = sumDurationInHours(
+          otNightIntervals.filter((interval) => interval.end <= midnight)
+        )
+      } else {
+        // Nếu ngày hiện tại là ngày thường, phần trước nửa đêm là giờ OT ngày thường
+        otWeekdayDayHrs = sumDurationInHours(
+          otDayIntervals.filter((interval) => interval.end <= midnight)
+        )
+        otWeekdayNightHrs = sumDurationInHours(
+          otNightIntervals.filter((interval) => interval.end <= midnight)
+        )
+      }
+
+      // Phần sau nửa đêm là giờ OT chủ nhật
+      otSundayDayHrs = sumDurationInHours(
+        otDayIntervals.filter((interval) => interval.start >= midnight)
+      )
+      otSundayNightHrs = sumDurationInHours(
+        otNightIntervals.filter((interval) => interval.start >= midnight)
+      )
+    }
   } else if (isSaturday) {
+    // Nếu ngày hiện tại là thứ 7
     otSaturdayDayHrs = totalOtDayDuration
     otSaturdayNightHrs = totalOtNightDuration
   } else {
