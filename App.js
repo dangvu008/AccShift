@@ -85,13 +85,17 @@ const SimpleNotesDebugScreen = React.memo(() => {
 })
 
 // Set up notification handler
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-})
+try {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+    }),
+  })
+} catch (error) {
+  console.warn('Lỗi khi thiết lập notification handler:', error)
+}
 
 const Tab = createBottomTabNavigator()
 const Stack = createStackNavigator()
@@ -328,27 +332,43 @@ export default function App() {
 
   useEffect(() => {
     // Listen for notifications
-    const subscription = Notifications.addNotificationReceivedListener(
-      /** @param {Notification} notification */
-      (notification) => {
-        setNotification(notification)
-      }
-    )
+    let subscription = { remove: () => {} }
+    let responseSubscription = { remove: () => {} }
 
-    // Listen for notification responses
-    const responseSubscription =
-      Notifications.addNotificationResponseReceivedListener(
-        /** @param {NotificationResponse} response */
-        (response) => {
-          const data = response.notification.request.content.data
-
-          // Handle alarm notifications
-          if (data.isAlarm) {
-            // Navigate to alarm screen
-            // This will be handled by the navigation ref
+    try {
+      subscription = Notifications.addNotificationReceivedListener(
+        /** @param {Notification} notification */
+        (notification) => {
+          try {
+            setNotification(notification)
+          } catch (error) {
+            console.warn('Lỗi khi xử lý thông báo nhận được:', error)
           }
         }
       )
+
+      // Listen for notification responses
+      responseSubscription =
+        Notifications.addNotificationResponseReceivedListener(
+          /** @param {NotificationResponse} response */
+          (response) => {
+            try {
+              const data = response?.notification?.request?.content?.data || {}
+
+              // Handle alarm notifications
+              if (data.isAlarm) {
+                // Navigate to alarm screen
+                // This will be handled by the navigation ref
+                console.log('Nhận thông báo báo thức:', data)
+              }
+            } catch (error) {
+              console.warn('Lỗi khi xử lý phản hồi thông báo:', error)
+            }
+          }
+        )
+    } catch (error) {
+      console.warn('Lỗi khi đăng ký listener thông báo:', error)
+    }
 
     // Khởi tạo dữ liệu mẫu cho ghi chú và ca làm việc
     const initSampleData = async () => {
@@ -491,8 +511,12 @@ export default function App() {
     initSampleData()
 
     return () => {
-      subscription.remove()
-      responseSubscription.remove()
+      try {
+        subscription.remove()
+        responseSubscription.remove()
+      } catch (error) {
+        console.warn('Lỗi khi hủy đăng ký listener thông báo:', error)
+      }
     }
   }, [])
 

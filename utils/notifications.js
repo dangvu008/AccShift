@@ -1,87 +1,135 @@
-import * as Notifications from "expo-notifications"
-import AsyncStorage from "@react-native-async-storage/async-storage"
-import { NOTIFICATION_CONFIG, STORAGE_KEYS } from "../config/appConfig"
-import { formatDate } from "./helpers"
-import { Platform } from "react-native"
+import * as Notifications from 'expo-notifications'
+import AsyncStorage from '@react-native-async-storage/async-storage'
+import { NOTIFICATION_CONFIG, STORAGE_KEYS } from '../config/appConfig'
+import { formatDate } from './helpers'
+import { Platform } from 'react-native'
+
+// Kiểm tra môi trường web
+const isWeb = Platform.OS === 'web'
 
 // Cấu hình thông báo
 export const setupNotifications = async () => {
-  // Cấu hình handler cho thông báo
-  Notifications.setNotificationHandler({
-    handleNotification: async (notification) => {
-      const data = notification.request.content.data
+  try {
+    // Cấu hình handler cho thông báo
+    Notifications.setNotificationHandler({
+      handleNotification: async (notification) => {
+        try {
+          const data = notification.request.content.data || {}
 
-      // Xử lý thông báo báo thức đặc biệt
-      if (data.isAlarm) {
-        return {
-          shouldShowAlert: true,
-          shouldPlaySound: true,
-          shouldSetBadge: false,
-          priority: "max",
-          // Trên Android, sử dụng full-screen intent
-          ...(Platform.OS === "android" && {
-            android: {
-              channelId: NOTIFICATION_CONFIG.CHANNEL_ID,
-              priority: "max",
-              fullScreenIntent: true,
-            },
-          }),
+          // Xử lý thông báo báo thức đặc biệt
+          if (data.isAlarm) {
+            return {
+              shouldShowAlert: true,
+              shouldPlaySound: true,
+              shouldSetBadge: false,
+              priority: 'max',
+              // Trên Android, sử dụng full-screen intent
+              ...(Platform.OS === 'android' && {
+                android: {
+                  channelId: NOTIFICATION_CONFIG.CHANNEL_ID,
+                  priority: 'max',
+                  fullScreenIntent: true,
+                },
+              }),
+            }
+          }
+
+          // Thông báo thông thường
+          return {
+            shouldShowAlert: true,
+            shouldPlaySound: true,
+            shouldSetBadge: false,
+          }
+        } catch (error) {
+          console.warn('Lỗi trong handleNotification:', error)
+          // Fallback mặc định
+          return {
+            shouldShowAlert: true,
+            shouldPlaySound: true,
+            shouldSetBadge: false,
+          }
         }
-      }
-
-      // Thông báo thông thường
-      return {
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: false,
-      }
-    },
-  })
-
-  // Tạo kênh thông báo cho Android
-  if (Platform.OS === "android") {
-    await Notifications.setNotificationChannelAsync(NOTIFICATION_CONFIG.CHANNEL_ID, {
-      name: NOTIFICATION_CONFIG.CHANNEL_NAME,
-      importance: Notifications.AndroidImportance.MAX,
-      vibrationPattern: NOTIFICATION_CONFIG.VIBRATION_PATTERN,
-      lightColor: NOTIFICATION_CONFIG.LIGHT_COLOR,
+      },
     })
-  }
 
-  // Đăng ký xử lý khi nhận thông báo khi ứng dụng đang chạy
-  const subscription = Notifications.addNotificationReceivedListener(handleNotification)
+    // Tạo kênh thông báo cho Android
+    if (Platform.OS === 'android') {
+      try {
+        await Notifications.setNotificationChannelAsync(
+          NOTIFICATION_CONFIG.CHANNEL_ID,
+          {
+            name: NOTIFICATION_CONFIG.CHANNEL_NAME,
+            importance: Notifications.AndroidImportance.MAX,
+            vibrationPattern: NOTIFICATION_CONFIG.VIBRATION_PATTERN,
+            lightColor: NOTIFICATION_CONFIG.LIGHT_COLOR,
+          }
+        )
+      } catch (error) {
+        console.warn('Lỗi khi tạo kênh thông báo Android:', error)
+      }
+    }
 
-  // Đăng ký xử lý khi người dùng tương tác với thông báo
-  const responseSubscription = Notifications.addNotificationResponseReceivedListener(handleNotificationResponse)
+    // Đăng ký xử lý khi nhận thông báo khi ứng dụng đang chạy
+    let subscription = { remove: () => {} }
+    let responseSubscription = { remove: () => {} }
 
-  return () => {
-    subscription.remove()
-    responseSubscription.remove()
+    try {
+      subscription =
+        Notifications.addNotificationReceivedListener(handleNotification)
+
+      // Đăng ký xử lý khi người dùng tương tác với thông báo
+      responseSubscription =
+        Notifications.addNotificationResponseReceivedListener(
+          handleNotificationResponse
+        )
+    } catch (error) {
+      console.warn('Lỗi khi đăng ký listener thông báo:', error)
+    }
+
+    return () => {
+      try {
+        subscription.remove()
+        responseSubscription.remove()
+      } catch (error) {
+        console.warn('Lỗi khi hủy đăng ký listener thông báo:', error)
+      }
+    }
+  } catch (error) {
+    console.error('Lỗi khi thiết lập thông báo:', error)
+    return () => {}
   }
 }
 
 // Xử lý khi nhận thông báo
 const handleNotification = (notification) => {
-  const data = notification.request.content.data
+  try {
+    const data = notification.request?.content?.data || {}
 
-  // Ghi log thông báo nếu cần
-  console.log("Received notification:", notification.request.content)
+    // Ghi log thông báo nếu cần
+    console.log('Received notification:', notification.request?.content)
 
-  // Xử lý thông báo báo thức đặc biệt
-  if (data.isAlarm && data.type) {
-    // Mở màn hình báo thức toàn màn hình
-    // Điều này sẽ được xử lý bởi handleNotificationResponse
+    // Xử lý thông báo báo thức đặc biệt
+    if (data.isAlarm && data.type) {
+      // Mở màn hình báo thức toàn màn hình
+      // Điều này sẽ được xử lý bởi handleNotificationResponse
+    }
+  } catch (error) {
+    console.warn('Lỗi khi xử lý thông báo:', error)
   }
 }
 
 // Xử lý khi người dùng tương tác với thông báo
 const handleNotificationResponse = (response) => {
-  const data = response.notification.request.content.data
+  try {
+    const data = response?.notification?.request?.content?.data || {}
 
-  // Xử lý thông báo báo thức
-  if (data.isAlarm) {
-    // Mở màn hình báo thức toàn màn hình
-    // Điều này sẽ được xử lý bởi navigation trong App.js
+    // Xử lý thông báo báo thức
+    if (data.isAlarm) {
+      // Mở màn hình báo thức toàn màn hình
+      // Điều này sẽ được xử lý bởi navigation trong App.js
+    }
+  } catch (error) {
+    console.warn('Lỗi khi xử lý phản hồi thông báo:', error)
   }
 }
 
@@ -97,7 +145,7 @@ export const scheduleNoteReminder = async (note, shifts, t) => {
     await cancelNoteReminder(notificationId)
 
     // Xử lý thời gian nhắc nhở
-    const [hours, minutes] = note.reminderTime.split(":").map(Number)
+    const [hours, minutes] = note.reminderTime.split(':').map(Number)
 
     // Nếu ghi chú liên kết với ca làm việc
     if (note.linkedShifts && note.linkedShifts.length > 0) {
@@ -108,7 +156,15 @@ export const scheduleNoteReminder = async (note, shifts, t) => {
 
         // Lên lịch nhắc nhở cho các ngày áp dụng của ca
         for (const day of shift.daysApplied) {
-          await scheduleReminderForDay(day, hours, minutes, note, notificationId, t, shift)
+          await scheduleReminderForDay(
+            day,
+            hours,
+            minutes,
+            note,
+            notificationId,
+            t,
+            shift
+          )
         }
       }
     }
@@ -116,19 +172,34 @@ export const scheduleNoteReminder = async (note, shifts, t) => {
     else if (note.reminderDays && note.reminderDays.length > 0) {
       // Lên lịch nhắc nhở cho từng ngày đã chọn
       for (const day of note.reminderDays) {
-        await scheduleReminderForDay(day, hours, minutes, note, notificationId, t)
+        await scheduleReminderForDay(
+          day,
+          hours,
+          minutes,
+          note,
+          notificationId,
+          t
+        )
       }
     }
 
     return true
   } catch (error) {
-    console.error("Error scheduling note reminder:", error)
+    console.error('Error scheduling note reminder:', error)
     return false
   }
 }
 
 // Lên lịch nhắc nhở cho một ngày cụ thể
-const scheduleReminderForDay = async (day, hours, minutes, note, notificationId, t, shift = null) => {
+const scheduleReminderForDay = async (
+  day,
+  hours,
+  minutes,
+  note,
+  notificationId,
+  t,
+  shift = null
+) => {
   // Chuyển đổi ngày trong tuần sang số (0 = CN, 1 = T2, ...)
   const dayMap = { CN: 0, T2: 1, T3: 2, T4: 3, T5: 4, T6: 5, T7: 6 }
   const dayOfWeek = dayMap[day]
@@ -156,12 +227,12 @@ const scheduleReminderForDay = async (day, hours, minutes, note, notificationId,
   if (reminderTime <= now) return
 
   // Chuẩn bị nội dung thông báo
-  const title = note.title || t("Note Reminder")
-  let body = note.content || ""
+  const title = note.title || t('Note Reminder')
+  let body = note.content || ''
 
   // Thêm thông tin ca làm việc nếu có
   if (shift) {
-    body = `${body}\n${t("Shift")}: ${shift.name}`
+    body = `${body}\n${t('Shift')}: ${shift.name}`
   }
 
   // Lên lịch thông báo báo thức
@@ -171,7 +242,7 @@ const scheduleReminderForDay = async (day, hours, minutes, note, notificationId,
       body: body,
       data: {
         isAlarm: true,
-        type: "note",
+        type: 'note',
         noteId: note.id,
         shiftId: shift?.id,
         title: title,
@@ -196,18 +267,21 @@ const scheduleReminderForDay = async (day, hours, minutes, note, notificationId,
  */
 export const cancelNoteReminder = async (notificationId) => {
   try {
-    const scheduledNotifications = await Notifications.getAllScheduledNotificationsAsync()
+    const scheduledNotifications =
+      await Notifications.getAllScheduledNotificationsAsync()
 
     // Tìm và hủy tất cả thông báo liên quan đến ghi chú
     for (const notification of scheduledNotifications) {
       if (notification.identifier.startsWith(notificationId)) {
-        await Notifications.cancelScheduledNotificationAsync(notification.identifier)
+        await Notifications.cancelScheduledNotificationAsync(
+          notification.identifier
+        )
       }
     }
 
     return true
   } catch (error) {
-    console.error("Error canceling note reminder:", error)
+    console.error('Error canceling note reminder:', error)
     return false
   }
 }
@@ -229,28 +303,42 @@ export const scheduleShiftReminder = async (shift, t) => {
     await cancelShiftReminder(notificationId)
 
     // Xử lý thời gian bắt đầu ca
-    const [startHour, startMinute] = shift.startTime.split(":").map(Number)
+    const [startHour, startMinute] = shift.startTime.split(':').map(Number)
 
     // Lên lịch nhắc nhở trước khi bắt đầu ca
     if (shift.reminderBefore > 0) {
       for (const day of shift.daysApplied) {
-        await scheduleShiftStartReminder(day, startHour, startMinute, shift, notificationId, t)
+        await scheduleShiftStartReminder(
+          day,
+          startHour,
+          startMinute,
+          shift,
+          notificationId,
+          t
+        )
       }
     }
 
     // Xử lý thời gian kết thúc ca
-    const [endHour, endMinute] = shift.endTime.split(":").map(Number)
+    const [endHour, endMinute] = shift.endTime.split(':').map(Number)
 
     // Lên lịch nhắc nhở trước khi kết thúc ca
     if (shift.reminderAfter > 0) {
       for (const day of shift.daysApplied) {
-        await scheduleShiftEndReminder(day, endHour, endMinute, shift, notificationId, t)
+        await scheduleShiftEndReminder(
+          day,
+          endHour,
+          endMinute,
+          shift,
+          notificationId,
+          t
+        )
       }
     }
 
     return true
   } catch (error) {
-    console.error("Error scheduling shift reminder:", error)
+    console.error('Error scheduling shift reminder:', error)
     return false
   }
 }
@@ -258,7 +346,14 @@ export const scheduleShiftReminder = async (shift, t) => {
 /**
  * Lên lịch nhắc nhở trước khi bắt đầu ca
  */
-const scheduleShiftStartReminder = async (day, startHour, startMinute, shift, notificationId, t) => {
+const scheduleShiftStartReminder = async (
+  day,
+  startHour,
+  startMinute,
+  shift,
+  notificationId,
+  t
+) => {
   // Chuyển đổi ngày trong tuần sang số (0 = CN, 1 = T2, ...)
   const dayMap = { CN: 0, T2: 1, T3: 2, T4: 3, T5: 4, T6: 5, T7: 6 }
   const dayOfWeek = dayMap[day]
@@ -283,7 +378,9 @@ const scheduleShiftStartReminder = async (day, startHour, startMinute, shift, no
   shiftStart.setDate(shiftStart.getDate() + daysToAdd)
 
   // Tính thời gian nhắc nhở (trước khi bắt đầu ca)
-  const reminderTime = new Date(shiftStart.getTime() - shift.reminderBefore * 60 * 1000)
+  const reminderTime = new Date(
+    shiftStart.getTime() - shift.reminderBefore * 60 * 1000
+  )
 
   // Nếu thời gian nhắc nhở đã qua, không lên lịch
   if (reminderTime <= now) return
@@ -291,16 +388,20 @@ const scheduleShiftStartReminder = async (day, startHour, startMinute, shift, no
   // Lên lịch thông báo báo thức
   await Notifications.scheduleNotificationAsync({
     content: {
-      title: t("Shift Reminder"),
-      body: `${shift.name} ${t("starts in")} ${shift.reminderBefore} ${t("minutes")}`,
+      title: t('Shift Reminder'),
+      body: `${shift.name} ${t('starts in')} ${shift.reminderBefore} ${t(
+        'minutes'
+      )}`,
       data: {
         isAlarm: true,
-        type: "shift",
+        type: 'shift',
         shiftId: shift.id,
-        title: t("Shift Reminder"),
-        message: `${shift.name} ${t("starts in")} ${shift.reminderBefore} ${t("minutes")}`,
+        title: t('Shift Reminder'),
+        message: `${shift.name} ${t('starts in')} ${shift.reminderBefore} ${t(
+          'minutes'
+        )}`,
         time: reminderTime.toISOString(),
-        reminderType: "start",
+        reminderType: 'start',
       },
       sound: true,
       channelId: NOTIFICATION_CONFIG.CHANNEL_ID,
@@ -317,7 +418,14 @@ const scheduleShiftStartReminder = async (day, startHour, startMinute, shift, no
 /**
  * Lên lịch nhắc nhở trước khi kết thúc ca
  */
-const scheduleShiftEndReminder = async (day, endHour, endMinute, shift, notificationId, t) => {
+const scheduleShiftEndReminder = async (
+  day,
+  endHour,
+  endMinute,
+  shift,
+  notificationId,
+  t
+) => {
   // Chuyển đổi ngày trong tuần sang số (0 = CN, 1 = T2, ...)
   const dayMap = { CN: 0, T2: 1, T3: 2, T4: 3, T5: 4, T6: 5, T7: 6 }
   const dayOfWeek = dayMap[day]
@@ -342,7 +450,9 @@ const scheduleShiftEndReminder = async (day, endHour, endMinute, shift, notifica
   shiftEnd.setDate(shiftEnd.getDate() + daysToAdd)
 
   // Tính thời gian nhắc nhở (trước khi kết thúc ca)
-  const reminderTime = new Date(shiftEnd.getTime() - shift.reminderAfter * 60 * 1000)
+  const reminderTime = new Date(
+    shiftEnd.getTime() - shift.reminderAfter * 60 * 1000
+  )
 
   // Nếu thời gian nhắc nhở đã qua, không lên lịch
   if (reminderTime <= now) return
@@ -350,16 +460,20 @@ const scheduleShiftEndReminder = async (day, endHour, endMinute, shift, notifica
   // Lên lịch thông báo báo thức
   await Notifications.scheduleNotificationAsync({
     content: {
-      title: t("Shift Ending Soon"),
-      body: `${shift.name} ${t("will end in")} ${shift.reminderAfter} ${t("minutes")}`,
+      title: t('Shift Ending Soon'),
+      body: `${shift.name} ${t('will end in')} ${shift.reminderAfter} ${t(
+        'minutes'
+      )}`,
       data: {
         isAlarm: true,
-        type: "shift",
+        type: 'shift',
         shiftId: shift.id,
-        title: t("Shift Ending Soon"),
-        message: `${shift.name} ${t("will end in")} ${shift.reminderAfter} ${t("minutes")}`,
+        title: t('Shift Ending Soon'),
+        message: `${shift.name} ${t('will end in')} ${shift.reminderAfter} ${t(
+          'minutes'
+        )}`,
         time: reminderTime.toISOString(),
-        reminderType: "end",
+        reminderType: 'end',
       },
       sound: true,
       channelId: NOTIFICATION_CONFIG.CHANNEL_ID,
@@ -379,18 +493,21 @@ const scheduleShiftEndReminder = async (day, endHour, endMinute, shift, notifica
  */
 export const cancelShiftReminder = async (notificationId) => {
   try {
-    const scheduledNotifications = await Notifications.getAllScheduledNotificationsAsync()
+    const scheduledNotifications =
+      await Notifications.getAllScheduledNotificationsAsync()
 
     // Tìm và hủy tất cả thông báo liên quan đến ca làm việc
     for (const notification of scheduledNotifications) {
       if (notification.identifier.startsWith(notificationId)) {
-        await Notifications.cancelScheduledNotificationAsync(notification.identifier)
+        await Notifications.cancelScheduledNotificationAsync(
+          notification.identifier
+        )
       }
     }
 
     return true
   } catch (error) {
-    console.error("Error canceling shift reminder:", error)
+    console.error('Error canceling shift reminder:', error)
     return false
   }
 }
@@ -401,30 +518,40 @@ export const cancelShiftReminder = async (notificationId) => {
  */
 export const logNotification = async (notification) => {
   try {
+    if (!notification || !notification.request) {
+      console.warn('Thông báo không hợp lệ để ghi log')
+      return
+    }
+
     const now = new Date()
     const today = formatDate(now)
     const logsKey = `${STORAGE_KEYS.NOTIFICATION_LOGS_PREFIX}${today}`
 
     // Lấy logs hiện tại
     let logs = []
-    const logsJson = await AsyncStorage.getItem(logsKey)
-    if (logsJson) {
-      logs = JSON.parse(logsJson)
+    try {
+      const logsJson = await AsyncStorage.getItem(logsKey)
+      if (logsJson) {
+        logs = JSON.parse(logsJson)
+      }
+    } catch (parseError) {
+      console.warn('Lỗi khi đọc logs thông báo:', parseError)
+      // Tiếp tục với mảng rỗng
     }
 
-    // Thêm log mới
+    // Thêm log mới với kiểm tra null/undefined
     logs.push({
       id: Date.now().toString(),
       timestamp: now.getTime(),
-      title: notification.request.content.title,
-      body: notification.request.content.body,
-      data: notification.request.content.data,
+      title: notification.request?.content?.title || 'Không có tiêu đề',
+      body: notification.request?.content?.body || 'Không có nội dung',
+      data: notification.request?.content?.data || {},
     })
 
     // Lưu logs
     await AsyncStorage.setItem(logsKey, JSON.stringify(logs))
   } catch (error) {
-    console.error("Error logging notification:", error)
+    console.error('Lỗi khi ghi log thông báo:', error)
   }
 }
 

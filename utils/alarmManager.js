@@ -5,8 +5,16 @@ const Battery = {
 }
 import { Platform } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { NOTIFICATION_CONFIG } from '../config/appConfig'
+import { NOTIFICATION_CONFIG, API_CONFIG } from '../config/appConfig'
 import { logNotification } from './notifications'
+
+// Kiểm tra môi trường web
+const isWeb = Platform.OS === 'web'
+const isSnack =
+  isWeb &&
+  typeof window !== 'undefined' &&
+  window.location &&
+  window.location.hostname.includes('snack.expo')
 
 /**
  * Lớp quản lý báo thức với độ tin cậy cao
@@ -26,40 +34,75 @@ class AlarmManager {
   async initialize() {
     if (this.initialized) return
 
-    // Kiểm tra quyền thông báo
-    const { status } = await Notifications.getPermissionsAsync()
-    this.hasPermission = status === 'granted'
-
-    // Kiểm tra quyền thông báo quan trọng (iOS)
-    if (Platform.OS === 'ios') {
-      const settings = await Notifications.getPermissionsAsync()
-      this.hasCriticalPermission = settings.ios?.allowsCriticalAlerts || false
-    }
-
-    // Kiểm tra tối ưu hóa pin (Android)
-    if (Platform.OS === 'android') {
-      try {
-        // Trên thiết bị thực, sử dụng thư viện như react-native-battery-optimization-check
-        // Đây chỉ là mã giả để mô phỏng chức năng
-        const batteryOptimizationStatus =
-          await Battery.isBatteryOptimizationEnabledAsync()
-        this.hasBatteryOptimizationDisabled = !batteryOptimizationStatus
-      } catch (error) {
-        console.warn('Không thể kiểm tra trạng thái tối ưu hóa pin:', error)
-        this.hasBatteryOptimizationDisabled = false
+    try {
+      // Kiểm tra nếu đang chạy trên Snack
+      if (isSnack) {
+        console.log('Đang chạy trên Snack, sử dụng chế độ giả lập thông báo')
+        this.hasPermission = true
+        this.hasCriticalPermission = true
+        this.hasBatteryOptimizationDisabled = true
+        this.initialized = true
+        return {
+          hasPermission: true,
+          hasCriticalPermission: true,
+          hasBatteryOptimizationDisabled: true,
+        }
       }
-    }
 
-    // Cấu hình kênh thông báo cho Android
-    if (Platform.OS === 'android') {
-      await this._setupNotificationChannels()
-    }
+      // Kiểm tra quyền thông báo
+      try {
+        const { status } = await Notifications.getPermissionsAsync()
+        this.hasPermission = status === 'granted'
+      } catch (error) {
+        console.warn('Lỗi khi kiểm tra quyền thông báo:', error)
+        this.hasPermission = false
+      }
 
-    this.initialized = true
-    return {
-      hasPermission: this.hasPermission,
-      hasCriticalPermission: this.hasCriticalPermission,
-      hasBatteryOptimizationDisabled: this.hasBatteryOptimizationDisabled,
+      // Kiểm tra quyền thông báo quan trọng (iOS)
+      if (Platform.OS === 'ios') {
+        try {
+          const settings = await Notifications.getPermissionsAsync()
+          this.hasCriticalPermission =
+            settings.ios?.allowsCriticalAlerts || false
+        } catch (error) {
+          console.warn('Lỗi khi kiểm tra quyền thông báo quan trọng:', error)
+          this.hasCriticalPermission = false
+        }
+      }
+
+      // Kiểm tra tối ưu hóa pin (Android)
+      if (Platform.OS === 'android') {
+        try {
+          // Trên thiết bị thực, sử dụng thư viện như react-native-battery-optimization-check
+          // Đây chỉ là mã giả để mô phỏng chức năng
+          const batteryOptimizationStatus =
+            await Battery.isBatteryOptimizationEnabledAsync()
+          this.hasBatteryOptimizationDisabled = !batteryOptimizationStatus
+        } catch (error) {
+          console.warn('Không thể kiểm tra trạng thái tối ưu hóa pin:', error)
+          this.hasBatteryOptimizationDisabled = false
+        }
+      }
+
+      // Cấu hình kênh thông báo cho Android
+      if (Platform.OS === 'android') {
+        await this._setupNotificationChannels()
+      }
+
+      this.initialized = true
+      return {
+        hasPermission: this.hasPermission,
+        hasCriticalPermission: this.hasCriticalPermission,
+        hasBatteryOptimizationDisabled: this.hasBatteryOptimizationDisabled,
+      }
+    } catch (error) {
+      console.error('Lỗi khi khởi tạo AlarmManager:', error)
+      this.initialized = true // Đánh dấu là đã khởi tạo để tránh lặp lại
+      return {
+        hasPermission: false,
+        hasCriticalPermission: false,
+        hasBatteryOptimizationDisabled: false,
+      }
     }
   }
 
@@ -181,90 +224,125 @@ class AlarmManager {
     repeats = false,
     weekday = null,
   }) {
-    if (!this.initialized) {
-      await this.initialize()
-    }
-
-    if (!this.hasPermission) {
-      const granted = await this.requestPermissions()
-      if (!granted) {
-        throw new Error('Không có quyền thông báo')
+    try {
+      if (!this.initialized) {
+        await this.initialize()
       }
-    }
 
-    // Xác định kênh thông báo dựa trên loại
-    let channelId = NOTIFICATION_CONFIG.CHANNEL_ID
-    if (type === 'shift') {
-      channelId = 'shift_reminders'
-    } else if (type === 'note') {
-      channelId = 'note_reminders'
-    }
-
-    // Tạo nội dung thông báo
-    const notificationContent = {
-      title: this._formatAlarmTitle(title, type),
-      body,
-      data: {
-        isAlarm: true,
-        type,
-        id,
-        title,
-        message: body,
-        time: scheduledTime.toISOString(),
-        ...data,
-      },
-      sound: true,
-      vibrate: true,
-      priority: 'high',
-      channelId,
-    }
-
-    // Tạo trigger
-    let trigger = { date: scheduledTime }
-
-    // Nếu lặp lại theo ngày trong tuần
-    if (repeats && weekday) {
-      trigger = {
-        weekday,
-        hour: scheduledTime.getHours(),
-        minute: scheduledTime.getMinutes(),
-        repeats: true,
+      // Kiểm tra nếu đang chạy trên Snack
+      if (isSnack) {
+        console.log('Đang chạy trên Snack, giả lập lên lịch báo thức:', {
+          title,
+          type,
+          scheduledTime: scheduledTime?.toISOString(),
+        })
+        // Trả về ID giả lập
+        const mockId = `mock_${id}_${Date.now()}`
+        await this._saveScheduledAlarm({
+          id: mockId,
+          title,
+          body,
+          scheduledTime: scheduledTime?.toISOString(),
+          type,
+          data,
+          repeats,
+          weekday,
+        })
+        return mockId
       }
-    }
 
-    // Cấu hình đặc biệt cho Android
-    if (Platform.OS === 'android') {
-      // Sử dụng full-screen intent cho báo thức quan trọng
-      if (type === 'check_in' || type === 'check_out') {
-        notificationContent.android = {
-          ...notificationContent.android,
-          channelId: NOTIFICATION_CONFIG.CHANNEL_ID,
-          priority: 'max',
-          fullScreenIntent: true,
+      if (!this.hasPermission) {
+        try {
+          const granted = await this.requestPermissions()
+          if (!granted) {
+            console.warn(
+              'Không có quyền thông báo, không thể lên lịch báo thức'
+            )
+            return null
+          }
+        } catch (error) {
+          console.error('Lỗi khi yêu cầu quyền thông báo:', error)
+          return null
         }
       }
+
+      // Xác định kênh thông báo dựa trên loại
+      let channelId = NOTIFICATION_CONFIG.CHANNEL_ID
+      if (type === 'shift') {
+        channelId = 'shift_reminders'
+      } else if (type === 'note') {
+        channelId = 'note_reminders'
+      }
+
+      // Tạo nội dung thông báo
+      const notificationContent = {
+        title: this._formatAlarmTitle(title, type),
+        body,
+        data: {
+          isAlarm: true,
+          type,
+          id,
+          title,
+          message: body,
+          time: scheduledTime?.toISOString(),
+          ...data,
+        },
+        sound: true,
+        vibrate: true,
+        priority: 'high',
+        channelId,
+      }
+
+      // Tạo trigger
+      let trigger = { date: scheduledTime }
+
+      // Nếu lặp lại theo ngày trong tuần
+      if (repeats && weekday) {
+        trigger = {
+          weekday,
+          hour: scheduledTime.getHours(),
+          minute: scheduledTime.getMinutes(),
+          repeats: true,
+        }
+      }
+
+      // Cấu hình đặc biệt cho Android
+      if (Platform.OS === 'android') {
+        // Sử dụng full-screen intent cho báo thức quan trọng
+        if (type === 'check_in' || type === 'check_out') {
+          notificationContent.android = {
+            ...notificationContent.android,
+            channelId: NOTIFICATION_CONFIG.CHANNEL_ID,
+            priority: 'max',
+            fullScreenIntent: true,
+          }
+        }
+      }
+
+      // Lên lịch thông báo
+      const notificationId = await Notifications.scheduleNotificationAsync({
+        content: notificationContent,
+        trigger,
+        identifier: id,
+      })
+
+      // Lưu thông tin báo thức để theo dõi
+      await this._saveScheduledAlarm({
+        id: notificationId,
+        title,
+        body,
+        scheduledTime: scheduledTime?.toISOString(),
+        type,
+        data,
+        repeats,
+        weekday,
+      })
+
+      return notificationId
+    } catch (error) {
+      console.error('Lỗi khi lên lịch báo thức:', error)
+      return null
     }
-
-    // Lên lịch thông báo
-    const notificationId = await Notifications.scheduleNotificationAsync({
-      content: notificationContent,
-      trigger,
-      identifier: id,
-    })
-
-    // Lưu thông tin báo thức để theo dõi
-    await this._saveScheduledAlarm({
-      id: notificationId,
-      title,
-      body,
-      scheduledTime: scheduledTime.toISOString(),
-      type,
-      data,
-      repeats,
-      weekday,
-    })
-
-    return notificationId
   }
 
   /**
