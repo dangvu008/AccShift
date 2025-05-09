@@ -121,404 +121,426 @@ const WeatherWidget = ({ onPress }) => {
   }, [t]) // Chỉ phụ thuộc vào t
 
   // Di chuyển hàm fetchWeatherData ra ngoài useEffect để có thể tái sử dụng
-  const fetchWeatherData = useCallback(async (forceRefresh = false) => {
-    // Sử dụng biến cờ để theo dõi trạng thái mount của component
-    let isMounted = true
+  const fetchWeatherData = useCallback(
+    async (forceRefresh = false) => {
+      // Sử dụng biến cờ để theo dõi trạng thái mount của component
+      let isMounted = true
 
-    // Đặt timeout để đảm bảo hàm không chạy quá lâu
-    const fetchTimeout = setTimeout(() => {
-      if (isMounted) {
-        console.log('Timeout khi lấy dữ liệu thời tiết')
-        setLoading(false)
-        setRefreshing(false)
+      // Đặt timeout để đảm bảo hàm không chạy quá lâu
+      const fetchTimeout = setTimeout(() => {
+        if (isMounted) {
+          console.log('Timeout khi lấy dữ liệu thời tiết')
+          setLoading(false)
+          setRefreshing(false)
 
-        // Không hiển thị thông báo lỗi timeout cho người dùng
-        // Thay vào đó, tự động thử lại với API key khác
-        if (typeof rotateApiKeyAndRetry === 'function') {
-          rotateApiKeyAndRetry()
+          // Không hiển thị thông báo lỗi timeout cho người dùng
+          // Thay vào đó, tự động thử lại với API key khác
+          if (typeof rotateApiKeyAndRetry === 'function') {
+            rotateApiKeyAndRetry()
+          }
         }
-      }
-    }, 15000) // Giảm xuống 15 giây timeout để phản hồi nhanh hơn
+      }, 15000) // Giảm xuống 15 giây timeout để phản hồi nhanh hơn
 
-    try {
-      // Đặt trạng thái loading nếu chưa được đặt
-      if (!loading) {
-        setLoading(true)
-      }
-
-      // Kiểm tra quyền vị trí
-      if (!locationPermissionGranted) {
-        console.log('Không có quyền vị trí, không thể lấy dữ liệu thời tiết')
-        setLoading(false)
-        clearTimeout(fetchTimeout)
-        return
-      }
-
-      // Sử dụng vị trí nhà làm vị trí chính, nếu không có thì dùng vị trí công ty
-      const primaryLocation = homeLocation || workLocation
-
-      if (!primaryLocation) {
-        console.log('Không có vị trí được lưu, không thể lấy dữ liệu thời tiết')
-        setLoading(false)
-        clearTimeout(fetchTimeout)
-        return
-      }
-
-      // Nếu yêu cầu làm mới, xóa cache thời tiết trước
-      if (forceRefresh) {
-        try {
-          console.log('Xóa cache thời tiết trước khi tải dữ liệu mới...')
-          await weatherService.clearWeatherCache()
-
-          // Đợi một chút để đảm bảo cache đã được xóa
-          await new Promise((resolve) => setTimeout(resolve, 300))
-        } catch (cacheError) {
-          console.error('Lỗi khi xóa cache thời tiết:', cacheError)
-          // Tiếp tục thực hiện ngay cả khi có lỗi xóa cache
+      try {
+        // Đặt trạng thái loading nếu chưa được đặt
+        if (!loading) {
+          setLoading(true)
         }
-      }
 
-      console.log('Bắt đầu tải dữ liệu thời tiết...')
+        // Kiểm tra quyền vị trí
+        if (!locationPermissionGranted) {
+          console.log('Không có quyền vị trí, không thể lấy dữ liệu thời tiết')
+          setLoading(false)
+          clearTimeout(fetchTimeout)
+          return
+        }
 
-      // Biến để theo dõi dữ liệu thời tiết ở cả hai vị trí
-      let homeWeatherData = null
-      let homeHourlyForecast = []
-      let homeAlerts = []
+        // Sử dụng vị trí nhà làm vị trí chính, nếu không có thì dùng vị trí công ty
+        const primaryLocation = homeLocation || workLocation
 
-      let workWeatherData = null
-      let workHourlyForecast = []
-      let workAlerts = []
-
-      // 1. Lấy dữ liệu thời tiết cho vị trí nhà (nếu có)
-      if (homeLocation) {
-        try {
-          console.log('Đang tải dữ liệu thời tiết cho vị trí nhà...')
-
-          // Lấy thời tiết hiện tại
-          homeWeatherData = await weatherService.getCurrentWeather(
-            homeLocation.latitude,
-            homeLocation.longitude
+        if (!primaryLocation) {
+          console.log(
+            'Không có vị trí được lưu, không thể lấy dữ liệu thời tiết'
           )
+          setLoading(false)
+          clearTimeout(fetchTimeout)
+          return
+        }
 
-          if (homeWeatherData) {
-            console.log(
-              'Đã tải thành công dữ liệu thời tiết hiện tại cho vị trí nhà'
+        // Nếu yêu cầu làm mới, xóa cache thời tiết trước
+        if (forceRefresh) {
+          try {
+            console.log('Xóa cache thời tiết trước khi tải dữ liệu mới...')
+            await weatherService.clearWeatherCache()
+
+            // Đợi một chút để đảm bảo cache đã được xóa
+            await new Promise((resolve) => setTimeout(resolve, 300))
+          } catch (cacheError) {
+            console.error('Lỗi khi xóa cache thời tiết:', cacheError)
+            // Tiếp tục thực hiện ngay cả khi có lỗi xóa cache
+          }
+        }
+
+        console.log('Bắt đầu tải dữ liệu thời tiết...')
+
+        // Biến để theo dõi dữ liệu thời tiết ở cả hai vị trí
+        let homeWeatherData = null
+        let homeHourlyForecast = []
+        let homeAlerts = []
+
+        let workWeatherData = null
+        let workHourlyForecast = []
+        let workAlerts = []
+
+        // 1. Lấy dữ liệu thời tiết cho vị trí nhà (nếu có)
+        if (homeLocation) {
+          try {
+            console.log('Đang tải dữ liệu thời tiết cho vị trí nhà...')
+
+            // Lấy thời tiết hiện tại
+            homeWeatherData = await weatherService.getCurrentWeather(
+              homeLocation.latitude,
+              homeLocation.longitude
             )
-          }
 
-          // Lấy dự báo theo giờ
-          const homeForecast = await weatherService.getHourlyForecast(
-            homeLocation.latitude,
-            homeLocation.longitude
-          )
-
-          if (homeForecast && homeForecast.length > 0) {
-            console.log('Đã tải thành công dự báo theo giờ cho vị trí nhà')
-
-            // Lấy thời gian hiện tại
-            const now = new Date()
-
-            // Lọc và sắp xếp dự báo để lấy 4 giờ tiếp theo liên tiếp
-            const filteredForecast = homeForecast
-              .filter((item) => new Date(item.dt * 1000) > now)
-              .sort((a, b) => a.dt - b.dt)
-              .slice(0, 4)
-
-            homeHourlyForecast = filteredForecast
-          } else {
-            console.log('Không có dữ liệu dự báo theo giờ cho vị trí nhà')
-          }
-
-          // Lấy cảnh báo thời tiết
-          const alerts = await weatherService.getWeatherAlerts(
-            homeLocation.latitude,
-            homeLocation.longitude
-          )
-
-          if (alerts && alerts.length > 0) {
-            homeAlerts = alerts
-            console.log('Đã tải thành công cảnh báo thời tiết cho vị trí nhà')
-          }
-        } catch (error) {
-          console.error('Lỗi khi tải dữ liệu thời tiết cho vị trí nhà:', error)
-        }
-      }
-
-      // 2. Lấy dữ liệu thời tiết cho vị trí công ty (nếu có và khác vị trí nhà)
-      if (
-        workLocation &&
-        homeLocation &&
-        (workLocation.latitude !== homeLocation.latitude ||
-          workLocation.longitude !== homeLocation.longitude)
-      ) {
-        try {
-          console.log('Đang tải dữ liệu thời tiết cho vị trí công ty...')
-
-          // Lấy thời tiết hiện tại
-          workWeatherData = await weatherService.getCurrentWeather(
-            workLocation.latitude,
-            workLocation.longitude
-          )
-
-          if (workWeatherData) {
-            console.log(
-              'Đã tải thành công dữ liệu thời tiết hiện tại cho vị trí công ty'
-            )
-          }
-
-          // Lấy dự báo theo giờ
-          const workForecast = await weatherService.getHourlyForecast(
-            workLocation.latitude,
-            workLocation.longitude
-          )
-
-          if (workForecast && workForecast.length > 0) {
-            console.log('Đã tải thành công dự báo theo giờ cho vị trí công ty')
-
-            // Lấy thời gian hiện tại
-            const now = new Date()
-
-            // Lọc và sắp xếp dự báo để lấy 4 giờ tiếp theo liên tiếp
-            const filteredForecast = workForecast
-              .filter((item) => new Date(item.dt * 1000) > now)
-              .sort((a, b) => a.dt - b.dt)
-              .slice(0, 4)
-
-            workHourlyForecast = filteredForecast
-          } else {
-            console.log('Không có dữ liệu dự báo theo giờ cho vị trí công ty')
-          }
-
-          // Lấy cảnh báo thời tiết
-          const alerts = await weatherService.getWeatherAlerts(
-            workLocation.latitude,
-            workLocation.longitude
-          )
-
-          if (alerts && alerts.length > 0) {
-            workAlerts = alerts
-            console.log(
-              'Đã tải thành công cảnh báo thời tiết cho vị trí công ty'
-            )
-          }
-        } catch (error) {
-          console.error(
-            'Lỗi khi tải dữ liệu thời tiết cho vị trí công ty:',
-            error
-          )
-        }
-      }
-
-      if (!isMounted) return
-
-      // 3. Cập nhật state với dữ liệu đã lấy được
-      // Kiểm tra xem có dữ liệu thời tiết không
-      if (!homeWeatherData && !workWeatherData) {
-        console.log(
-          'Không có dữ liệu thời tiết từ cả hai vị trí, thử lấy dữ liệu mặc định'
-        )
-
-        // Thử lấy dữ liệu thời tiết mặc định từ Hà Nội
-        try {
-          console.log('Thử lấy dữ liệu thời tiết mặc định từ Hà Nội')
-          const defaultWeather = await weatherService.getCurrentWeather()
-
-          if (defaultWeather) {
-            console.log('Đã tải thành công dữ liệu thời tiết mặc định')
-
-            // Lấy dự báo theo giờ cho vị trí mặc định
-            const defaultForecast = await weatherService.getHourlyForecast()
-
-            if (defaultForecast && defaultForecast.length > 0) {
+            if (homeWeatherData) {
               console.log(
-                'Đã tải thành công dự báo theo giờ cho vị trí mặc định'
+                'Đã tải thành công dữ liệu thời tiết hiện tại cho vị trí nhà'
+              )
+            }
+
+            // Lấy dự báo theo giờ
+            const homeForecast = await weatherService.getHourlyForecast(
+              homeLocation.latitude,
+              homeLocation.longitude
+            )
+
+            if (homeForecast && homeForecast.length > 0) {
+              console.log('Đã tải thành công dự báo theo giờ cho vị trí nhà')
+
+              // Lấy thời gian hiện tại
+              const now = new Date()
+
+              // Lọc và sắp xếp dự báo để lấy 4 giờ tiếp theo liên tiếp
+              const filteredForecast = homeForecast
+                .filter((item) => new Date(item.dt * 1000) > now)
+                .sort((a, b) => a.dt - b.dt)
+                .slice(0, 4)
+
+              homeHourlyForecast = filteredForecast
+            } else {
+              console.log('Không có dữ liệu dự báo theo giờ cho vị trí nhà')
+            }
+
+            // Lấy cảnh báo thời tiết
+            const alerts = await weatherService.getWeatherAlerts(
+              homeLocation.latitude,
+              homeLocation.longitude
+            )
+
+            if (alerts && alerts.length > 0) {
+              homeAlerts = alerts
+              console.log('Đã tải thành công cảnh báo thời tiết cho vị trí nhà')
+            }
+          } catch (error) {
+            console.error(
+              'Lỗi khi tải dữ liệu thời tiết cho vị trí nhà:',
+              error
+            )
+          }
+        }
+
+        // 2. Lấy dữ liệu thời tiết cho vị trí công ty (nếu có và khác vị trí nhà)
+        if (
+          workLocation &&
+          homeLocation &&
+          (workLocation.latitude !== homeLocation.latitude ||
+            workLocation.longitude !== homeLocation.longitude)
+        ) {
+          try {
+            console.log('Đang tải dữ liệu thời tiết cho vị trí công ty...')
+
+            // Lấy thời tiết hiện tại
+            workWeatherData = await weatherService.getCurrentWeather(
+              workLocation.latitude,
+              workLocation.longitude
+            )
+
+            if (workWeatherData) {
+              console.log(
+                'Đã tải thành công dữ liệu thời tiết hiện tại cho vị trí công ty'
+              )
+            }
+
+            // Lấy dự báo theo giờ
+            const workForecast = await weatherService.getHourlyForecast(
+              workLocation.latitude,
+              workLocation.longitude
+            )
+
+            if (workForecast && workForecast.length > 0) {
+              console.log(
+                'Đã tải thành công dự báo theo giờ cho vị trí công ty'
               )
 
               // Lấy thời gian hiện tại
               const now = new Date()
 
               // Lọc và sắp xếp dự báo để lấy 4 giờ tiếp theo liên tiếp
-              const filteredForecast = defaultForecast
+              const filteredForecast = workForecast
                 .filter((item) => new Date(item.dt * 1000) > now)
                 .sort((a, b) => a.dt - b.dt)
                 .slice(0, 4)
 
-              setCurrentWeather(defaultWeather)
-              setForecast(filteredForecast)
+              workHourlyForecast = filteredForecast
             } else {
-              console.log(
-                'Không có dữ liệu dự báo theo giờ cho vị trí mặc định'
-              )
-              setCurrentWeather(defaultWeather)
-              setForecast([])
+              console.log('Không có dữ liệu dự báo theo giờ cho vị trí công ty')
             }
-          } else {
-            throw new Error('Không thể lấy dữ liệu thời tiết mặc định')
+
+            // Lấy cảnh báo thời tiết
+            const alerts = await weatherService.getWeatherAlerts(
+              workLocation.latitude,
+              workLocation.longitude
+            )
+
+            if (alerts && alerts.length > 0) {
+              workAlerts = alerts
+              console.log(
+                'Đã tải thành công cảnh báo thời tiết cho vị trí công ty'
+              )
+            }
+          } catch (error) {
+            console.error(
+              'Lỗi khi tải dữ liệu thời tiết cho vị trí công ty:',
+              error
+            )
           }
-        } catch (defaultError) {
-          console.error('Lỗi khi lấy dữ liệu thời tiết mặc định:', defaultError)
-          // Không hiển thị thông báo lỗi chi tiết nữa
-          if (isMounted) {
-            setLoading(false)
-            setRefreshing(false)
-          }
-          clearTimeout(fetchTimeout)
-          return
-        }
-      } else {
-        console.log('Đã tải thành công dữ liệu thời tiết, cập nhật state')
-
-        // Vị trí chính (nhà hoặc công ty)
-        setCurrentWeather(homeWeatherData || workWeatherData)
-        setForecast(
-          homeHourlyForecast.length > 0
-            ? homeHourlyForecast
-            : workHourlyForecast
-        )
-
-        // Vị trí công ty (nếu khác vị trí nhà)
-        setWorkWeather(workWeatherData)
-        setWorkForecast(workHourlyForecast)
-      }
-
-      // Cảnh báo thời tiết
-      const primaryAlert =
-        homeAlerts.length > 0
-          ? homeAlerts[0]
-          : workAlerts.length > 0
-          ? workAlerts[0]
-          : null
-      setWeatherAlert(primaryAlert)
-
-      // 4. Tạo cảnh báo thông minh dựa trên dữ liệu thời tiết ở cả hai vị trí
-      if (isMounted) {
-        try {
-          generateSmartAlert(
-            homeWeatherData,
-            homeHourlyForecast,
-            workWeatherData,
-            workHourlyForecast
-          )
-        } catch (alertError) {
-          console.error('Lỗi khi tạo cảnh báo thông minh:', alertError)
-          // Không để lỗi này ảnh hưởng đến việc hiển thị dữ liệu thời tiết
-        }
-      }
-
-      // Xóa timeout vì đã hoàn thành
-      clearTimeout(fetchTimeout)
-
-      if (isMounted) {
-        console.log('Hoàn thành tải dữ liệu thời tiết')
-        setLoading(false)
-        setRefreshing(false)
-      }
-    } catch (error) {
-      console.error('Lỗi trong quá trình tải dữ liệu thời tiết:', error)
-
-      // Xóa timeout khi có lỗi
-      clearTimeout(fetchTimeout)
-
-      if (isMounted) {
-        // Không hiển thị thông báo lỗi chi tiết nữa, chỉ ghi log
-        console.log(`Lỗi: ${error.message}`)
-
-        // Hủy bỏ timeout hiện tại nếu có
-        if (autoRetryTimeoutRef.current) {
-          clearTimeout(autoRetryTimeoutRef.current)
         }
 
-        // Kiểm tra loại lỗi để quyết định cách xử lý
-        if (
-          error.message.includes('network') ||
-          error.message.includes('timeout') ||
-          error.message.includes('API key') ||
-          error.message.includes('rate limit') ||
-          error.message.includes('429')
-        ) {
+        if (!isMounted) return
+
+        // 3. Cập nhật state với dữ liệu đã lấy được
+        // Kiểm tra xem có dữ liệu thời tiết không
+        if (!homeWeatherData && !workWeatherData) {
           console.log(
-            'Lỗi liên quan đến mạng hoặc API key, thử thay đổi API key ngay lập tức...'
+            'Không có dữ liệu thời tiết từ cả hai vị trí, thử lấy dữ liệu mặc định'
           )
 
-          // Thay đổi API key và thử lại ngay lập tức
-          if (typeof rotateApiKeyAndRetry === 'function') {
-            rotateApiKeyAndRetry()
+          // Thử lấy dữ liệu thời tiết mặc định từ Hà Nội
+          try {
+            console.log('Thử lấy dữ liệu thời tiết mặc định từ Hà Nội')
+            const defaultWeather = await weatherService.getCurrentWeather()
+
+            if (defaultWeather) {
+              console.log('Đã tải thành công dữ liệu thời tiết mặc định')
+
+              // Lấy dự báo theo giờ cho vị trí mặc định
+              const defaultForecast = await weatherService.getHourlyForecast()
+
+              if (defaultForecast && defaultForecast.length > 0) {
+                console.log(
+                  'Đã tải thành công dự báo theo giờ cho vị trí mặc định'
+                )
+
+                // Lấy thời gian hiện tại
+                const now = new Date()
+
+                // Lọc và sắp xếp dự báo để lấy 4 giờ tiếp theo liên tiếp
+                const filteredForecast = defaultForecast
+                  .filter((item) => new Date(item.dt * 1000) > now)
+                  .sort((a, b) => a.dt - b.dt)
+                  .slice(0, 4)
+
+                setCurrentWeather(defaultWeather)
+                setForecast(filteredForecast)
+              } else {
+                console.log(
+                  'Không có dữ liệu dự báo theo giờ cho vị trí mặc định'
+                )
+                setCurrentWeather(defaultWeather)
+                setForecast([])
+              }
+            } else {
+              throw new Error('Không thể lấy dữ liệu thời tiết mặc định')
+            }
+          } catch (defaultError) {
+            console.error(
+              'Lỗi khi lấy dữ liệu thời tiết mặc định:',
+              defaultError
+            )
+            // Không hiển thị thông báo lỗi chi tiết nữa
+            if (isMounted) {
+              setLoading(false)
+              setRefreshing(false)
+            }
+            clearTimeout(fetchTimeout)
+            return
           }
         } else {
-          // Lỗi khác, không tự động thử lại để tránh gọi API quá thường xuyên
-          console.log('Lỗi khác, không tự động thử lại để tiết kiệm API calls')
+          console.log('Đã tải thành công dữ liệu thời tiết, cập nhật state')
 
-          // Không thiết lập timeout để tự động thử lại
-          // Người dùng có thể làm mới thủ công nếu cần
+          // Vị trí chính (nhà hoặc công ty)
+          setCurrentWeather(homeWeatherData || workWeatherData)
+          setForecast(
+            homeHourlyForecast.length > 0
+              ? homeHourlyForecast
+              : workHourlyForecast
+          )
 
-          // Không hiển thị trạng thái loading nữa
+          // Vị trí công ty (nếu khác vị trí nhà)
+          setWorkWeather(workWeatherData)
+          setWorkForecast(workHourlyForecast)
+        }
+
+        // Cảnh báo thời tiết
+        const primaryAlert =
+          homeAlerts.length > 0
+            ? homeAlerts[0]
+            : workAlerts.length > 0
+            ? workAlerts[0]
+            : null
+        setWeatherAlert(primaryAlert)
+
+        // 4. Tạo cảnh báo thông minh dựa trên dữ liệu thời tiết ở cả hai vị trí
+        if (isMounted) {
+          try {
+            generateSmartAlert(
+              homeWeatherData,
+              homeHourlyForecast,
+              workWeatherData,
+              workHourlyForecast
+            )
+          } catch (alertError) {
+            console.error('Lỗi khi tạo cảnh báo thông minh:', alertError)
+            // Không để lỗi này ảnh hưởng đến việc hiển thị dữ liệu thời tiết
+          }
+        }
+
+        // Xóa timeout vì đã hoàn thành
+        clearTimeout(fetchTimeout)
+
+        if (isMounted) {
+          console.log('Hoàn thành tải dữ liệu thời tiết')
           setLoading(false)
           setRefreshing(false)
         }
-      }
-    }
+      } catch (error) {
+        console.error('Lỗi trong quá trình tải dữ liệu thời tiết:', error)
 
-    // Trả về hàm dọn dẹp
-    return () => {
-      isMounted = false
-      clearTimeout(fetchTimeout)
-    }
-  }, [
-    homeLocation,
-    workLocation,
-    locationPermissionGranted,
-    t,
-    rotateApiKeyAndRetry,
-    setCurrentWeather,
-    setForecast,
-    setWorkWeather,
-    setWorkForecast,
-    setWeatherAlert,
-    setLoading,
-    setRefreshing,
-    loading,
-    refreshing
-  ]),
+        // Xóa timeout khi có lỗi
+        clearTimeout(fetchTimeout)
 
-  // Hàm kiểm tra xem có mưa không dựa trên dữ liệu thời tiết
-  const checkForRain = useCallback((currentWeather, forecast) => {
-    const result = { willRain: false, time: '' }
+        if (isMounted) {
+          // Không hiển thị thông báo lỗi chi tiết nữa, chỉ ghi log
+          console.log(`Lỗi: ${error.message}`)
 
-    // Kiểm tra thời tiết hiện tại
-    if (currentWeather && currentWeather.weather && currentWeather.weather[0]) {
-      const weatherId = currentWeather.weather[0].id
-      // Mã thời tiết từ 200-599 là các loại mưa, bão, tuyết
-      if (weatherId >= 200 && weatherId < 600) {
-        result.willRain = true
-        result.time = t('now')
-        return result
-      }
-    }
+          // Hủy bỏ timeout hiện tại nếu có
+          if (autoRetryTimeoutRef.current) {
+            clearTimeout(autoRetryTimeoutRef.current)
+          }
 
-    // Kiểm tra dự báo
-    if (forecast && forecast.length > 0) {
-      for (let i = 0; i < forecast.length; i++) {
-        const item = forecast[i]
-        if (item.weather && item.weather[0]) {
-          const weatherId = item.weather[0].id
-          // Mã thời tiết từ 200-599 là các loại mưa, bão, tuyết
-          if (weatherId >= 200 && weatherId < 600) {
-            result.willRain = true
-            // Định dạng thời gian
-            const time = new Date(item.dt * 1000)
-            const hours = time.getHours()
-            const minutes = time.getMinutes()
-            result.time = `${hours.toString().padStart(2, '0')}:${minutes
-              .toString()
-              .padStart(2, '0')}`
-            return result
+          // Kiểm tra loại lỗi để quyết định cách xử lý
+          if (
+            error.message.includes('network') ||
+            error.message.includes('timeout') ||
+            error.message.includes('API key') ||
+            error.message.includes('rate limit') ||
+            error.message.includes('429')
+          ) {
+            console.log(
+              'Lỗi liên quan đến mạng hoặc API key, thử thay đổi API key ngay lập tức...'
+            )
+
+            // Thay đổi API key và thử lại ngay lập tức
+            if (typeof rotateApiKeyAndRetry === 'function') {
+              rotateApiKeyAndRetry()
+            }
+          } else {
+            // Lỗi khác, không tự động thử lại để tránh gọi API quá thường xuyên
+            console.log(
+              'Lỗi khác, không tự động thử lại để tiết kiệm API calls'
+            )
+
+            // Không thiết lập timeout để tự động thử lại
+            // Người dùng có thể làm mới thủ công nếu cần
+
+            // Không hiển thị trạng thái loading nữa
+            setLoading(false)
+            setRefreshing(false)
           }
         }
       }
-    }
 
-    return result
-  }, [t])
+      // Trả về hàm dọn dẹp
+      return () => {
+        isMounted = false
+        clearTimeout(fetchTimeout)
+      }
+    },
+    [
+      homeLocation,
+      workLocation,
+      locationPermissionGranted,
+      t,
+      rotateApiKeyAndRetry,
+      setCurrentWeather,
+      setForecast,
+      setWorkWeather,
+      setWorkForecast,
+      setWeatherAlert,
+      setLoading,
+      setRefreshing,
+      loading,
+      refreshing,
+    ]
+  )
+
+  // Hàm kiểm tra xem có mưa không dựa trên dữ liệu thời tiết
+  const checkForRain = useCallback(
+    (currentWeather, forecast) => {
+      const result = { willRain: false, time: '' }
+
+      // Kiểm tra thời tiết hiện tại
+      if (
+        currentWeather &&
+        currentWeather.weather &&
+        currentWeather.weather[0]
+      ) {
+        const weatherId = currentWeather.weather[0].id
+        // Mã thời tiết từ 200-599 là các loại mưa, bão, tuyết
+        if (weatherId >= 200 && weatherId < 600) {
+          result.willRain = true
+          result.time = t('now')
+          return result
+        }
+      }
+
+      // Kiểm tra dự báo
+      if (forecast && forecast.length > 0) {
+        for (let i = 0; i < forecast.length; i++) {
+          const item = forecast[i]
+          if (item.weather && item.weather[0]) {
+            const weatherId = item.weather[0].id
+            // Mã thời tiết từ 200-599 là các loại mưa, bão, tuyết
+            if (weatherId >= 200 && weatherId < 600) {
+              result.willRain = true
+              // Định dạng thời gian
+              const time = new Date(item.dt * 1000)
+              const hours = time.getHours()
+              const minutes = time.getMinutes()
+              result.time = `${hours.toString().padStart(2, '0')}:${minutes
+                .toString()
+                .padStart(2, '0')}`
+              return result
+            }
+          }
+        }
+      }
+
+      return result
+    },
+    [t]
+  )
 
   // Hàm tạo cảnh báo thông minh dựa trên dữ liệu thời tiết ở cả hai vị trí
   const generateSmartAlert = useCallback(
@@ -594,7 +616,10 @@ const WeatherWidget = ({ onPress }) => {
     setLoading(true)
 
     // Reset bộ đếm API key khi người dùng chủ động làm mới
-    if (apiKeyRotationCountRef && apiKeyRotationCountRef.current !== undefined) {
+    if (
+      apiKeyRotationCountRef &&
+      apiKeyRotationCountRef.current !== undefined
+    ) {
       apiKeyRotationCountRef.current = 0
     }
 
@@ -777,7 +802,10 @@ const WeatherWidget = ({ onPress }) => {
       if (!currentWeather) {
         console.log('Không có dữ liệu thời tiết, thử tải lại một lần...')
         // Reset bộ đếm API key
-        if (apiKeyRotationCountRef && apiKeyRotationCountRef.current !== undefined) {
+        if (
+          apiKeyRotationCountRef &&
+          apiKeyRotationCountRef.current !== undefined
+        ) {
           apiKeyRotationCountRef.current = 0
         }
         // Thử lại với API key đầu tiên
@@ -808,7 +836,10 @@ const WeatherWidget = ({ onPress }) => {
       }
 
       // Đặt lại số lần thay đổi API key
-      if (apiKeyRotationCountRef && apiKeyRotationCountRef.current !== undefined) {
+      if (
+        apiKeyRotationCountRef &&
+        apiKeyRotationCountRef.current !== undefined
+      ) {
         apiKeyRotationCountRef.current = 0
       }
 
@@ -835,7 +866,10 @@ const WeatherWidget = ({ onPress }) => {
       console.log('Vị trí thay đổi, fetch lại dữ liệu thời tiết')
 
       // Đặt lại số lần thay đổi API key
-      if (apiKeyRotationCountRef && apiKeyRotationCountRef.current !== undefined) {
+      if (
+        apiKeyRotationCountRef &&
+        apiKeyRotationCountRef.current !== undefined
+      ) {
         apiKeyRotationCountRef.current = 0
       }
 
