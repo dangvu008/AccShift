@@ -93,20 +93,57 @@ const StatisticsScreen = ({ navigation }) => {
 
   const loadDailyWorkStatuses = async (startDate, endDate) => {
     try {
-      // Get all keys from AsyncStorage
-      const allKeys = await AsyncStorage.getAllKeys()
+      console.log('Bắt đầu tải dữ liệu trạng thái làm việc hàng ngày...')
+
+      // Đặt timeout cho việc lấy tất cả keys
+      const getAllKeysPromise = AsyncStorage.getAllKeys()
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => {
+          reject(new Error('Timeout khi lấy danh sách keys từ AsyncStorage'))
+        }, 3000) // 3 giây timeout
+      })
+
+      // Lấy tất cả keys với timeout
+      let allKeys
+      try {
+        allKeys = await Promise.race([getAllKeysPromise, timeoutPromise])
+        console.log(`Đã lấy ${allKeys.length} keys từ AsyncStorage`)
+      } catch (keyError) {
+        console.error('Lỗi khi lấy keys:', keyError)
+        return [] // Trả về mảng rỗng nếu không thể lấy keys
+      }
+
+      // Lọc các keys liên quan đến trạng thái làm việc
       const statusKeys = allKeys.filter((key) =>
         key.startsWith(STORAGE_KEYS.DAILY_WORK_STATUS_PREFIX)
       )
+      console.log(`Tìm thấy ${statusKeys.length} keys trạng thái làm việc`)
+
+      // Giới hạn số lượng ngày để tránh quá tải
+      const MAX_DAYS = 90 // Giới hạn 90 ngày để tránh quá tải
+
+      // Tính số ngày trong khoảng
+      const daysDiff =
+        Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1
+      if (daysDiff > MAX_DAYS) {
+        console.warn(
+          `Khoảng thời gian quá lớn (${daysDiff} ngày), giới hạn xuống ${MAX_DAYS} ngày`
+        )
+        // Điều chỉnh ngày kết thúc
+        endDate = new Date(startDate)
+        endDate.setDate(startDate.getDate() + MAX_DAYS - 1)
+      }
 
       // Filter keys within the date range
       const filteredStatusData = []
       const loadPromises = []
+      const processedDates = []
 
       // For each day in the range, try to load status
       const currentDate = new Date(startDate)
       while (currentDate <= endDate) {
         const dateKey = formatDate(currentDate)
+        processedDates.push(dateKey)
         const statusKey = `${STORAGE_KEYS.DAILY_WORK_STATUS_PREFIX}${dateKey}`
 
         if (statusKeys.includes(statusKey)) {
@@ -117,6 +154,10 @@ const StatisticsScreen = ({ navigation }) => {
               if (statusJson) {
                 try {
                   const status = JSON.parse(statusJson)
+                  // Thêm trường date nếu chưa có
+                  if (!status.date) {
+                    status.date = dateKey
+                  }
                   return status
                 } catch (parseError) {
                   console.error(
@@ -143,16 +184,34 @@ const StatisticsScreen = ({ navigation }) => {
         currentDate.setDate(currentDate.getDate() + 1)
       }
 
-      // Đợi tất cả các promise hoàn thành
-      const results = await Promise.all(loadPromises)
+      console.log(`Đang tải dữ liệu cho ${loadPromises.length} ngày...`)
+
+      // Đợi tất cả các promise hoàn thành với timeout
+      const loadAllPromise = Promise.all(loadPromises)
+      const loadTimeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => {
+          reject(new Error('Timeout khi tải dữ liệu trạng thái làm việc'))
+        }, 5000) // 5 giây timeout
+      })
+
+      let results
+      try {
+        results = await Promise.race([loadAllPromise, loadTimeoutPromise])
+        console.log(`Đã tải xong dữ liệu cho ${results.length} ngày`)
+      } catch (loadError) {
+        console.error('Lỗi khi tải dữ liệu:', loadError)
+        // Trả về mảng rỗng nếu timeout
+        return []
+      }
 
       // Lọc bỏ các giá trị null và thêm vào kết quả
-      results.forEach((status) => {
+      results.forEach((status, index) => {
         if (status) {
           filteredStatusData.push(status)
         }
       })
 
+      console.log(`Đã lọc được ${filteredStatusData.length} bản ghi có dữ liệu`)
       return filteredStatusData
     } catch (error) {
       console.error('Error loading daily work statuses:', error)
@@ -258,6 +317,20 @@ const StatisticsScreen = ({ navigation }) => {
 
   const calculateStatistics = useCallback(
     (workStatuses, startDate, endDate) => {
+      console.log('Bắt đầu tính toán thống kê...')
+
+      // Kiểm tra dữ liệu đầu vào
+      if (!Array.isArray(workStatuses)) {
+        console.error('workStatuses không phải là mảng')
+        workStatuses = []
+      }
+
+      if (!startDate || !endDate) {
+        console.error('startDate hoặc endDate không hợp lệ')
+        startDate = new Date()
+        endDate = new Date()
+      }
+
       // Initialize statistics
       const stats = {
         totalWorkTime: 0,
@@ -282,94 +355,154 @@ const StatisticsScreen = ({ navigation }) => {
         dailyData: [],
       }
 
+      // Tạo danh sách các ngày đã xử lý
+      const processedDates = []
+
       // Process each day's work status
       workStatuses.forEach((status) => {
-        // Format date for display
-        const dateObj = new Date(status.date.split('-').join('/'))
-        const displayDate = formatShortDate(dateObj, language)
+        try {
+          if (!status || typeof status !== 'object') {
+            console.warn('Bỏ qua bản ghi không hợp lệ:', status)
+            return // Skip invalid entries
+          }
 
-        // Get weekday
-        const weekday = getWeekdayName(dateObj.getDay())
+          if (!status.date) {
+            console.warn('Bỏ qua bản ghi không có ngày:', status)
+            return // Skip entries without date
+          }
 
-        // Add to total stats (convert from hours to minutes for consistency)
-        stats.standardHours += status.standardHoursScheduled || 0
-        stats.otHours += status.otHoursScheduled || 0
-        stats.sundayHours += status.sundayHoursScheduled || 0
-        stats.nightHours += status.nightHoursScheduled || 0
-        stats.totalWorkTime += (status.standardHoursScheduled || 0) * 60
-        stats.overtime += (status.otHoursScheduled || 0) * 60
-
-        // Update status counts
-        if (status.status && stats.statusCounts.hasOwnProperty(status.status)) {
-          stats.statusCounts[status.status]++
-        } else {
-          stats.statusCounts.CHUA_CAP_NHAT++
-        }
-
-        // Add to daily data
-        stats.dailyData.push({
-          date: displayDate,
-          weekday: weekday,
-          checkIn: status.vaoLogTime,
-          checkOut: status.raLogTime,
-          standardHours: status.standardHoursScheduled || 0,
-          otHours: status.otHoursScheduled || 0,
-          sundayHours: status.sundayHoursScheduled || 0,
-          nightHours: status.nightHoursScheduled || 0,
-          totalHours: status.totalHoursScheduled || 0,
-          status: status.status || 'CHUA_CAP_NHAT',
-          lateMinutes: status.lateMinutes || 0,
-          earlyMinutes: status.earlyMinutes || 0,
-        })
-      })
-
-      // Check for missing days in the range and mark as not updated
-      const currentDate = new Date(startDate)
-      const processedDates = workStatuses.map((s) => s.date)
-
-      while (currentDate <= endDate) {
-        const dateKey = formatDate(currentDate)
-
-        if (!processedDates.includes(dateKey)) {
-          // No status for this day, mark as not updated
-          stats.statusCounts.CHUA_CAP_NHAT++
+          // Thêm vào danh sách ngày đã xử lý
+          processedDates.push(status.date)
 
           // Format date for display
-          const displayDate = formatShortDate(currentDate, language)
+          let dateObj
+          try {
+            dateObj = new Date(status.date.split('-').join('/'))
+            if (isNaN(dateObj.getTime())) {
+              console.warn(`Ngày không hợp lệ: ${status.date}`)
+              dateObj = new Date() // Sử dụng ngày hiện tại nếu không hợp lệ
+            }
+          } catch (dateError) {
+            console.warn(`Lỗi khi chuyển đổi ngày ${status.date}:`, dateError)
+            dateObj = new Date() // Sử dụng ngày hiện tại nếu có lỗi
+          }
+
+          const displayDate = formatShortDate(dateObj, language)
 
           // Get weekday
-          const weekday = getWeekdayName(currentDate.getDay())
+          const weekday = getWeekdayName(dateObj.getDay())
 
+          // Add to total stats (convert from hours to minutes for consistency)
+          // Kiểm tra và đảm bảo các giá trị là số
+          const standardHours = parseFloat(status.standardHoursScheduled) || 0
+          const otHours = parseFloat(status.otHoursScheduled) || 0
+          const sundayHours = parseFloat(status.sundayHoursScheduled) || 0
+          const nightHours = parseFloat(status.nightHoursScheduled) || 0
+
+          stats.standardHours += standardHours
+          stats.otHours += otHours
+          stats.sundayHours += sundayHours
+          stats.nightHours += nightHours
+          stats.totalWorkTime += standardHours * 60
+          stats.overtime += otHours * 60
+
+          // Update status counts
+          if (
+            status.status &&
+            stats.statusCounts.hasOwnProperty(status.status)
+          ) {
+            stats.statusCounts[status.status]++
+          } else {
+            stats.statusCounts.CHUA_CAP_NHAT++
+          }
+
+          // Add to daily data
           stats.dailyData.push({
             date: displayDate,
             weekday: weekday,
-            checkIn: null,
-            checkOut: null,
-            standardHours: 0,
-            otHours: 0,
-            sundayHours: 0,
-            nightHours: 0,
-            totalHours: 0,
-            status: 'CHUA_CAP_NHAT',
-            lateMinutes: 0,
-            earlyMinutes: 0,
+            checkIn: status.vaoLogTime || '--:--',
+            checkOut: status.raLogTime || '--:--',
+            standardHours: standardHours,
+            otHours: otHours,
+            sundayHours: sundayHours,
+            nightHours: nightHours,
+            totalHours: parseFloat(status.totalHoursScheduled) || 0,
+            status: status.status || 'CHUA_CAP_NHAT',
+            lateMinutes: parseInt(status.lateMinutes) || 0,
+            earlyMinutes: parseInt(status.earlyMinutes) || 0,
           })
+        } catch (itemError) {
+          console.error('Lỗi khi xử lý bản ghi:', itemError, status)
+          // Tiếp tục với bản ghi tiếp theo
         }
+      })
 
-        // Move to next day
-        currentDate.setDate(currentDate.getDate() + 1)
+      console.log(`Đã xử lý ${stats.dailyData.length} bản ghi`)
+
+      // Check for missing days in the range and mark as not updated
+      try {
+        const currentDate = new Date(startDate)
+        let daysAdded = 0
+        const MAX_DAYS = 90 // Giới hạn số ngày để tránh quá tải
+
+        while (currentDate <= endDate && daysAdded < MAX_DAYS) {
+          const dateKey = formatDate(currentDate)
+
+          if (!processedDates.includes(dateKey)) {
+            // No status for this day, mark as not updated
+            stats.statusCounts.CHUA_CAP_NHAT++
+
+            // Format date for display
+            const displayDate = formatShortDate(currentDate, language)
+
+            // Get weekday
+            const weekday = getWeekdayName(currentDate.getDay())
+
+            stats.dailyData.push({
+              date: displayDate,
+              weekday: weekday,
+              checkIn: '--:--',
+              checkOut: '--:--',
+              standardHours: 0,
+              otHours: 0,
+              sundayHours: 0,
+              nightHours: 0,
+              totalHours: 0,
+              status: 'CHUA_CAP_NHAT',
+              lateMinutes: 0,
+              earlyMinutes: 0,
+            })
+
+            daysAdded++
+          }
+
+          // Move to next day
+          currentDate.setDate(currentDate.getDate() + 1)
+        }
+      } catch (missingDaysError) {
+        console.error('Lỗi khi xử lý các ngày thiếu:', missingDaysError)
       }
 
       // Sort daily data by date
-      stats.dailyData.sort((a, b) => {
-        const dateA = new Date(a.date.split('/').reverse().join('-'))
-        const dateB = new Date(b.date.split('/').reverse().join('-'))
-        return dateA - dateB
-      })
+      try {
+        stats.dailyData.sort((a, b) => {
+          try {
+            const dateA = new Date(a.date.split('/').reverse().join('-'))
+            const dateB = new Date(b.date.split('/').reverse().join('-'))
+            return dateA - dateB
+          } catch (sortError) {
+            console.warn('Lỗi khi sắp xếp ngày:', sortError)
+            return 0
+          }
+        })
+      } catch (sortError) {
+        console.error('Lỗi khi sắp xếp dữ liệu:', sortError)
+      }
 
+      console.log('Hoàn thành tính toán thống kê')
       return stats
     },
-    []
+    [language]
   )
 
   const formatDateRange = () => {
@@ -403,26 +536,43 @@ const StatisticsScreen = ({ navigation }) => {
       return
     }
 
+    // Tạo biến để theo dõi nếu timeout đã xảy ra
+    let isTimedOut = false
+    let timeoutId = null
+
     setIsLoading(true)
     setLoadError(null)
-
-    // Đặt timeout để tránh trường hợp hàm không bao giờ kết thúc
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => {
-        reject(new Error('Tải dữ liệu quá thời gian, vui lòng thử lại'))
-      }, 10000) // 10 giây timeout
-    })
 
     try {
       // Get date range
       const { rangeStart, rangeEnd } = getDateRange(timeRange)
 
-      // Load daily work statuses với timeout
-      const workStatusesPromise = loadDailyWorkStatuses(rangeStart, rangeEnd)
-      const workStatuses = await Promise.race([
-        workStatusesPromise,
-        timeoutPromise,
-      ])
+      // Đặt timeout để tránh trường hợp hàm không bao giờ kết thúc
+      timeoutId = setTimeout(() => {
+        isTimedOut = true
+        if (isMountedRef.current) {
+          console.error('Tải dữ liệu quá thời gian')
+          setLoadError('Tải dữ liệu quá thời gian, vui lòng thử lại')
+          setIsLoading(false)
+        }
+      }, 8000) // 8 giây timeout
+
+      // Load daily work statuses
+      const workStatuses = await loadDailyWorkStatuses(rangeStart, rangeEnd)
+
+      // Nếu đã timeout, không tiếp tục xử lý
+      if (isTimedOut) return
+
+      // Xóa timeout vì đã tải xong dữ liệu
+      clearTimeout(timeoutId)
+
+      // Kiểm tra nếu component đã unmounted
+      if (!isMountedRef.current) return
+
+      // Kiểm tra dữ liệu trước khi tính toán
+      if (!Array.isArray(workStatuses)) {
+        throw new Error('Dữ liệu không hợp lệ')
+      }
 
       // Calculate statistics
       const calculatedStats = calculateStatistics(
@@ -436,10 +586,13 @@ const StatisticsScreen = ({ navigation }) => {
         setStats(calculatedStats)
       }
     } catch (error) {
+      // Xóa timeout nếu có lỗi
+      if (timeoutId) clearTimeout(timeoutId)
+
       console.error('Error loading statistics:', error)
 
       // Kiểm tra nếu component vẫn mounted trước khi cập nhật state
-      if (isMountedRef.current) {
+      if (isMountedRef.current && !isTimedOut) {
         setLoadError(error.message || 'Lỗi khi tải dữ liệu thống kê')
 
         // Đặt dữ liệu mặc định để tránh màn hình trống
@@ -467,8 +620,11 @@ const StatisticsScreen = ({ navigation }) => {
         })
       }
     } finally {
-      // Kiểm tra nếu component vẫn mounted trước khi cập nhật state
-      if (isMountedRef.current) {
+      // Xóa timeout nếu vẫn còn
+      if (timeoutId) clearTimeout(timeoutId)
+
+      // Kiểm tra nếu component vẫn mounted và chưa timeout trước khi cập nhật state
+      if (isMountedRef.current && !isTimedOut) {
         setIsLoading(false)
       }
     }
@@ -512,70 +668,99 @@ const StatisticsScreen = ({ navigation }) => {
   // Sử dụng useFocusEffect để kiểm soát việc tải lại dữ liệu khi màn hình được focus
   useFocusEffect(
     useCallback(() => {
-      const now = Date.now()
+      console.log('StatisticsScreen được focus')
 
       // Đánh dấu component đã mount
       isMountedRef.current = true
 
-      // Nếu đang tải, không thực hiện tải lại
-      if (isLoadingRef.current) {
-        console.log('Đang tải dữ liệu, bỏ qua yêu cầu tải lại')
-        return
-      }
+      // Biến để theo dõi timer
+      let focusTimer = null
 
-      // Chỉ tải lại dữ liệu nếu đã qua ít nhất 5 giây từ lần tải trước
-      // Giảm thời gian chờ xuống 5 giây để cải thiện trải nghiệm người dùng
-      if (now - lastLoadTimeRef.current > 5000) {
-        console.log('StatisticsScreen được focus, tải lại dữ liệu thống kê')
-
-        // Đánh dấu đang tải
-        isLoadingRef.current = true
-
-        // Đặt timeout để tránh tải dữ liệu quá sớm khi màn hình đang chuyển đổi
-        const timer = setTimeout(() => {
-          if (!isMountedRef.current) return
-
-          // Thực hiện tải dữ liệu
-          loadStatistics()
-            .then(() => {
-              // Đặt lại số lần thử lại khi tải thành công
-              if (isMountedRef.current) {
-                retryCountRef.current = 0
-              }
-            })
-            .catch((error) => {
-              if (!isMountedRef.current) return
-
-              console.error('Lỗi khi tải dữ liệu thống kê:', error)
-              // Tăng số lần thử lại
-              retryCountRef.current++
-
-              // Nếu thử lại quá 3 lần, hiển thị thông báo lỗi
-              if (retryCountRef.current > 3 && isMountedRef.current) {
-                setLoadError(
-                  'Không thể tải dữ liệu thống kê sau nhiều lần thử lại'
-                )
-              }
-            })
-            .finally(() => {
-              if (!isMountedRef.current) return
-
-              // Cập nhật thời gian tải gần nhất
-              lastLoadTimeRef.current = Date.now()
-              // Đánh dấu đã tải xong
-              isLoadingRef.current = false
-            })
-        }, 300)
-
-        return () => {
-          clearTimeout(timer)
+      // Hàm tải dữ liệu an toàn
+      const safeLoadData = () => {
+        // Nếu đang tải, không thực hiện tải lại
+        if (isLoadingRef.current) {
+          console.log('Đang tải dữ liệu, bỏ qua yêu cầu tải lại')
+          return
         }
-      } else {
-        console.log('Bỏ qua tải lại dữ liệu thống kê do mới tải gần đây')
+
+        const now = Date.now()
+
+        // Chỉ tải lại dữ liệu nếu đã qua ít nhất 5 giây từ lần tải trước
+        if (now - lastLoadTimeRef.current > 5000) {
+          console.log('Tải lại dữ liệu thống kê')
+
+          // Đánh dấu đang tải
+          isLoadingRef.current = true
+
+          // Thực hiện tải dữ liệu với xử lý lỗi
+          try {
+            loadStatistics()
+              .then(() => {
+                // Đặt lại số lần thử lại khi tải thành công
+                if (isMountedRef.current) {
+                  retryCountRef.current = 0
+                  console.log('Tải dữ liệu thành công')
+                }
+              })
+              .catch((error) => {
+                if (!isMountedRef.current) return
+
+                console.error('Lỗi khi tải dữ liệu thống kê:', error)
+
+                // Tăng số lần thử lại
+                retryCountRef.current++
+
+                // Nếu thử lại quá 3 lần, hiển thị thông báo lỗi
+                if (retryCountRef.current > 3 && isMountedRef.current) {
+                  console.log(
+                    'Đã thử lại quá nhiều lần, hiển thị thông báo lỗi'
+                  )
+                  setLoadError(
+                    'Không thể tải dữ liệu thống kê sau nhiều lần thử lại'
+                  )
+                }
+              })
+              .finally(() => {
+                if (!isMountedRef.current) return
+
+                // Cập nhật thời gian tải gần nhất
+                lastLoadTimeRef.current = Date.now()
+
+                // Đánh dấu đã tải xong
+                isLoadingRef.current = false
+                console.log('Đã hoàn thành quá trình tải dữ liệu')
+              })
+          } catch (unexpectedError) {
+            // Xử lý lỗi không mong đợi
+            console.error(
+              'Lỗi không mong đợi khi tải dữ liệu:',
+              unexpectedError
+            )
+
+            if (isMountedRef.current) {
+              setLoadError('Đã xảy ra lỗi không mong đợi, vui lòng thử lại')
+              isLoadingRef.current = false
+            }
+          }
+        } else {
+          console.log('Bỏ qua tải lại dữ liệu thống kê do mới tải gần đây')
+        }
       }
 
+      // Đặt timeout để tránh tải dữ liệu quá sớm khi màn hình đang chuyển đổi
+      focusTimer = setTimeout(safeLoadData, 500)
+
+      // Cleanup khi component bị unfocus
       return () => {
-        // Cleanup khi component bị unfocus
+        console.log('StatisticsScreen bị unfocus')
+
+        // Xóa timer nếu có
+        if (focusTimer) {
+          clearTimeout(focusTimer)
+        }
+
+        // Đánh dấu component đã unmount
         isMountedRef.current = false
       }
     }, [loadStatistics])
@@ -803,6 +988,16 @@ const StatisticsScreen = ({ navigation }) => {
         </Text>
       </View>
 
+      {/* Hiển thị loading indicator trong khi vẫn hiển thị dữ liệu cũ */}
+      {isLoading && (
+        <View style={styles.overlayLoadingContainer}>
+          <View style={styles.loadingIndicatorContainer}>
+            <ActivityIndicator size="large" color="#8a56ff" />
+            <Text style={styles.loadingText}>{t('Đang tải thống kê...')}</Text>
+          </View>
+        </View>
+      )}
+
       {loadError ? (
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle-outline" size={48} color="#e74c3c" />
@@ -813,8 +1008,35 @@ const StatisticsScreen = ({ navigation }) => {
             style={styles.retryButton}
             onPress={() => {
               // Đặt lại trạng thái lỗi và thử lại
+              console.log('Thử lại tải dữ liệu thống kê')
               setLoadError(null)
-              loadStatistics()
+
+              // Đặt lại số lần thử lại
+              retryCountRef.current = 0
+
+              // Đánh dấu đang tải
+              setIsLoading(true)
+
+              // Đặt timeout để tránh tải dữ liệu quá sớm
+              setTimeout(() => {
+                if (isMountedRef.current) {
+                  loadStatistics()
+                    .catch((error) => {
+                      console.error('Lỗi khi thử lại:', error)
+                      if (isMountedRef.current) {
+                        setLoadError(
+                          'Không thể tải dữ liệu, vui lòng thử lại sau'
+                        )
+                      }
+                    })
+                    .finally(() => {
+                      if (isMountedRef.current) {
+                        // Cập nhật thời gian tải gần nhất
+                        lastLoadTimeRef.current = Date.now()
+                      }
+                    })
+                }
+              }, 300)
             }}
           >
             <Text style={styles.retryButtonText}>{t('Thử lại')}</Text>
@@ -822,18 +1044,6 @@ const StatisticsScreen = ({ navigation }) => {
         </View>
       ) : (
         <>
-          {/* Hiển thị loading indicator trong khi vẫn hiển thị dữ liệu cũ */}
-          {isLoading && (
-            <View style={styles.overlayLoadingContainer}>
-              <View style={styles.loadingIndicatorContainer}>
-                <ActivityIndicator size="large" color="#8a56ff" />
-                <Text style={styles.loadingText}>
-                  {t('Đang tải thống kê...')}
-                </Text>
-              </View>
-            </View>
-          )}
-
           {/* Tổng giờ làm */}
           <View style={[styles.statCard, { backgroundColor: theme.cardColor }]}>
             <Text style={[styles.statTitle, { color: theme.textColor }]}>
