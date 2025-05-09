@@ -53,6 +53,7 @@ const AddEditShiftScreen = ({ route, navigation }) => {
   const [remindAfterEnd, setRemindAfterEnd] = useState('15')
   // Mặc định các trường boolean là false khi tạo ca mới
   const [isActive, setIsActive] = useState(false)
+  // Đảm bảo showPunch luôn tắt khi mở form thêm mới
   const [showPunch, setShowPunch] = useState(false)
   const [daysApplied, setDaysApplied] = useState(['T2', 'T3', 'T4', 'T5', 'T6'])
 
@@ -101,10 +102,11 @@ const AddEditShiftScreen = ({ route, navigation }) => {
 
   // Load shift data
   const loadShiftData = useCallback(async () => {
-    if (!shiftId) return
+    if (!shiftId) return Promise.resolve() // Trả về Promise đã resolve nếu không có shiftId
 
     console.log('Loading shift data for ID:', shiftId)
     setIsLoading(true)
+
     try {
       // Đọc danh sách ca làm việc từ AsyncStorage
       const shiftsData = await AsyncStorage.getItem(STORAGE_KEYS.SHIFT_LIST)
@@ -136,6 +138,7 @@ const AddEditShiftScreen = ({ route, navigation }) => {
         }
 
         if (shift) {
+          // Đặt lại tất cả các giá trị form từ dữ liệu ca làm việc
           setShiftName(shift.name || '')
 
           // Convert string times to Date objects
@@ -220,9 +223,18 @@ const AddEditShiftScreen = ({ route, navigation }) => {
           }
         }
       }
+
+      // Đóng tất cả các dropdown và picker nếu đang mở
+      setShowRemindBeforeDropdown(false)
+      setShowRemindAfterDropdown(false)
+      setShowDepartureTimePicker(false)
+      setShowStartTimePicker(false)
+      setShowOfficeEndTimePicker(false)
+      setShowEndTimePicker(false)
     } catch (error) {
       console.error('Error loading shift data:', error)
-      Alert.alert(t('Error'), t('Failed to load shift data'))
+      Alert.alert(t('Lỗi'), t('Không thể tải dữ liệu ca làm việc'))
+      throw error // Ném lỗi để có thể bắt trong catch của Promise
     } finally {
       setIsLoading(false)
       setIsFormDirty(false)
@@ -242,6 +254,8 @@ const AddEditShiftScreen = ({ route, navigation }) => {
         validateForm()
       }, 500)
     }
+
+    return Promise.resolve() // Trả về Promise đã resolve
   }, [shiftId, t, timeStringToDate])
 
   useEffect(() => {
@@ -752,25 +766,51 @@ const AddEditShiftScreen = ({ route, navigation }) => {
           onPress: () => {
             if (isEditing) {
               // If editing, reload the original data
+              console.log(
+                'Resetting form in edit mode - reloading original data'
+              )
+              // Đặt isLoading thành true để hiển thị loading indicator
+              setIsLoading(true)
+
+              // Tải lại dữ liệu ban đầu
               loadShiftData()
+                .then(() => {
+                  console.log('Successfully reloaded original shift data')
+                })
+                .catch((error) => {
+                  console.error('Error reloading shift data:', error)
+                  Alert.alert(
+                    t('Lỗi'),
+                    t('Không thể tải lại dữ liệu ca làm việc')
+                  )
+                })
+                .finally(() => {
+                  setIsLoading(false)
+                })
             } else {
               // If creating new, set to default values
+              console.log(
+                'Resetting form in create mode - setting default values'
+              )
               setShiftName('')
 
+              // Đặt lại các giá trị thời gian về mặc định
+              const now = new Date()
+
               const dt = new Date()
-              dt.setHours(dt.getHours() - 1, dt.getMinutes(), 0, 0)
+              dt.setHours(now.getHours() - 1, now.getMinutes(), 0, 0)
               setDepartureTime(dt)
 
               const st = new Date()
-              st.setHours(st.getHours(), st.getMinutes(), 0, 0)
+              st.setHours(now.getHours(), now.getMinutes(), 0, 0)
               setStartTime(st)
 
               const oet = new Date()
-              oet.setHours(oet.getHours() + 8, oet.getMinutes(), 0, 0)
+              oet.setHours(now.getHours() + 8, now.getMinutes(), 0, 0)
               setOfficeEndTime(oet)
 
               const et = new Date()
-              et.setHours(et.getHours() + 8, et.getMinutes(), 0, 0)
+              et.setHours(now.getHours() + 8, now.getMinutes(), 0, 0)
               setEndTime(et)
 
               setBreakTime('60')
@@ -782,20 +822,39 @@ const AddEditShiftScreen = ({ route, navigation }) => {
                 'Resetting form - setting isActive and showPunch to false'
               )
               setIsActive(false)
-              setShowPunch(false)
+              setShowPunch(false) // Đảm bảo showPunch luôn tắt khi đặt lại form
 
               setDaysApplied(['T2', 'T3', 'T4', 'T5', 'T6'])
             }
 
+            // Đặt lại các trạng thái form
             setErrors({})
             setIsFormDirty(false)
             setIsFormValid(true)
             setHasInteracted(false) // Đặt lại trạng thái tương tác
+
+            // Đóng tất cả các dropdown và picker nếu đang mở
+            setShowRemindBeforeDropdown(false)
+            setShowRemindAfterDropdown(false)
+            setShowDepartureTimePicker(false)
+            setShowStartTimePicker(false)
+            setShowOfficeEndTimePicker(false)
+            setShowEndTimePicker(false)
           },
         },
       ]
     )
-  }, [isEditing, loadShiftData, t])
+  }, [
+    isEditing,
+    loadShiftData,
+    t,
+    setShowRemindBeforeDropdown,
+    setShowRemindAfterDropdown,
+    setShowDepartureTimePicker,
+    setShowStartTimePicker,
+    setShowOfficeEndTimePicker,
+    setShowEndTimePicker,
+  ])
 
   // Save shift data
   const handleSaveShift = async () => {
@@ -847,6 +906,10 @@ const AddEditShiftScreen = ({ route, navigation }) => {
                 console.log('- isActive:', isActive)
                 console.log('- showPunch:', showPunch)
 
+                // Sử dụng giá trị isActive như người dùng đã thiết lập
+                // Không tự động bật isActive khi showPunch được bật
+                const finalIsActive = isActive === true
+
                 const newShift = {
                   id: isEditing ? shiftId : Date.now().toString(),
                   name: normalizedName,
@@ -857,7 +920,7 @@ const AddEditShiftScreen = ({ route, navigation }) => {
                   breakTime: parseInt(breakTime, 10) || 0,
                   remindBeforeStart: parseInt(remindBeforeStart, 10) || 0,
                   remindAfterEnd: parseInt(remindAfterEnd, 10) || 0,
-                  isActive: isActive === true, // Đảm bảo giá trị boolean rõ ràng
+                  isActive: finalIsActive, // Sử dụng giá trị đã xử lý
                   showCheckInButtonWhileWorking: showPunch === true, // Đảm bảo giá trị boolean rõ ràng
                   daysApplied: [...daysApplied].sort(), // Sắp xếp lại các ngày để đảm bảo tính nhất quán
                   updatedAt: new Date().toISOString(),
@@ -1511,18 +1574,16 @@ const AddEditShiftScreen = ({ route, navigation }) => {
               {t('Yêu cầu ký công')}
             </Text>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              {isEditing && (
-                <Text
-                  style={[
-                    styles.switchStatus,
-                    showPunch
-                      ? styles.switchStatusActive
-                      : styles.switchStatusInactive,
-                  ]}
-                >
-                  {showPunch ? t('Đang bật') : t('Đang tắt')}
-                </Text>
-              )}
+              <Text
+                style={[
+                  styles.switchStatus,
+                  showPunch
+                    ? styles.switchStatusActive
+                    : styles.switchStatusInactive,
+                ]}
+              >
+                {showPunch ? t('Đang bật') : t('Đang tắt')}
+              </Text>
               <Switch
                 value={showPunch}
                 onValueChange={(value) => {
@@ -1530,10 +1591,20 @@ const AddEditShiftScreen = ({ route, navigation }) => {
                   setShowPunch(value)
                   setIsFormDirty(true)
                   setHasInteracted(true) // Đánh dấu người dùng đã tương tác với form
+
+                  // Nếu bật công tắc "Ký công", hiển thị thông báo cho người dùng
+                  if (value === true) {
+                    Alert.alert(
+                      t('Thông báo'),
+                      t(
+                        'Khi bật "Yêu cầu ký công", nút ký công sẽ hiển thị trong màn hình chính.'
+                      ),
+                      [{ text: t('OK') }]
+                    )
+                  }
                 }}
                 trackColor={{ false: '#767577', true: COLORS.PRIMARY }}
                 thumbColor={showPunch ? '#f4f3f4' : '#f4f3f4'}
-                disabled={false} // Luôn cho phép thay đổi
               />
             </View>
           </View>
@@ -1555,18 +1626,24 @@ const AddEditShiftScreen = ({ route, navigation }) => {
               {t('Áp dụng')}
             </Text>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text
+                style={[
+                  styles.switchStatus,
+                  isActive
+                    ? styles.switchStatusActive
+                    : styles.switchStatusInactive,
+                ]}
+              >
+                {isActive ? t('Đang áp dụng') : t('Không áp dụng')}
+              </Text>
               {isEditing ? (
-                // Khi đang sửa ca, chỉ hiển thị trạng thái, không cho phép thay đổi
-                <Text
-                  style={[
-                    styles.switchStatus,
-                    isActive
-                      ? styles.switchStatusActive
-                      : styles.switchStatusInactive,
-                  ]}
-                >
-                  {isActive ? t('Đang áp dụng') : t('Không áp dụng')}
-                </Text>
+                // Khi đang sửa ca, không cho phép thay đổi trạng thái áp dụng
+                <Switch
+                  value={isActive}
+                  disabled={true} // Không cho phép thay đổi khi đang sửa
+                  trackColor={{ false: '#767577', true: COLORS.PRIMARY }}
+                  thumbColor={isActive ? '#f4f3f4' : '#f4f3f4'}
+                />
               ) : (
                 // Khi thêm mới ca, cho phép bật/tắt
                 <Switch
@@ -1601,6 +1678,17 @@ const AddEditShiftScreen = ({ route, navigation }) => {
                       console.log('Setting isActive to:', value)
                       setIsActive(value)
                       setIsFormDirty(true)
+
+                      // Hiển thị thông báo khi bật công tắc "Áp dụng"
+                      if (value === true) {
+                        Alert.alert(
+                          t('Thông báo'),
+                          t(
+                            'Khi bật "Áp dụng", ca làm việc này sẽ được áp dụng cho tuần hiện tại, thay thế cho ca đang được áp dụng.'
+                          ),
+                          [{ text: t('OK') }]
+                        )
+                      }
                     }
                   }}
                   trackColor={{ false: '#767577', true: COLORS.PRIMARY }}
