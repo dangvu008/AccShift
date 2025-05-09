@@ -49,6 +49,9 @@ const WeatherWidget = ({ onPress }) => {
   // State để kiểm soát hiển thị cảnh báo thông minh
   const [smartAlert, setSmartAlert] = useState(null)
 
+  // Sử dụng useRef để lưu trữ hàm rotateApiKeyAndRetry
+  const rotateApiKeyAndRetryRef = useRef(null)
+
   // Khai báo rotateApiKeyAndRetry trước để có thể sử dụng trong fetchWeatherData
   const rotateApiKeyAndRetry = useCallback(async () => {
     try {
@@ -97,8 +100,10 @@ const WeatherWidget = ({ onPress }) => {
         // Không cần đợi quá lâu trước khi thử lại
         await new Promise((resolve) => setTimeout(resolve, 200))
 
-        // Thử lại với API key mới
-        fetchWeatherData(true)
+        // Thử lại với API key mới - sử dụng hàm fetchWeatherData thông qua tham chiếu
+        if (typeof fetchWeatherData === 'function') {
+          fetchWeatherData(true)
+        }
       } else {
         console.log('Không tìm thấy API key tiếp theo')
         // Không hiển thị thông báo lỗi cho người dùng
@@ -113,7 +118,7 @@ const WeatherWidget = ({ onPress }) => {
       setLoading(false)
       setRefreshing(false)
     }
-  }, [t]) // Chỉ phụ thuộc vào t, fetchWeatherData sẽ được thêm sau
+  }, [t]) // Chỉ phụ thuộc vào t
 
   // Di chuyển hàm fetchWeatherData ra ngoài useEffect để có thể tái sử dụng
   const fetchWeatherData = useCallback(async (forceRefresh = false) => {
@@ -129,7 +134,9 @@ const WeatherWidget = ({ onPress }) => {
 
         // Không hiển thị thông báo lỗi timeout cho người dùng
         // Thay vào đó, tự động thử lại với API key khác
-        rotateApiKeyAndRetry()
+        if (typeof rotateApiKeyAndRetry === 'function') {
+          rotateApiKeyAndRetry()
+        }
       }
     }, 15000) // Giảm xuống 15 giây timeout để phản hồi nhanh hơn
 
@@ -434,7 +441,9 @@ const WeatherWidget = ({ onPress }) => {
           )
 
           // Thay đổi API key và thử lại ngay lập tức
-          rotateApiKeyAndRetry()
+          if (typeof rotateApiKeyAndRetry === 'function') {
+            rotateApiKeyAndRetry()
+          }
         } else {
           // Lỗi khác, không tự động thử lại để tránh gọi API quá thường xuyên
           console.log('Lỗi khác, không tự động thử lại để tiết kiệm API calls')
@@ -454,7 +463,22 @@ const WeatherWidget = ({ onPress }) => {
       isMounted = false
       clearTimeout(fetchTimeout)
     }
-  }
+  }, [
+    homeLocation,
+    workLocation,
+    locationPermissionGranted,
+    t,
+    rotateApiKeyAndRetry,
+    setCurrentWeather,
+    setForecast,
+    setWorkWeather,
+    setWorkForecast,
+    setWeatherAlert,
+    setLoading,
+    setRefreshing,
+    loading,
+    refreshing
+  ]),
 
   // Hàm tạo cảnh báo thông minh dựa trên dữ liệu thời tiết ở cả hai vị trí
   const generateSmartAlert = (
@@ -572,7 +596,9 @@ const WeatherWidget = ({ onPress }) => {
     setLoading(true)
 
     // Reset bộ đếm API key khi người dùng chủ động làm mới
-    apiKeyRotationCountRef.current = 0
+    if (apiKeyRotationCountRef && apiKeyRotationCountRef.current !== undefined) {
+      apiKeyRotationCountRef.current = 0
+    }
 
     // Tăng thời gian chờ giữa các lần làm mới lên 30 giây để tránh gọi API quá thường xuyên
     const now = Date.now()
@@ -628,7 +654,9 @@ const WeatherWidget = ({ onPress }) => {
       }
 
       // Cập nhật thời gian gọi API cuối cùng
-      lastFetchTime.current = now
+      if (lastFetchTime && lastFetchTime.current !== undefined) {
+        lastFetchTime.current = now
+      }
 
       // Tải lại dữ liệu thời tiết với tham số forceRefresh=true
       console.log('Đang tải lại dữ liệu thời tiết...')
@@ -694,7 +722,7 @@ const WeatherWidget = ({ onPress }) => {
       setRefreshing(false)
 
       // Lên lịch gọi lại sau khoảng thời gian còn lại
-      if (fetchTimeoutRef.current) {
+      if (fetchTimeoutRef && fetchTimeoutRef.current) {
         clearTimeout(fetchTimeoutRef.current)
       }
 
@@ -702,7 +730,9 @@ const WeatherWidget = ({ onPress }) => {
     }
 
     // Cập nhật thời gian gọi API cuối cùng
-    lastFetchTime.current = now
+    if (lastFetchTime && lastFetchTime.current !== undefined) {
+      lastFetchTime.current = now
+    }
 
     // Gọi hàm fetch dữ liệu
     fetchWeatherData()
@@ -714,10 +744,10 @@ const WeatherWidget = ({ onPress }) => {
     // Loại bỏ generateSmartAlert khỏi dependencies để tránh vòng lặp render
   ])
 
-  // Cập nhật tham chiếu đến fetchWeatherData trong rotateApiKeyAndRetry
+  // Cập nhật tham chiếu đến fetchWeatherData và rotateApiKeyAndRetry
   useEffect(() => {
-    // Cập nhật tham chiếu của rotateApiKeyAndRetry để sử dụng fetchWeatherData mới nhất
-    rotateApiKeyAndRetry.current = rotateApiKeyAndRetry
+    // Lưu tham chiếu của rotateApiKeyAndRetry để sử dụng trong các hàm khác
+    rotateApiKeyAndRetryRef.current = rotateApiKeyAndRetry
   }, [rotateApiKeyAndRetry])
 
   useEffect(() => {
@@ -749,7 +779,9 @@ const WeatherWidget = ({ onPress }) => {
       if (!currentWeather) {
         console.log('Không có dữ liệu thời tiết, thử tải lại một lần...')
         // Reset bộ đếm API key
-        apiKeyRotationCountRef.current = 0
+        if (apiKeyRotationCountRef && apiKeyRotationCountRef.current !== undefined) {
+          apiKeyRotationCountRef.current = 0
+        }
         // Thử lại với API key đầu tiên
         fetchWeatherData(true)
       }
@@ -773,10 +805,14 @@ const WeatherWidget = ({ onPress }) => {
     // Chỉ fetch dữ liệu khi component được mount lần đầu
     // hoặc khi các dependency thực sự thay đổi
     if (isFirstMount.current) {
-      isFirstMount.current = false
+      if (isFirstMount && isFirstMount.current !== undefined) {
+        isFirstMount.current = false
+      }
 
       // Đặt lại số lần thay đổi API key
-      apiKeyRotationCountRef.current = 0
+      if (apiKeyRotationCountRef && apiKeyRotationCountRef.current !== undefined) {
+        apiKeyRotationCountRef.current = 0
+      }
 
       // Kiểm tra quyền vị trí trước khi fetch dữ liệu
       if (!locationPermissionGranted) {
@@ -801,7 +837,9 @@ const WeatherWidget = ({ onPress }) => {
       console.log('Vị trí thay đổi, fetch lại dữ liệu thời tiết')
 
       // Đặt lại số lần thay đổi API key
-      apiKeyRotationCountRef.current = 0
+      if (apiKeyRotationCountRef && apiKeyRotationCountRef.current !== undefined) {
+        apiKeyRotationCountRef.current = 0
+      }
 
       memoizedFetchWeatherData()
     }
