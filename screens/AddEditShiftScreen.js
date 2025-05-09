@@ -106,7 +106,15 @@ const AddEditShiftScreen = ({ route, navigation }) => {
     console.log('Loading shift data for ID:', shiftId)
     setIsLoading(true)
     try {
+      // Đọc danh sách ca làm việc từ AsyncStorage
       const shiftsData = await AsyncStorage.getItem(STORAGE_KEYS.SHIFT_LIST)
+
+      // Đọc ID ca làm việc hiện tại trực tiếp từ AsyncStorage
+      const currentShiftIdFromStorage = await AsyncStorage.getItem(
+        STORAGE_KEYS.CURRENT_SHIFT
+      )
+      console.log('Current shift ID from storage:', currentShiftIdFromStorage)
+
       if (shiftsData) {
         const shifts = JSON.parse(shiftsData)
         console.log('Found shifts:', shifts.length)
@@ -183,10 +191,9 @@ const AddEditShiftScreen = ({ route, navigation }) => {
           console.log('Setting isActive to:', shift.isActive === true)
           setIsActive(shift.isActive === true)
 
-          // Kiểm tra xem ca này có phải là ca hiện tại không
-          const isCurrentShiftValue =
-            currentShift && currentShift.id === shiftId
-          console.log('Is current shift:', isCurrentShiftValue)
+          // Kiểm tra xem ca này có phải là ca hiện tại không dựa trên dữ liệu từ AsyncStorage
+          const isCurrentShiftValue = currentShiftIdFromStorage === shiftId
+          console.log('Is current shift (from storage):', isCurrentShiftValue)
           // Cập nhật state isCurrentShift
           setIsCurrentShift(isCurrentShiftValue)
 
@@ -244,14 +251,28 @@ const AddEditShiftScreen = ({ route, navigation }) => {
   // Cập nhật isCurrentShift khi currentShift thay đổi
   useEffect(() => {
     if (isEditing && shiftId) {
-      const isCurrentShiftValue = currentShift && currentShift.id === shiftId
-      console.log(
-        'Current shift changed, updating isCurrentShift to:',
-        isCurrentShiftValue
-      )
-      setIsCurrentShift(isCurrentShiftValue)
+      // Đọc ID ca làm việc hiện tại trực tiếp từ AsyncStorage
+      const checkCurrentShift = async () => {
+        try {
+          const currentShiftIdFromStorage = await AsyncStorage.getItem(
+            STORAGE_KEYS.CURRENT_SHIFT
+          )
+          const isCurrentShiftValue = currentShiftIdFromStorage === shiftId
+          console.log(
+            'Current shift changed, updating isCurrentShift to:',
+            isCurrentShiftValue,
+            'currentShiftIdFromStorage:',
+            currentShiftIdFromStorage
+          )
+          setIsCurrentShift(isCurrentShiftValue)
+        } catch (error) {
+          console.error('Error checking current shift:', error)
+        }
+      }
+
+      checkCurrentShift()
     }
-  }, [currentShift, shiftId, isEditing])
+  }, [shiftId, isEditing])
 
   // Các hàm xử lý thời gian được triển khai riêng cho từng loại picker
 
@@ -892,10 +913,16 @@ const AddEditShiftScreen = ({ route, navigation }) => {
                   JSON.stringify(shifts)
                 )
 
-                // Xử lý cập nhật ca hiện tại trong context
+                // Xử lý cập nhật ca hiện tại trong context và AsyncStorage
                 if (isActive) {
                   // Nếu ca này được áp dụng, cập nhật nó làm ca hiện tại
                   await setCurrentShift(newShift)
+
+                  // Lưu ID ca hiện tại vào AsyncStorage
+                  await AsyncStorage.setItem(
+                    STORAGE_KEYS.CURRENT_SHIFT,
+                    shiftId || newShift.id
+                  )
 
                   // Cập nhật state isCurrentShift để phản ánh trạng thái mới
                   setIsCurrentShift(true)
@@ -922,6 +949,9 @@ const AddEditShiftScreen = ({ route, navigation }) => {
 
                   // Cập nhật ca hiện tại trong context thành null
                   await setCurrentShift(null)
+
+                  // Xóa ID ca hiện tại khỏi AsyncStorage
+                  await AsyncStorage.removeItem(STORAGE_KEYS.CURRENT_SHIFT)
 
                   // Cập nhật state isCurrentShift để phản ánh trạng thái mới
                   setIsCurrentShift(false)
