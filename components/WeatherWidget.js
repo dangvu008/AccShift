@@ -350,8 +350,48 @@ const WeatherWidget = ({ onPress }) => {
       if (isMounted) {
         // Không hiển thị thông báo lỗi chi tiết nữa, chỉ ghi log
         console.log(`Lỗi: ${error.message}`)
-        setLoading(false)
-        setRefreshing(false)
+
+        // Kiểm tra loại lỗi để quyết định cách xử lý
+        if (
+          error.message.includes('network') ||
+          error.message.includes('timeout') ||
+          error.message.includes('API key') ||
+          error.message.includes('rate limit') ||
+          error.message.includes('429')
+        ) {
+          console.log(
+            'Lỗi liên quan đến mạng hoặc API key, thử thay đổi API key...'
+          )
+
+          // Hủy bỏ timeout hiện tại nếu có
+          if (autoRetryTimeoutRef.current) {
+            clearTimeout(autoRetryTimeoutRef.current)
+          }
+
+          // Đặt timeout để thay đổi API key và thử lại sau 2 giây
+          autoRetryTimeoutRef.current = setTimeout(() => {
+            if (isMounted) {
+              rotateApiKeyAndRetry()
+            }
+          }, 2000)
+        } else {
+          // Lỗi khác, đặt timeout để tự động thử lại sau 30 giây
+          console.log('Lỗi khác, sẽ tự động thử lại sau 30 giây...')
+
+          if (autoRetryTimeoutRef.current) {
+            clearTimeout(autoRetryTimeoutRef.current)
+          }
+
+          autoRetryTimeoutRef.current = setTimeout(() => {
+            if (isMounted) {
+              console.log('Tự động thử lại sau lỗi...')
+              fetchWeatherData(true)
+            }
+          }, 30000)
+
+          setLoading(false)
+          setRefreshing(false)
+        }
       }
     }
 
@@ -567,6 +607,8 @@ const WeatherWidget = ({ onPress }) => {
   const isFirstMount = useRef(true)
   const lastFetchTime = useRef(0)
   const fetchTimeoutRef = useRef(null)
+  const autoRetryTimeoutRef = useRef(null)
+  const apiKeyRotationCountRef = useRef(0) // Đếm số lần đã thay đổi API key
 
   // Sử dụng useCallback để tránh tạo lại hàm fetchWeatherData mỗi khi render
   // Thêm kiểm tra thời gian để tránh gọi API quá thường xuyên
@@ -613,20 +655,114 @@ const WeatherWidget = ({ onPress }) => {
     // Loại bỏ generateSmartAlert khỏi dependencies để tránh vòng lặp render
   ])
 
+  // Hàm tự động thay đổi API key và thử lại
+  const rotateApiKeyAndRetry = useCallback(async () => {
+    try {
+      // Tăng số lần đã thay đổi API key
+      apiKeyRotationCountRef.current += 1
+
+      // Giới hạn số lần thay đổi API key để tránh vòng lặp vô hạn
+      if (apiKeyRotationCountRef.current > 5) {
+        console.log('Đã thử quá nhiều API key, dừng thử lại')
+        setErrorMessage(
+          t('Không thể kết nối đến dịch vụ thời tiết. Vui lòng thử lại sau.')
+        )
+        setLoading(false)
+        setRefreshing(false)
+        return
+      }
+
+      console.log(
+        `Thay đổi API key lần ${apiKeyRotationCountRef.current} và thử lại...`
+      )
+
+      // Lấy danh sách API key hiện tại
+      const apiKeys = await weatherService.getApiKeys()
+
+      // Nếu không có API key nào, không thể thử lại
+      if (!apiKeys || apiKeys.length === 0) {
+        console.log('Không có API key nào khả dụng')
+        setErrorMessage(t('Không có API key nào khả dụng'))
+        setLoading(false)
+        setRefreshing(false)
+        return
+      }
+
+      // Tìm API key tiếp theo để thử
+      const nextKeyIndex = apiKeyRotationCountRef.current % apiKeys.length
+      const nextKey = apiKeys[nextKeyIndex]
+
+      if (nextKey) {
+        console.log(`Thử với API key: ${nextKey.key}...`)
+
+        // Xóa cache để đảm bảo không sử dụng dữ liệu cũ
+        await weatherService.clearWeatherCache()
+
+        // Đợi một chút trước khi thử lại
+        await new Promise((resolve) => setTimeout(resolve, 500))
+
+        // Thử lại với API key mới
+        fetchWeatherData(true)
+      } else {
+        console.log('Không tìm thấy API key tiếp theo')
+        setErrorMessage(
+          t('Không thể kết nối đến dịch vụ thời tiết. Vui lòng thử lại sau.')
+        )
+        setLoading(false)
+        setRefreshing(false)
+      }
+    } catch (error) {
+      console.error('Lỗi khi thay đổi API key:', error)
+      setLoading(false)
+      setRefreshing(false)
+    }
+  }, [fetchWeatherData, t])
+
   useEffect(() => {
     // Dọn dẹp timeout khi component unmount
     return () => {
       if (fetchTimeoutRef.current) {
         clearTimeout(fetchTimeoutRef.current)
       }
+      if (autoRetryTimeoutRef.current) {
+        clearTimeout(autoRetryTimeoutRef.current)
+      }
     }
   }, [])
+
+  // Tự động tải lại dữ liệu thời tiết theo định kỳ
+  useEffect(() => {
+    // Chỉ thiết lập interval khi có quyền vị trí và có vị trí
+    if (locationPermissionGranted && (homeLocation || workLocation)) {
+      console.log('Thiết lập tự động tải lại dữ liệu thời tiết mỗi 15 phút')
+
+      // Tạo interval để tải lại dữ liệu thời tiết mỗi 15 phút
+      const intervalId = setInterval(() => {
+        console.log('Tự động tải lại dữ liệu thời tiết theo định kỳ...')
+
+        // Đặt lại số lần thay đổi API key
+        apiKeyRotationCountRef.current = 0
+
+        // Tải lại dữ liệu thời tiết
+        fetchWeatherData(true)
+      }, 15 * 60 * 1000) // 15 phút
+
+      // Dọn dẹp interval khi component unmount
+      return () => {
+        console.log('Dọn dẹp interval tự động tải lại dữ liệu thời tiết')
+        clearInterval(intervalId)
+      }
+    }
+  }, [locationPermissionGranted, homeLocation, workLocation, fetchWeatherData])
 
   useEffect(() => {
     // Chỉ fetch dữ liệu khi component được mount lần đầu
     // hoặc khi các dependency thực sự thay đổi
     if (isFirstMount.current) {
       isFirstMount.current = false
+
+      // Đặt lại số lần thay đổi API key
+      apiKeyRotationCountRef.current = 0
 
       // Kiểm tra quyền vị trí trước khi fetch dữ liệu
       if (!locationPermissionGranted) {
@@ -649,6 +785,10 @@ const WeatherWidget = ({ onPress }) => {
     } else if ((homeLocation || workLocation) && locationPermissionGranted) {
       // Chỉ fetch lại khi vị trí thay đổi và có quyền vị trí
       console.log('Vị trí thay đổi, fetch lại dữ liệu thời tiết')
+
+      // Đặt lại số lần thay đổi API key
+      apiKeyRotationCountRef.current = 0
+
       memoizedFetchWeatherData()
     }
   }, [
@@ -729,21 +869,10 @@ const WeatherWidget = ({ onPress }) => {
               marginBottom: 8,
             }}
           >
-            {t('Không thể tải dữ liệu thời tiết')}
-          </Text>
-          <Text
-            style={{
-              fontSize: 14,
-              color: theme.subtextColor,
-              textAlign: 'center',
-              marginBottom: 12,
-            }}
-          >
-            {!locationPermissionGranted
-              ? t('Cần cấp quyền vị trí để xem thời tiết')
-              : t('Nhấn nút làm mới để thử lại')}
+            {t('Đang tải dữ liệu thời tiết')}
           </Text>
 
+          {/* Hiển thị nút làm mới */}
           <TouchableOpacity
             style={{
               backgroundColor: COLORS.PRIMARY,
@@ -775,33 +904,6 @@ const WeatherWidget = ({ onPress }) => {
             )}
             <Text style={{ color: COLORS.TEXT_DARK, fontWeight: '500' }}>
               {refreshing ? t('Đang làm mới...') : t('Làm mới')}
-            </Text>
-          </TouchableOpacity>
-
-          {/* Thêm nút để vào chi tiết thời tiết */}
-          <TouchableOpacity
-            style={{
-              backgroundColor: 'transparent',
-              paddingVertical: 8,
-              paddingHorizontal: 16,
-              borderRadius: 20,
-              alignSelf: 'center',
-              marginTop: 12,
-              borderWidth: 1,
-              borderColor: theme.primaryColor,
-              flexDirection: 'row',
-              alignItems: 'center',
-            }}
-            onPress={onPress}
-          >
-            <Ionicons
-              name="information-circle-outline"
-              size={18}
-              color={theme.primaryColor}
-              style={{ marginRight: 8 }}
-            />
-            <Text style={{ color: theme.primaryColor, fontWeight: '500' }}>
-              {t('Xem chi tiết thời tiết')}
             </Text>
           </TouchableOpacity>
         </View>

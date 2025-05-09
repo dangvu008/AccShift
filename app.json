@@ -66,6 +66,9 @@
       "expo-secure-store",
       "expo-crypto"
     ],
+    "experiments": {
+      "reactNativeNewArchitecture": false
+    },
     "updates": {
       "fallbackToCacheTimeout": 0,
       "url": "https://u.expo.dev/your-project-id"
