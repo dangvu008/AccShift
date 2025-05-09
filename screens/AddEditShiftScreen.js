@@ -27,7 +27,8 @@ const AddEditShiftScreen = ({ route, navigation }) => {
   const { t, darkMode, currentShift, setCurrentShift } = useContext(AppContext)
   const { shiftId } = route.params || {}
   const isEditing = !!shiftId
-  const isCurrentShift = currentShift && currentShift.id === shiftId
+  // Sử dụng state để theo dõi xem ca đang chỉnh sửa có phải là ca hiện tại không
+  const [isCurrentShift, setIsCurrentShift] = useState(false)
 
   // Form state
   const [shiftName, setShiftName] = useState('')
@@ -186,6 +187,8 @@ const AddEditShiftScreen = ({ route, navigation }) => {
           const isCurrentShiftValue =
             currentShift && currentShift.id === shiftId
           console.log('Is current shift:', isCurrentShiftValue)
+          // Cập nhật state isCurrentShift
+          setIsCurrentShift(isCurrentShiftValue)
 
           // Kiểm tra cả hai trường để đảm bảo tương thích ngược
           // Chỉ true khi giá trị rõ ràng là true
@@ -237,6 +240,18 @@ const AddEditShiftScreen = ({ route, navigation }) => {
       loadShiftData()
     }
   }, [isEditing, loadShiftData])
+
+  // Cập nhật isCurrentShift khi currentShift thay đổi
+  useEffect(() => {
+    if (isEditing && shiftId) {
+      const isCurrentShiftValue = currentShift && currentShift.id === shiftId
+      console.log(
+        'Current shift changed, updating isCurrentShift to:',
+        isCurrentShiftValue
+      )
+      setIsCurrentShift(isCurrentShiftValue)
+    }
+  }, [currentShift, shiftId, isEditing])
 
   // Các hàm xử lý thời gian được triển khai riêng cho từng loại picker
 
@@ -882,6 +897,9 @@ const AddEditShiftScreen = ({ route, navigation }) => {
                   // Nếu ca này được áp dụng, cập nhật nó làm ca hiện tại
                   await setCurrentShift(newShift)
 
+                  // Cập nhật state isCurrentShift để phản ánh trạng thái mới
+                  setIsCurrentShift(true)
+
                   // Nếu đây không phải là ca hiện tại trước đó, hiển thị thông báo
                   if (!isCurrentShift) {
                     Alert.alert(
@@ -904,6 +922,9 @@ const AddEditShiftScreen = ({ route, navigation }) => {
 
                   // Cập nhật ca hiện tại trong context thành null
                   await setCurrentShift(null)
+
+                  // Cập nhật state isCurrentShift để phản ánh trạng thái mới
+                  setIsCurrentShift(false)
                 }
 
                 // Navigate back
@@ -1490,12 +1511,18 @@ const AddEditShiftScreen = ({ route, navigation }) => {
                 }}
                 trackColor={{ false: '#767577', true: COLORS.PRIMARY }}
                 thumbColor={showPunch ? '#f4f3f4' : '#f4f3f4'}
+                disabled={false} // Luôn cho phép thay đổi
               />
             </View>
           </View>
 
           {/* Active Switch */}
-          {console.log('Rendering isActive switch with value:', isActive)}
+          {console.log(
+            'Rendering isActive switch with value:',
+            isActive,
+            'isCurrentShift:',
+            isCurrentShift
+          )}
           <View
             style={[
               styles.switchContainer,
@@ -1578,6 +1605,7 @@ const AddEditShiftScreen = ({ route, navigation }) => {
                 }}
                 trackColor={{ false: '#767577', true: COLORS.PRIMARY }}
                 thumbColor={isActive ? '#f4f3f4' : '#f4f3f4'}
+                disabled={false} // Luôn cho phép thay đổi
               />
             </View>
           </View>
