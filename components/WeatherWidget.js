@@ -481,12 +481,12 @@ const WeatherWidget = ({ onPress }) => {
   ]),
 
   // Hàm tạo cảnh báo thông minh dựa trên dữ liệu thời tiết ở cả hai vị trí
-  const generateSmartAlert = (
+  function generateSmartAlert(
     homeWeather,
     homeForecast,
     workWeather,
     workForecast
-  ) => {
+  ) {
     // Nếu không có dữ liệu thời tiết ở cả hai vị trí, không tạo cảnh báo
     if (!homeWeather && !workWeather) {
       setSmartAlert(null)
