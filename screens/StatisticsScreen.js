@@ -101,6 +101,7 @@ const StatisticsScreen = ({ navigation }) => {
 
       // Filter keys within the date range
       const filteredStatusData = []
+      const loadPromises = []
 
       // For each day in the range, try to load status
       const currentDate = new Date(startDate)
@@ -109,20 +110,48 @@ const StatisticsScreen = ({ navigation }) => {
         const statusKey = `${STORAGE_KEYS.DAILY_WORK_STATUS_PREFIX}${dateKey}`
 
         if (statusKeys.includes(statusKey)) {
-          try {
-            const statusJson = await AsyncStorage.getItem(statusKey)
-            if (statusJson) {
-              const status = JSON.parse(statusJson)
-              filteredStatusData.push(status)
+          // Sử dụng Promise để tải dữ liệu song song thay vì tuần tự
+          const loadPromise = (async () => {
+            try {
+              const statusJson = await AsyncStorage.getItem(statusKey)
+              if (statusJson) {
+                try {
+                  const status = JSON.parse(statusJson)
+                  return status
+                } catch (parseError) {
+                  console.error(
+                    `Error parsing status for ${dateKey}:`,
+                    parseError
+                  )
+                  return null
+                }
+              }
+              return null
+            } catch (error) {
+              console.error(`Error loading status for ${dateKey}:`, error)
+              return null
             }
-          } catch (error) {
-            console.error(`Error loading status for ${dateKey}:`, error)
-          }
+          })()
+
+          loadPromises.push(loadPromise)
+        } else {
+          // Thêm null cho ngày không có dữ liệu để giữ đúng thứ tự
+          loadPromises.push(Promise.resolve(null))
         }
 
         // Move to next day
         currentDate.setDate(currentDate.getDate() + 1)
       }
+
+      // Đợi tất cả các promise hoàn thành
+      const results = await Promise.all(loadPromises)
+
+      // Lọc bỏ các giá trị null và thêm vào kết quả
+      results.forEach((status) => {
+        if (status) {
+          filteredStatusData.push(status)
+        }
+      })
 
       return filteredStatusData
     } catch (error) {
@@ -368,15 +397,32 @@ const StatisticsScreen = ({ navigation }) => {
   }
 
   const loadStatistics = useCallback(async () => {
+    // Nếu đã đang tải, không thực hiện tải lại để tránh vòng lặp vô hạn
+    if (isLoading) {
+      console.log('Đã đang tải dữ liệu, bỏ qua yêu cầu tải lại')
+      return
+    }
+
     setIsLoading(true)
     setLoadError(null)
+
+    // Đặt timeout để tránh trường hợp hàm không bao giờ kết thúc
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(new Error('Tải dữ liệu quá thời gian, vui lòng thử lại'))
+      }, 10000) // 10 giây timeout
+    })
 
     try {
       // Get date range
       const { rangeStart, rangeEnd } = getDateRange(timeRange)
 
-      // Load daily work statuses
-      const workStatuses = await loadDailyWorkStatuses(rangeStart, rangeEnd)
+      // Load daily work statuses với timeout
+      const workStatusesPromise = loadDailyWorkStatuses(rangeStart, rangeEnd)
+      const workStatuses = await Promise.race([
+        workStatusesPromise,
+        timeoutPromise,
+      ])
 
       // Calculate statistics
       const calculatedStats = calculateStatistics(
@@ -385,38 +431,55 @@ const StatisticsScreen = ({ navigation }) => {
         rangeEnd
       )
 
-      setStats(calculatedStats)
+      // Kiểm tra nếu component vẫn mounted trước khi cập nhật state
+      if (isMountedRef.current) {
+        setStats(calculatedStats)
+      }
     } catch (error) {
       console.error('Error loading statistics:', error)
-      setLoadError(error.message || 'Lỗi khi tải dữ liệu thống kê')
 
-      // Đặt dữ liệu mặc định để tránh màn hình trống
-      setStats({
-        totalWorkTime: 0,
-        overtime: 0,
-        standardHours: 0,
-        otHours: 0,
-        sundayHours: 0,
-        nightHours: 0,
-        statusCounts: {
-          DU_CONG: 0,
-          DI_MUON: 0,
-          VE_SOM: 0,
-          DI_MUON_VE_SOM: 0,
-          THIEU_LOG: 0,
-          NGHI_PHEP: 0,
-          NGHI_BENH: 0,
-          NGHI_LE: 0,
-          NGHI_THUONG: 0,
-          VANG_MAT: 0,
-          CHUA_CAP_NHAT: 0,
-        },
-        dailyData: [],
-      })
+      // Kiểm tra nếu component vẫn mounted trước khi cập nhật state
+      if (isMountedRef.current) {
+        setLoadError(error.message || 'Lỗi khi tải dữ liệu thống kê')
+
+        // Đặt dữ liệu mặc định để tránh màn hình trống
+        setStats({
+          totalWorkTime: 0,
+          overtime: 0,
+          standardHours: 0,
+          otHours: 0,
+          sundayHours: 0,
+          nightHours: 0,
+          statusCounts: {
+            DU_CONG: 0,
+            DI_MUON: 0,
+            VE_SOM: 0,
+            DI_MUON_VE_SOM: 0,
+            THIEU_LOG: 0,
+            NGHI_PHEP: 0,
+            NGHI_BENH: 0,
+            NGHI_LE: 0,
+            NGHI_THUONG: 0,
+            VANG_MAT: 0,
+            CHUA_CAP_NHAT: 0,
+          },
+          dailyData: [],
+        })
+      }
     } finally {
-      setIsLoading(false)
+      // Kiểm tra nếu component vẫn mounted trước khi cập nhật state
+      if (isMountedRef.current) {
+        setIsLoading(false)
+      }
     }
-  }, [timeRange, calculateStatistics, getDateRange, loadDailyWorkStatuses])
+  }, [
+    timeRange,
+    calculateStatistics,
+    getDateRange,
+    loadDailyWorkStatuses,
+    isLoading,
+    isMountedRef,
+  ])
 
   // Tham chiếu để theo dõi thời gian tải dữ liệu gần nhất
   const lastLoadTimeRef = useRef(0)
@@ -424,12 +487,26 @@ const StatisticsScreen = ({ navigation }) => {
   const retryCountRef = useRef(0)
   // Tham chiếu để theo dõi trạng thái đang tải
   const isLoadingRef = useRef(false)
+  // Tham chiếu để theo dõi nếu component đã unmount
+  const isMountedRef = useRef(true)
 
   // Tải dữ liệu khi component được mount lần đầu
   useEffect(() => {
     console.log('StatisticsScreen được mount lần đầu, tải dữ liệu thống kê')
-    loadStatistics()
-    lastLoadTimeRef.current = Date.now()
+    isMountedRef.current = true
+
+    // Đặt timeout để tránh tải dữ liệu quá sớm khi màn hình đang render
+    const timer = setTimeout(() => {
+      if (isMountedRef.current) {
+        loadStatistics()
+        lastLoadTimeRef.current = Date.now()
+      }
+    }, 300)
+
+    return () => {
+      clearTimeout(timer)
+      isMountedRef.current = false
+    }
   }, [loadStatistics])
 
   // Sử dụng useFocusEffect để kiểm soát việc tải lại dữ liệu khi màn hình được focus
@@ -437,50 +514,69 @@ const StatisticsScreen = ({ navigation }) => {
     useCallback(() => {
       const now = Date.now()
 
+      // Đánh dấu component đã mount
+      isMountedRef.current = true
+
       // Nếu đang tải, không thực hiện tải lại
       if (isLoadingRef.current) {
         console.log('Đang tải dữ liệu, bỏ qua yêu cầu tải lại')
         return
       }
 
-      // Chỉ tải lại dữ liệu nếu đã qua ít nhất 10 giây từ lần tải trước
-      // Tăng thời gian chờ lên 10 giây để tránh tải lại quá thường xuyên
-      if (now - lastLoadTimeRef.current > 10000) {
+      // Chỉ tải lại dữ liệu nếu đã qua ít nhất 5 giây từ lần tải trước
+      // Giảm thời gian chờ xuống 5 giây để cải thiện trải nghiệm người dùng
+      if (now - lastLoadTimeRef.current > 5000) {
         console.log('StatisticsScreen được focus, tải lại dữ liệu thống kê')
 
         // Đánh dấu đang tải
         isLoadingRef.current = true
 
-        // Thực hiện tải dữ liệu
-        loadStatistics()
-          .then(() => {
-            // Đặt lại số lần thử lại khi tải thành công
-            retryCountRef.current = 0
-          })
-          .catch((error) => {
-            console.error('Lỗi khi tải dữ liệu thống kê:', error)
-            // Tăng số lần thử lại
-            retryCountRef.current++
+        // Đặt timeout để tránh tải dữ liệu quá sớm khi màn hình đang chuyển đổi
+        const timer = setTimeout(() => {
+          if (!isMountedRef.current) return
 
-            // Nếu thử lại quá 3 lần, hiển thị thông báo lỗi
-            if (retryCountRef.current > 3) {
-              setLoadError(
-                'Không thể tải dữ liệu thống kê sau nhiều lần thử lại'
-              )
-            }
-          })
-          .finally(() => {
-            // Cập nhật thời gian tải gần nhất
-            lastLoadTimeRef.current = Date.now()
-            // Đánh dấu đã tải xong
-            isLoadingRef.current = false
-          })
+          // Thực hiện tải dữ liệu
+          loadStatistics()
+            .then(() => {
+              // Đặt lại số lần thử lại khi tải thành công
+              if (isMountedRef.current) {
+                retryCountRef.current = 0
+              }
+            })
+            .catch((error) => {
+              if (!isMountedRef.current) return
+
+              console.error('Lỗi khi tải dữ liệu thống kê:', error)
+              // Tăng số lần thử lại
+              retryCountRef.current++
+
+              // Nếu thử lại quá 3 lần, hiển thị thông báo lỗi
+              if (retryCountRef.current > 3 && isMountedRef.current) {
+                setLoadError(
+                  'Không thể tải dữ liệu thống kê sau nhiều lần thử lại'
+                )
+              }
+            })
+            .finally(() => {
+              if (!isMountedRef.current) return
+
+              // Cập nhật thời gian tải gần nhất
+              lastLoadTimeRef.current = Date.now()
+              // Đánh dấu đã tải xong
+              isLoadingRef.current = false
+            })
+        }, 300)
+
+        return () => {
+          clearTimeout(timer)
+        }
       } else {
         console.log('Bỏ qua tải lại dữ liệu thống kê do mới tải gần đây')
       }
 
       return () => {
         // Cleanup khi component bị unfocus
+        isMountedRef.current = false
       }
     }, [loadStatistics])
   )
@@ -707,14 +803,7 @@ const StatisticsScreen = ({ navigation }) => {
         </Text>
       </View>
 
-      {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#8a56ff" />
-          <Text style={[styles.loadingText, { color: theme.textColor }]}>
-            {t('Đang tải thống kê...')}
-          </Text>
-        </View>
-      ) : loadError ? (
+      {loadError ? (
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle-outline" size={48} color="#e74c3c" />
           <Text style={[styles.errorText, { color: theme.textColor }]}>
@@ -723,6 +812,8 @@ const StatisticsScreen = ({ navigation }) => {
           <TouchableOpacity
             style={styles.retryButton}
             onPress={() => {
+              // Đặt lại trạng thái lỗi và thử lại
+              setLoadError(null)
               loadStatistics()
             }}
           >
@@ -731,6 +822,18 @@ const StatisticsScreen = ({ navigation }) => {
         </View>
       ) : (
         <>
+          {/* Hiển thị loading indicator trong khi vẫn hiển thị dữ liệu cũ */}
+          {isLoading && (
+            <View style={styles.overlayLoadingContainer}>
+              <View style={styles.loadingIndicatorContainer}>
+                <ActivityIndicator size="large" color="#8a56ff" />
+                <Text style={styles.loadingText}>
+                  {t('Đang tải thống kê...')}
+                </Text>
+              </View>
+            </View>
+          )}
+
           {/* Tổng giờ làm */}
           <View style={[styles.statCard, { backgroundColor: theme.cardColor }]}>
             <Text style={[styles.statTitle, { color: theme.textColor }]}>
@@ -1360,9 +1463,33 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 40,
   },
+  // Overlay loading container để hiển thị loading indicator trên dữ liệu
+  overlayLoadingContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  loadingIndicatorContainer: {
+    backgroundColor: 'white',
+    padding: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
   loadingText: {
     fontSize: 16,
     marginTop: 16,
+    color: '#333',
   },
   errorContainer: {
     alignItems: 'center',
