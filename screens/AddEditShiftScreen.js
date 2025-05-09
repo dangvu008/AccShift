@@ -182,6 +182,11 @@ const AddEditShiftScreen = ({ route, navigation }) => {
           console.log('Setting isActive to:', shift.isActive === true)
           setIsActive(shift.isActive === true)
 
+          // Kiểm tra xem ca này có phải là ca hiện tại không
+          const isCurrentShiftValue =
+            currentShift && currentShift.id === shiftId
+          console.log('Is current shift:', isCurrentShiftValue)
+
           // Kiểm tra cả hai trường để đảm bảo tương thích ngược
           // Chỉ true khi giá trị rõ ràng là true
           const shouldShowPunch =
@@ -1462,17 +1467,31 @@ const AddEditShiftScreen = ({ route, navigation }) => {
             <Text style={[styles.switchLabel, darkMode && styles.darkLabel]}>
               {t('Yêu cầu ký công')}
             </Text>
-            <Switch
-              value={showPunch}
-              onValueChange={(value) => {
-                console.log('Changing showPunch to:', value)
-                setShowPunch(value)
-                setIsFormDirty(true)
-                setHasInteracted(true) // Đánh dấu người dùng đã tương tác với form
-              }}
-              trackColor={{ false: '#767577', true: COLORS.PRIMARY }}
-              thumbColor={showPunch ? '#f4f3f4' : '#f4f3f4'}
-            />
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              {isEditing && (
+                <Text
+                  style={[
+                    styles.switchStatus,
+                    showPunch
+                      ? styles.switchStatusActive
+                      : styles.switchStatusInactive,
+                  ]}
+                >
+                  {showPunch ? t('Đang bật') : t('Đang tắt')}
+                </Text>
+              )}
+              <Switch
+                value={showPunch}
+                onValueChange={(value) => {
+                  console.log('Changing showPunch to:', value)
+                  setShowPunch(value)
+                  setIsFormDirty(true)
+                  setHasInteracted(true) // Đánh dấu người dùng đã tương tác với form
+                }}
+                trackColor={{ false: '#767577', true: COLORS.PRIMARY }}
+                thumbColor={showPunch ? '#f4f3f4' : '#f4f3f4'}
+              />
+            </View>
           </View>
 
           {/* Active Switch */}
@@ -1486,67 +1505,81 @@ const AddEditShiftScreen = ({ route, navigation }) => {
             <Text style={[styles.switchLabel, darkMode && styles.darkLabel]}>
               {t('Áp dụng')}
             </Text>
-            <Switch
-              value={isActive}
-              onValueChange={(value) => {
-                console.log('Changing isActive to:', value)
-                setHasInteracted(true) // Đánh dấu người dùng đã tương tác với form
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              {isEditing && (
+                <Text
+                  style={[
+                    styles.switchStatus,
+                    isActive
+                      ? styles.switchStatusActive
+                      : styles.switchStatusInactive,
+                  ]}
+                >
+                  {isActive ? t('Đang áp dụng') : t('Không áp dụng')}
+                </Text>
+              )}
+              <Switch
+                value={isActive}
+                onValueChange={(value) => {
+                  console.log('Changing isActive to:', value)
+                  setHasInteracted(true) // Đánh dấu người dùng đã tương tác với form
 
-                // Nếu đang bật ca mới và đã có ca khác đang áp dụng
-                if (value && currentShift && currentShift.id !== shiftId) {
-                  Alert.alert(
-                    t('Xác nhận áp dụng ca mới'),
-                    t(
-                      'Hiện đã có ca khác đang được áp dụng. Nếu áp dụng ca này, ca hiện tại sẽ bị tắt. Bạn có chắc chắn muốn áp dụng ca này không?'
-                    ),
-                    [
-                      {
-                        text: t('Hủy'),
-                        style: 'cancel',
-                      },
-                      {
-                        text: t('Áp dụng'),
-                        onPress: () => {
-                          console.log('Confirmed: setting isActive to true')
-                          setIsActive(true)
-                          setIsFormDirty(true)
+                  // Nếu đang bật ca mới và đã có ca khác đang áp dụng
+                  if (value && currentShift && currentShift.id !== shiftId) {
+                    Alert.alert(
+                      t('Xác nhận áp dụng ca mới'),
+                      t(
+                        'Hiện đã có ca khác đang được áp dụng. Nếu áp dụng ca này, ca hiện tại sẽ bị tắt. Bạn có chắc chắn muốn áp dụng ca này không?'
+                      ),
+                      [
+                        {
+                          text: t('Hủy'),
+                          style: 'cancel',
                         },
-                      },
-                    ]
-                  )
-                }
-                // Nếu đang tắt ca hiện tại, hiển thị xác nhận
-                else if (isCurrentShift && !value) {
-                  Alert.alert(
-                    t('Xác nhận tắt ca đang áp dụng'),
-                    t(
-                      'Ca này đang được áp dụng. Nếu tắt, ca này sẽ không còn được áp dụng nữa. Bạn có chắc chắn muốn tắt ca này không?'
-                    ),
-                    [
-                      {
-                        text: t('Hủy'),
-                        style: 'cancel',
-                      },
-                      {
-                        text: t('Tắt ca'),
-                        style: 'destructive',
-                        onPress: () => {
-                          console.log('Confirmed: setting isActive to false')
-                          setIsActive(false)
-                          setIsFormDirty(true)
+                        {
+                          text: t('Áp dụng'),
+                          onPress: () => {
+                            console.log('Confirmed: setting isActive to true')
+                            setIsActive(true)
+                            setIsFormDirty(true)
+                          },
                         },
-                      },
-                    ]
-                  )
-                } else {
-                  console.log('Setting isActive to:', value)
-                  setIsActive(value)
-                  setIsFormDirty(true)
-                }
-              }}
-              trackColor={{ false: '#767577', true: COLORS.PRIMARY }}
-              thumbColor={isActive ? '#f4f3f4' : '#f4f3f4'}
-            />
+                      ]
+                    )
+                  }
+                  // Nếu đang tắt ca hiện tại, hiển thị xác nhận
+                  else if (isCurrentShift && !value) {
+                    Alert.alert(
+                      t('Xác nhận tắt ca đang áp dụng'),
+                      t(
+                        'Ca này đang được áp dụng. Nếu tắt, ca này sẽ không còn được áp dụng nữa. Bạn có chắc chắn muốn tắt ca này không?'
+                      ),
+                      [
+                        {
+                          text: t('Hủy'),
+                          style: 'cancel',
+                        },
+                        {
+                          text: t('Tắt ca'),
+                          style: 'destructive',
+                          onPress: () => {
+                            console.log('Confirmed: setting isActive to false')
+                            setIsActive(false)
+                            setIsFormDirty(true)
+                          },
+                        },
+                      ]
+                    )
+                  } else {
+                    console.log('Setting isActive to:', value)
+                    setIsActive(value)
+                    setIsFormDirty(true)
+                  }
+                }}
+                trackColor={{ false: '#767577', true: COLORS.PRIMARY }}
+                thumbColor={isActive ? '#f4f3f4' : '#f4f3f4'}
+              />
+            </View>
           </View>
 
           {/* Action Buttons */}
@@ -1912,6 +1945,17 @@ const styles = StyleSheet.create({
   },
   iosPicker: {
     height: 200,
+  },
+  switchStatus: {
+    fontSize: 14,
+    marginRight: 10,
+    fontWeight: '500',
+  },
+  switchStatusActive: {
+    color: COLORS.SUCCESS,
+  },
+  switchStatusInactive: {
+    color: COLORS.ERROR,
   },
   dropdownContainer: {
     position: 'absolute',
