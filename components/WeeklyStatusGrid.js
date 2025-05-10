@@ -370,6 +370,7 @@ const WeeklyStatusGrid = () => {
         updatedAt: now.toISOString(),
         isManuallyUpdated: true, // Đánh dấu là đã cập nhật thủ công
         // Lưu thông tin ca làm việc nếu có
+        shiftId: currentShift ? currentShift.id : existingStatus.shiftId,
         shiftName: currentShift ? currentShift.name : existingStatus.shiftName,
       }
 
@@ -389,6 +390,204 @@ const WeeklyStatusGrid = () => {
         // Nếu đã có thời gian vào nhưng chưa có thời gian ra, lưu thời gian hiện tại
         if (updatedStatus.vaoLogTime && !updatedStatus.raLogTime) {
           updatedStatus.raLogTime = timeString
+        }
+      }
+
+      // Nếu trạng thái là DU_CONG, tính toán giờ làm dựa trên ca làm việc
+      if (newStatus === WORK_STATUS.DU_CONG && currentShift) {
+        try {
+          // Tính toán giờ làm dựa trên ca làm việc
+          const baseDate = new Date(day.date) // Sử dụng ngày được chọn
+
+          // Tính toán thời gian làm việc theo lịch trình ca
+          const calculateScheduledWorkTime = (shift, baseDate) => {
+            if (!shift || !baseDate) {
+              return {
+                standardHoursScheduled: 0,
+                otHoursScheduled: 0,
+                sundayHoursScheduled: 0,
+                nightHoursScheduled: 0,
+                totalHoursScheduled: 0,
+              }
+            }
+
+            // Kiểm tra xem ca làm việc có phải là ca qua đêm không
+            const isOvernightShift = (startTime, endTime) => {
+              if (!startTime || !endTime) return false
+
+              const [startHour, startMinute] = startTime.split(':').map(Number)
+              const [endHour, endMinute] = endTime.split(':').map(Number)
+
+              return (
+                endHour < startHour ||
+                (endHour === startHour && endMinute < startMinute)
+              )
+            }
+
+            const isOvernight = isOvernightShift(shift.startTime, shift.endTime)
+
+            // Tính thời gian ca làm việc chuẩn (giờ)
+            // Tính thời gian từ startTime đến officeEndTime
+            const startTimeParts = shift.startTime.split(':').map(Number)
+            const officeEndTimeParts = shift.officeEndTime
+              .split(':')
+              .map(Number)
+
+            let standardHours = 0
+
+            if (isOvernight) {
+              // Nếu là ca qua đêm, tính toán đặc biệt
+              if (officeEndTimeParts[0] < startTimeParts[0]) {
+                // Kết thúc vào ngày hôm sau
+                standardHours =
+                  24 -
+                  startTimeParts[0] +
+                  officeEndTimeParts[0] +
+                  (officeEndTimeParts[1] - startTimeParts[1]) / 60
+              } else {
+                // Kết thúc vào cùng ngày (hiếm gặp với ca qua đêm)
+                standardHours =
+                  officeEndTimeParts[0] -
+                  startTimeParts[0] +
+                  (officeEndTimeParts[1] - startTimeParts[1]) / 60
+              }
+            } else {
+              // Ca thông thường
+              standardHours =
+                officeEndTimeParts[0] -
+                startTimeParts[0] +
+                (officeEndTimeParts[1] - startTimeParts[1]) / 60
+            }
+
+            // Trừ thời gian nghỉ
+            const breakHours = (shift.breakMinutes || 0) / 60
+            standardHours = Math.max(0, standardHours - breakHours)
+
+            // Tính thời gian OT theo lịch trình (giờ)
+            let otHours = 0
+            if (shift.endTime && shift.endTime !== shift.officeEndTime) {
+              const endTimeParts = shift.endTime.split(':').map(Number)
+
+              if (isOvernight) {
+                if (endTimeParts[0] < officeEndTimeParts[0]) {
+                  // OT qua đêm, kết thúc vào ngày hôm sau
+                  otHours =
+                    24 -
+                    officeEndTimeParts[0] +
+                    endTimeParts[0] +
+                    (endTimeParts[1] - officeEndTimeParts[1]) / 60
+                } else {
+                  // OT trong cùng ngày
+                  otHours =
+                    endTimeParts[0] -
+                    officeEndTimeParts[0] +
+                    (endTimeParts[1] - officeEndTimeParts[1]) / 60
+                }
+              } else {
+                // OT thông thường
+                otHours =
+                  endTimeParts[0] -
+                  officeEndTimeParts[0] +
+                  (endTimeParts[1] - officeEndTimeParts[1]) / 60
+              }
+            }
+
+            // Tính tổng thời gian làm việc theo lịch trình (giờ)
+            const totalHours = standardHours + otHours
+
+            // Tính giờ làm chủ nhật
+            let sundayHours = 0
+            if (baseDate.getDay() === 0) {
+              // 0 là Chủ nhật
+              sundayHours = totalHours
+            }
+
+            // Tính giờ làm đêm (22:00 - 05:00)
+            const calculateNightHours = (shift, standardHours, otHours) => {
+              // Mặc định thời gian làm đêm là 22:00 - 05:00
+              const nightStartHour = 22
+              const nightEndHour = 5
+
+              let nightHours = 0
+
+              // Kiểm tra ca làm việc có nằm trong khoảng thời gian làm đêm không
+              const startHour = parseInt(shift.startTime.split(':')[0])
+              const endHour = parseInt(shift.officeEndTime.split(':')[0])
+
+              if (isOvernight) {
+                // Ca qua đêm
+                if (startHour >= nightStartHour) {
+                  // Bắt đầu sau 22:00
+                  nightHours += 24 - startHour + Math.min(nightEndHour, endHour)
+                } else if (endHour <= nightEndHour) {
+                  // Kết thúc trước 5:00
+                  nightHours +=
+                    Math.max(0, nightEndHour - endHour) +
+                    Math.max(0, startHour - nightStartHour)
+                } else {
+                  // Trường hợp khác
+                  nightHours += Math.max(0, 24 - nightStartHour) + nightEndHour
+                }
+              } else {
+                // Ca thông thường
+                if (startHour >= nightStartHour) {
+                  // Bắt đầu sau 22:00
+                  nightHours += endHour - startHour
+                } else if (endHour <= nightEndHour) {
+                  // Kết thúc trước 5:00
+                  nightHours += endHour - 0
+                } else if (
+                  startHour < nightStartHour &&
+                  endHour > nightEndHour
+                ) {
+                  // Ca bao gồm cả thời gian làm đêm
+                  nightHours += 24 - nightStartHour + nightEndHour
+                }
+              }
+
+              // Giới hạn giờ làm đêm không vượt quá tổng giờ làm
+              nightHours = Math.min(nightHours, standardHours + otHours)
+
+              return parseFloat(nightHours.toFixed(1))
+            }
+
+            // Tính giờ làm đêm
+            const nightHours = calculateNightHours(
+              shift,
+              standardHours,
+              otHours
+            )
+
+            return {
+              standardHoursScheduled: parseFloat(standardHours.toFixed(1)),
+              otHoursScheduled: parseFloat(otHours.toFixed(1)),
+              sundayHoursScheduled: parseFloat(sundayHours.toFixed(1)),
+              nightHoursScheduled: nightHours,
+              totalHoursScheduled: parseFloat(totalHours.toFixed(1)),
+            }
+          }
+
+          // Tính toán giờ làm
+          const scheduledTimes = calculateScheduledWorkTime(
+            currentShift,
+            baseDate
+          )
+
+          // Cập nhật các giá trị giờ làm vào trạng thái
+          updatedStatus.standardHoursScheduled =
+            scheduledTimes.standardHoursScheduled
+          updatedStatus.otHoursScheduled = scheduledTimes.otHoursScheduled
+          updatedStatus.sundayHoursScheduled =
+            scheduledTimes.sundayHoursScheduled
+          updatedStatus.nightHoursScheduled = scheduledTimes.nightHoursScheduled
+          updatedStatus.totalHoursScheduled = scheduledTimes.totalHoursScheduled
+
+          console.log(
+            `Đã tính toán giờ làm cho ngày ${dateKey}: `,
+            scheduledTimes
+          )
+        } catch (calcError) {
+          console.error('Lỗi khi tính toán giờ làm:', calcError)
         }
       }
 
@@ -801,9 +1000,9 @@ const WeeklyStatusGrid = () => {
                     </View>
                   )}
 
-                  {/* Show work hours if available */}
+                  {/* Show standard work hours if available */}
                   {dailyStatuses[formatDateKey(selectedDay.date)]
-                    ?.workHours && (
+                    ?.standardHoursScheduled > 0 && (
                     <View style={styles.detailRow}>
                       <Text
                         style={[
@@ -821,14 +1020,15 @@ const WeeklyStatusGrid = () => {
                       >
                         {
                           dailyStatuses[formatDateKey(selectedDay.date)]
-                            .workHours
+                            .standardHoursScheduled
                         }
                       </Text>
                     </View>
                   )}
 
                   {/* Show OT hours if available */}
-                  {dailyStatuses[formatDateKey(selectedDay.date)]?.otHours && (
+                  {dailyStatuses[formatDateKey(selectedDay.date)]
+                    ?.otHoursScheduled > 0 && (
                     <View style={styles.detailRow}>
                       <Text
                         style={[
@@ -844,7 +1044,36 @@ const WeeklyStatusGrid = () => {
                           darkMode && styles.darkText,
                         ]}
                       >
-                        {dailyStatuses[formatDateKey(selectedDay.date)].otHours}
+                        {
+                          dailyStatuses[formatDateKey(selectedDay.date)]
+                            .otHoursScheduled
+                        }
+                      </Text>
+                    </View>
+                  )}
+
+                  {/* Show total hours if available */}
+                  {dailyStatuses[formatDateKey(selectedDay.date)]
+                    ?.totalHoursScheduled > 0 && (
+                    <View style={styles.detailRow}>
+                      <Text
+                        style={[
+                          styles.detailLabel,
+                          darkMode && styles.darkText,
+                        ]}
+                      >
+                        {t('Total Hours')}:
+                      </Text>
+                      <Text
+                        style={[
+                          styles.detailValue,
+                          darkMode && styles.darkText,
+                        ]}
+                      >
+                        {
+                          dailyStatuses[formatDateKey(selectedDay.date)]
+                            .totalHoursScheduled
+                        }
                       </Text>
                     </View>
                   )}
