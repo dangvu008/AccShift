@@ -43,9 +43,27 @@ const StatisticsScreen = ({ navigation }) => {
     dailyData: [],
   })
 
-  // Custom date range
-  const [startDate, setStartDate] = useState(new Date())
-  const [endDate, setEndDate] = useState(new Date())
+  // Custom date range - Khởi tạo với ngày đầu tuần và cuối tuần hiện tại
+  const getCurrentWeekDates = () => {
+    const now = new Date()
+    const dayOfWeek = now.getDay() || 7 // Convert Sunday (0) to 7
+
+    // Tính ngày đầu tuần (thứ 2)
+    const startOfWeek = new Date(now)
+    startOfWeek.setDate(now.getDate() - dayOfWeek + 1)
+    startOfWeek.setHours(0, 0, 0, 0)
+
+    // Tính ngày cuối tuần (chủ nhật)
+    const endOfWeek = new Date(now)
+    endOfWeek.setDate(now.getDate() + (7 - dayOfWeek))
+    endOfWeek.setHours(23, 59, 59, 999)
+
+    return { startOfWeek, endOfWeek }
+  }
+
+  const { startOfWeek, endOfWeek } = getCurrentWeekDates()
+  const [startDate, setStartDate] = useState(startOfWeek)
+  const [endDate, setEndDate] = useState(endOfWeek)
   const [showStartDatePicker, setShowStartDatePicker] = useState(false)
   const [showEndDatePicker, setShowEndDatePicker] = useState(false)
   const [customRangeModalVisible, setCustomRangeModalVisible] = useState(false)
@@ -64,18 +82,30 @@ const StatisticsScreen = ({ navigation }) => {
       // Get day of week outside switch
       const dayOfWeek = now.getDay() || 7 // Convert Sunday (0) to 7
 
+      console.log(
+        `[DEBUG] getDateRange - range: ${range}, ngày hiện tại: ${formatDate(
+          now
+        )}, thứ: ${dayOfWeek}`
+      )
+
       switch (range) {
         case 'week':
           // Start from beginning of current week (Monday)
           rangeStart.setDate(now.getDate() - dayOfWeek + 1) // Monday
+          // End at end of current week (Sunday)
+          rangeEnd.setDate(now.getDate() + (7 - dayOfWeek)) // Sunday
           break
         case 'month':
           // Start from beginning of current month
           rangeStart = new Date(now.getFullYear(), now.getMonth(), 1)
+          // End at end of current month
+          rangeEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
           break
         case 'year':
           // Start from beginning of current year
           rangeStart = new Date(now.getFullYear(), 0, 1)
+          // End at end of current year
+          rangeEnd = new Date(now.getFullYear(), 11, 31)
           break
         case 'custom':
           // Use custom date range
@@ -88,9 +118,15 @@ const StatisticsScreen = ({ navigation }) => {
       rangeStart.setHours(0, 0, 0, 0)
       rangeEnd.setHours(23, 59, 59, 999)
 
+      console.log(
+        `[DEBUG] getDateRange - kết quả: ${formatDate(
+          rangeStart
+        )} - ${formatDate(rangeEnd)}`
+      )
+
       return { rangeStart, rangeEnd }
     },
-    [startDate, endDate]
+    [startDate, endDate, formatDate]
   )
 
   // Lưu cache dữ liệu đã tải để tránh tải lại nhiều lần
@@ -626,6 +662,9 @@ const StatisticsScreen = ({ navigation }) => {
   const handleStartDateChange = (event, selectedDate) => {
     setShowStartDatePicker(false)
     if (selectedDate) {
+      // Đặt giờ, phút, giây, mili giây về 0 để lấy đầu ngày
+      selectedDate.setHours(0, 0, 0, 0)
+      console.log(`[DEBUG] Đã chọn ngày bắt đầu: ${formatDate(selectedDate)}`)
       setStartDate(selectedDate)
     }
   }
@@ -633,11 +672,33 @@ const StatisticsScreen = ({ navigation }) => {
   const handleEndDateChange = (event, selectedDate) => {
     setShowEndDatePicker(false)
     if (selectedDate) {
+      // Đặt giờ, phút, giây, mili giây về cuối ngày
+      selectedDate.setHours(23, 59, 59, 999)
+      console.log(`[DEBUG] Đã chọn ngày kết thúc: ${formatDate(selectedDate)}`)
       setEndDate(selectedDate)
     }
   }
 
   const applyCustomDateRange = () => {
+    console.log(
+      `[DEBUG] Áp dụng khoảng thời gian tùy chỉnh: ${formatDate(
+        startDate
+      )} - ${formatDate(endDate)}`
+    )
+
+    // Kiểm tra nếu ngày bắt đầu lớn hơn ngày kết thúc
+    if (startDate > endDate) {
+      // Đổi chỗ ngày bắt đầu và ngày kết thúc
+      const temp = new Date(startDate)
+      setStartDate(new Date(endDate))
+      setEndDate(temp)
+      console.log(
+        `[DEBUG] Đã đổi chỗ ngày bắt đầu và ngày kết thúc: ${formatDate(
+          endDate
+        )} - ${formatDate(startDate)}`
+      )
+    }
+
     setTimeRange('custom')
     setCustomRangeModalVisible(false)
 
@@ -922,6 +983,13 @@ const StatisticsScreen = ({ navigation }) => {
   useEffect(() => {
     console.log('StatisticsScreen được mount lần đầu, tải dữ liệu thống kê')
     isMountedRef.current = true
+
+    // Đảm bảo timeRange được đặt là 'week' khi màn hình được tải lần đầu
+    setTimeRange('week')
+
+    // Xóa cache để đảm bảo dữ liệu mới được tải
+    workStatusCache.current = {}
+    loadStatisticsCache.current = {}
 
     // Đặt timeout để tránh tải dữ liệu quá sớm khi màn hình đang render
     const timer = setTimeout(() => {
