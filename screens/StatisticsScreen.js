@@ -616,8 +616,7 @@ const StatisticsScreen = ({ navigation }) => {
         let MAX_DAYS_TO_ADD = 15 // Mặc định 15 ngày
 
         // Điều chỉnh MAX_DAYS_TO_ADD dựa trên khoảng thời gian
-        const daysDiff =
-          Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1
+        // Sử dụng biến daysDiff đã được khai báo trước đó
 
         if (daysDiff > 300) {
           // Nếu là tab Year
