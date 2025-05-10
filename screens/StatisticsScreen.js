@@ -72,6 +72,8 @@ const StatisticsScreen = ({ navigation }) => {
   const [exportProgress, setExportProgress] = useState(0)
   const [isExporting, setIsExporting] = useState(false)
   const [visibleRecords, setVisibleRecords] = useState(15) // Số lượng bản ghi hiển thị ban đầu
+  const [currentPage, setCurrentPage] = useState(1) // Trang hiện tại cho phân trang
+  const [pageSize, setPageSize] = useState(30) // Kích thước trang (số bản ghi mỗi trang)
 
   const getDateRange = useCallback(
     (range) => {
@@ -154,11 +156,32 @@ const StatisticsScreen = ({ navigation }) => {
         }
 
         // Giới hạn số lượng ngày để tránh quá tải
-        const MAX_DAYS = 31 // Tăng lên 31 ngày để hiển thị cả tháng hiện tại
+        let MAX_DAYS = 31 // Mặc định 31 ngày cho tab tuần và tháng
+
+        // Điều chỉnh MAX_DAYS dựa trên timeRange
+        if (
+          formatDate(startDate).split('/')[2] !==
+          formatDate(endDate).split('/')[2]
+        ) {
+          // Nếu năm khác nhau (tab Year), tăng giới hạn lên 366 ngày
+          MAX_DAYS = 366
+          console.log('[DEBUG] Đã tăng giới hạn ngày lên 366 cho tab Year')
+        } else if (
+          formatDate(startDate).split('/')[1] !==
+          formatDate(endDate).split('/')[1]
+        ) {
+          // Nếu tháng khác nhau (tab Month), tăng giới hạn lên 62 ngày
+          MAX_DAYS = 62
+          console.log('[DEBUG] Đã tăng giới hạn ngày lên 62 cho tab Month')
+        }
 
         // Tính số ngày trong khoảng
         const daysDiff =
           Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1
+        console.log(
+          `[DEBUG] Số ngày cần xử lý: ${daysDiff}, giới hạn: ${MAX_DAYS}`
+        )
+
         if (daysDiff > MAX_DAYS) {
           console.warn(
             `[DEBUG] Khoảng thời gian quá lớn (${daysDiff} ngày), giới hạn xuống ${MAX_DAYS} ngày`
@@ -431,7 +454,22 @@ const StatisticsScreen = ({ navigation }) => {
         const processedDates = []
 
         // Giới hạn số lượng bản ghi để xử lý
-        const MAX_RECORDS = 30 // Giảm xuống 30 để cải thiện hiệu suất
+        let MAX_RECORDS = 30 // Mặc định 30 bản ghi
+
+        // Điều chỉnh MAX_RECORDS dựa trên khoảng thời gian
+        const daysDiff =
+          Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1
+
+        if (daysDiff > 300) {
+          // Nếu là tab Year
+          MAX_RECORDS = 366
+          console.log('[DEBUG] Đã tăng giới hạn bản ghi lên 366 cho tab Year')
+        } else if (daysDiff > 30) {
+          // Nếu là tab Month
+          MAX_RECORDS = 62
+          console.log('[DEBUG] Đã tăng giới hạn bản ghi lên 62 cho tab Month')
+        }
+
         const recordsToProcess = workStatuses.slice(0, MAX_RECORDS)
 
         if (workStatuses.length > MAX_RECORDS) {
@@ -575,9 +613,32 @@ const StatisticsScreen = ({ navigation }) => {
         })
 
         // Thêm các ngày thiếu trong khoảng thời gian (giới hạn số ngày)
-        const MAX_DAYS_TO_ADD = 15
+        let MAX_DAYS_TO_ADD = 15 // Mặc định 15 ngày
+
+        // Điều chỉnh MAX_DAYS_TO_ADD dựa trên khoảng thời gian
+        const daysDiff =
+          Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1
+
+        if (daysDiff > 300) {
+          // Nếu là tab Year
+          MAX_DAYS_TO_ADD = 366
+          console.log(
+            '[DEBUG] Đã tăng giới hạn ngày thêm vào lên 366 cho tab Year'
+          )
+        } else if (daysDiff > 30) {
+          // Nếu là tab Month
+          MAX_DAYS_TO_ADD = 62
+          console.log(
+            '[DEBUG] Đã tăng giới hạn ngày thêm vào lên 62 cho tab Month'
+          )
+        }
+
         let daysAdded = 0
         const currentDate = new Date(startDate)
+
+        console.log(
+          `[DEBUG] Bắt đầu thêm các ngày thiếu, giới hạn: ${MAX_DAYS_TO_ADD}`
+        )
 
         while (currentDate <= endDate && daysAdded < MAX_DAYS_TO_ADD) {
           const dateKey = formatDate(currentDate)
@@ -613,9 +674,32 @@ const StatisticsScreen = ({ navigation }) => {
         }
 
         // Sắp xếp dữ liệu theo ngày (giới hạn số lượng bản ghi)
-        const MAX_RECORDS_TO_DISPLAY = 100 // Tăng giới hạn lên 100 bản ghi
+        let MAX_RECORDS_TO_DISPLAY = 100 // Mặc định 100 bản ghi
+
+        // Điều chỉnh MAX_RECORDS_TO_DISPLAY dựa trên khoảng thời gian
+        if (daysDiff > 300) {
+          // Nếu là tab Year
+          MAX_RECORDS_TO_DISPLAY = 366
+          console.log(
+            '[DEBUG] Đã tăng giới hạn bản ghi hiển thị lên 366 cho tab Year'
+          )
+        } else if (daysDiff > 30) {
+          // Nếu là tab Month
+          MAX_RECORDS_TO_DISPLAY = 100
+          console.log(
+            '[DEBUG] Đã tăng giới hạn bản ghi hiển thị lên 100 cho tab Month'
+          )
+        }
+
+        console.log(
+          `[DEBUG] Số bản ghi trước khi giới hạn: ${stats.dailyData.length}, giới hạn: ${MAX_RECORDS_TO_DISPLAY}`
+        )
+
         if (stats.dailyData.length > MAX_RECORDS_TO_DISPLAY) {
           stats.dailyData = stats.dailyData.slice(0, MAX_RECORDS_TO_DISPLAY)
+          console.log(
+            `[DEBUG] Đã giới hạn số bản ghi xuống ${stats.dailyData.length}`
+          )
         }
 
         // Sắp xếp dữ liệu theo ngày (mới nhất trước)
@@ -729,7 +813,7 @@ const StatisticsScreen = ({ navigation }) => {
       return
     }
 
-    console.log('[DEBUG] Bắt đầu tải dữ liệu thống kê...')
+    console.log(`[DEBUG] Bắt đầu tải dữ liệu thống kê cho tab: ${timeRange}...`)
 
     // Lấy khoảng thời gian
     const { rangeStart, rangeEnd } = getDateRange(timeRange)
@@ -737,9 +821,11 @@ const StatisticsScreen = ({ navigation }) => {
     // Tạo cache key dựa trên khoảng thời gian
     const cacheKey = `${formatDate(rangeStart)}_${formatDate(rangeEnd)}`
 
+    console.log(`[DEBUG] Cache key: ${cacheKey}, timeRange: ${timeRange}`)
+
     // Kiểm tra cache trước khi tải dữ liệu mới
     if (loadStatisticsCache.current[cacheKey]) {
-      console.log('[DEBUG] Sử dụng kết quả từ cache')
+      console.log(`[DEBUG] Sử dụng kết quả từ cache cho tab: ${timeRange}`)
       setStats(loadStatisticsCache.current[cacheKey])
       return
     }
@@ -817,7 +903,21 @@ const StatisticsScreen = ({ navigation }) => {
         }
 
         // Giới hạn số lượng bản ghi để tính toán
-        const MAX_RECORDS = 30
+        let MAX_RECORDS = 30 // Mặc định 30 bản ghi
+
+        // Điều chỉnh MAX_RECORDS dựa trên timeRange
+        if (timeRange === 'year') {
+          MAX_RECORDS = 366 // Tăng lên cho tab Year
+          console.log(
+            `[DEBUG] Đã tăng giới hạn bản ghi lên ${MAX_RECORDS} cho tab Year`
+          )
+        } else if (timeRange === 'month') {
+          MAX_RECORDS = 62 // Tăng lên cho tab Month
+          console.log(
+            `[DEBUG] Đã tăng giới hạn bản ghi lên ${MAX_RECORDS} cho tab Month`
+          )
+        }
+
         if (workStatuses.length > MAX_RECORDS) {
           console.log(
             `Giới hạn số lượng bản ghi từ ${workStatuses.length} xuống ${MAX_RECORDS}`
@@ -885,11 +985,15 @@ const StatisticsScreen = ({ navigation }) => {
         if (isMountedRef.current) {
           // Sử dụng requestAnimationFrame để cập nhật UI mượt mà
           requestAnimationFrame(() => {
+            console.log(`[DEBUG] Cập nhật dữ liệu cho tab: ${timeRange}`)
             setStats(calculatedStats)
             setLoadError(null)
             setIsLoading(false)
             isLoadingRef.current = false
             lastUpdateTimeRef.current = Date.now()
+            console.log(
+              `[DEBUG] Đã hoàn thành cập nhật dữ liệu cho tab: ${timeRange}`
+            )
           })
         }
       } catch (error) {
@@ -978,6 +1082,8 @@ const StatisticsScreen = ({ navigation }) => {
   const isLoadingRef = useRef(false)
   // Tham chiếu để theo dõi nếu component đã unmount
   const isMountedRef = useRef(true)
+  // Tham chiếu cho FlatList để có thể cuộn lên đầu danh sách
+  const flatListRef = useRef(null)
 
   // Tải dữ liệu khi component được mount lần đầu
   useEffect(() => {
@@ -986,6 +1092,7 @@ const StatisticsScreen = ({ navigation }) => {
 
     // Đảm bảo timeRange được đặt là 'week' khi màn hình được tải lần đầu
     setTimeRange('week')
+    console.log('[DEBUG] Đã đặt timeRange ban đầu là "week"')
 
     // Xóa cache để đảm bảo dữ liệu mới được tải
     workStatusCache.current = {}
@@ -994,14 +1101,16 @@ const StatisticsScreen = ({ navigation }) => {
     // Đặt timeout để tránh tải dữ liệu quá sớm khi màn hình đang render
     const timer = setTimeout(() => {
       if (isMountedRef.current) {
+        console.log('[DEBUG] Bắt đầu tải dữ liệu ban đầu sau khi mount')
         loadStatistics()
         lastLoadTimeRef.current = Date.now()
       }
-    }, 300)
+    }, 500) // Tăng thời gian chờ lên 500ms để đảm bảo component đã render hoàn toàn
 
     return () => {
       clearTimeout(timer)
       isMountedRef.current = false
+      console.log('[DEBUG] StatisticsScreen đã unmount')
     }
   }, [loadStatistics])
 
@@ -1046,21 +1155,29 @@ const StatisticsScreen = ({ navigation }) => {
 
           try {
             // Gọi hàm tải dữ liệu (đã có xử lý lỗi bên trong)
+            console.log(
+              `[DEBUG] Gọi loadStatistics từ safeLoadData, timeRange: ${timeRange}`
+            )
             loadStatistics()
               .then(() => {
                 if (isMountedRef.current) {
-                  console.log('[DEBUG] Tải dữ liệu thành công khi focus')
+                  console.log(
+                    `[DEBUG] Tải dữ liệu thành công khi focus cho tab: ${timeRange}`
+                  )
                   retryCountRef.current = 0
                 }
               })
               .catch((error) => {
-                console.error('[DEBUG] Lỗi khi tải dữ liệu khi focus:', error)
+                console.error(
+                  `[DEBUG] Lỗi khi tải dữ liệu khi focus cho tab ${timeRange}:`,
+                  error
+                )
                 // Đảm bảo đặt lại trạng thái loading trong ref khi có lỗi
                 isLoadingRef.current = false
               })
           } catch (error) {
             console.error(
-              '[DEBUG] Lỗi ngoài cùng khi tải dữ liệu khi focus:',
+              `[DEBUG] Lỗi ngoài cùng khi tải dữ liệu khi focus cho tab ${timeRange}:`,
               error
             )
             // Đảm bảo đặt lại trạng thái loading trong ref khi có lỗi
@@ -1075,6 +1192,9 @@ const StatisticsScreen = ({ navigation }) => {
 
       // Đặt timeout để tránh tải dữ liệu quá sớm khi màn hình đang chuyển đổi
       // Tăng thời gian chờ lên 1000ms để đảm bảo màn hình đã hiển thị hoàn toàn
+      console.log(
+        `[DEBUG] Đặt timer để tải dữ liệu khi focus, timeRange hiện tại: ${timeRange}`
+      )
       focusTimer = setTimeout(safeLoadData, 1000)
 
       // Cleanup khi component bị unfocus
@@ -1259,16 +1379,21 @@ const StatisticsScreen = ({ navigation }) => {
             timeRange === 'week' && { backgroundColor: '#8a56ff' },
           ]}
           onPress={() => {
-            if (timeRange !== 'week') {
-              setTimeRange('week')
-              // Xóa cache để đảm bảo dữ liệu mới được tải
-              workStatusCache.current = {}
-              loadStatisticsCache.current = {}
-              // Đặt lại số lượng bản ghi hiển thị
-              setVisibleRecords(15)
-              // Tải dữ liệu mới trong background mà không chặn UI
-              setTimeout(() => loadStatistics(), 0)
-            }
+            console.log('[DEBUG] Đã nhấn nút chuyển sang tab Tuần này')
+            // Đặt timeRange trước
+            setTimeRange('week')
+            // Xóa cache để đảm bảo dữ liệu mới được tải
+            workStatusCache.current = {}
+            loadStatisticsCache.current = {}
+            // Đặt lại số lượng bản ghi hiển thị
+            setVisibleRecords(15)
+            // Đặt lại trang hiện tại
+            setCurrentPage(1)
+            // Tải dữ liệu mới trong background mà không chặn UI
+            setTimeout(() => {
+              console.log('[DEBUG] Đang tải dữ liệu cho tab Tuần này')
+              loadStatistics()
+            }, 100)
           }}
         >
           <Text
@@ -1289,16 +1414,21 @@ const StatisticsScreen = ({ navigation }) => {
             timeRange === 'month' && { backgroundColor: '#8a56ff' },
           ]}
           onPress={() => {
-            if (timeRange !== 'month') {
-              setTimeRange('month')
-              // Xóa cache để đảm bảo dữ liệu mới được tải
-              workStatusCache.current = {}
-              loadStatisticsCache.current = {}
-              // Đặt lại số lượng bản ghi hiển thị
-              setVisibleRecords(15)
-              // Tải dữ liệu mới trong background mà không chặn UI
-              setTimeout(() => loadStatistics(), 0)
-            }
+            console.log('[DEBUG] Đã nhấn nút chuyển sang tab Tháng này')
+            // Đặt timeRange trước
+            setTimeRange('month')
+            // Xóa cache để đảm bảo dữ liệu mới được tải
+            workStatusCache.current = {}
+            loadStatisticsCache.current = {}
+            // Đặt lại số lượng bản ghi hiển thị - tăng lên cho tab tháng
+            setVisibleRecords(62)
+            // Đặt lại trang hiện tại
+            setCurrentPage(1)
+            // Tải dữ liệu mới trong background mà không chặn UI
+            setTimeout(() => {
+              console.log('[DEBUG] Đang tải dữ liệu cho tab Tháng này')
+              loadStatistics()
+            }, 100)
           }}
         >
           <Text
@@ -1319,16 +1449,21 @@ const StatisticsScreen = ({ navigation }) => {
             timeRange === 'year' && { backgroundColor: '#8a56ff' },
           ]}
           onPress={() => {
-            if (timeRange !== 'year') {
-              setTimeRange('year')
-              // Xóa cache để đảm bảo dữ liệu mới được tải
-              workStatusCache.current = {}
-              loadStatisticsCache.current = {}
-              // Đặt lại số lượng bản ghi hiển thị
-              setVisibleRecords(15)
-              // Tải dữ liệu mới trong background mà không chặn UI
-              setTimeout(() => loadStatistics(), 0)
-            }
+            console.log('[DEBUG] Đã nhấn nút chuyển sang tab Năm nay')
+            // Đặt timeRange trước
+            setTimeRange('year')
+            // Xóa cache để đảm bảo dữ liệu mới được tải
+            workStatusCache.current = {}
+            loadStatisticsCache.current = {}
+            // Đặt lại số lượng bản ghi hiển thị - giới hạn số lượng ban đầu để tránh treo máy
+            setVisibleRecords(30) // Chỉ hiển thị 30 bản ghi đầu tiên
+            // Đặt lại trang hiện tại
+            setCurrentPage(1)
+            // Tải dữ liệu mới trong background mà không chặn UI
+            setTimeout(() => {
+              console.log('[DEBUG] Đang tải dữ liệu cho tab Năm nay')
+              loadStatistics()
+            }, 100)
           }}
         >
           <Text
@@ -1625,27 +1760,44 @@ const StatisticsScreen = ({ navigation }) => {
             <View style={styles.tableBody}>
               {stats.dailyData.length > 0 ? (
                 <FlatList
-                  data={stats.dailyData.slice(0, visibleRecords)} // Hiển thị số lượng bản ghi giới hạn
+                  ref={flatListRef}
+                  data={
+                    timeRange === 'year'
+                      ? stats.dailyData.slice(
+                          (currentPage - 1) * pageSize,
+                          currentPage * pageSize
+                        ) // Phân trang cho tab Year
+                      : stats.dailyData.slice(0, visibleRecords) // Hiển thị số lượng bản ghi giới hạn cho các tab khác
+                  }
                   keyExtractor={(item, index) => `day-${index}`}
-                  initialNumToRender={15} // Tăng số dòng render ban đầu
-                  maxToRenderPerBatch={10} // Tăng số dòng render mỗi lần
-                  windowSize={10} // Tăng kích thước cửa sổ để hiển thị nhiều dữ liệu hơn
+                  initialNumToRender={
+                    timeRange === 'year' ? 30 : timeRange === 'month' ? 50 : 15
+                  } // Số dòng render ban đầu dựa trên tab
+                  maxToRenderPerBatch={
+                    timeRange === 'year' ? 20 : timeRange === 'month' ? 20 : 10
+                  } // Số dòng render mỗi lần
+                  windowSize={
+                    timeRange === 'year' ? 20 : timeRange === 'month' ? 20 : 10
+                  } // Kích thước cửa sổ
                   removeClippedSubviews={true} // Loại bỏ các view không hiển thị để tiết kiệm bộ nhớ
                   renderItem={({ item: day, index }) => {
                     // Log để debug
                     console.log(`[DEBUG] Dữ liệu ngày ${day.date}:`, {
                       standardHours: day.standardHours,
                       otHours: day.otHours,
+                      sundayHours: day.sundayHours,
+                      nightHours: day.nightHours,
                       status: day.status,
-                      shouldRender:
-                        index < 10 ||
-                        day.standardHours > 0 ||
-                        day.otHours > 0 ||
-                        day.status === 'DU_CONG',
+                      checkIn: day.checkIn,
+                      checkOut: day.checkOut,
+                      timeRange: timeRange,
                     })
 
-                    // Hiển thị các dòng có dữ liệu hoặc 15 dòng đầu tiên
+                    // Hiển thị tất cả các dòng cho tab Month và Year
+                    // Hoặc hiển thị các dòng có dữ liệu hoặc 15 dòng đầu tiên cho tab Week
                     if (
+                      timeRange === 'month' ||
+                      timeRange === 'year' ||
                       index < 15 ||
                       day.standardHours > 0 ||
                       day.otHours > 0 ||
@@ -1757,7 +1909,89 @@ const StatisticsScreen = ({ navigation }) => {
                   }}
                   ListEmptyComponent={null}
                   ListFooterComponent={
-                    stats.dailyData.length > visibleRecords ? (
+                    timeRange === 'year' ? (
+                      // Hiển thị điều hướng phân trang cho tab Year
+                      <View style={styles.paginationContainer}>
+                        {/* Hiển thị thông tin trang */}
+                        <Text
+                          style={[
+                            styles.paginationText,
+                            { color: theme.textColor },
+                          ]}
+                        >
+                          {language === 'vi'
+                            ? `Trang ${currentPage}/${Math.ceil(
+                                stats.dailyData.length / pageSize
+                              )}`
+                            : `Page ${currentPage}/${Math.ceil(
+                                stats.dailyData.length / pageSize
+                              )}`}
+                        </Text>
+
+                        {/* Nút điều hướng */}
+                        <View style={styles.paginationButtons}>
+                          {/* Nút Previous */}
+                          <TouchableOpacity
+                            style={[
+                              styles.paginationButton,
+                              currentPage === 1 &&
+                                styles.paginationButtonDisabled,
+                            ]}
+                            onPress={() => {
+                              if (currentPage > 1) {
+                                setCurrentPage(currentPage - 1)
+                                // Cuộn lên đầu danh sách
+                                if (flatListRef.current) {
+                                  flatListRef.current.scrollToOffset({
+                                    offset: 0,
+                                    animated: true,
+                                  })
+                                }
+                              }
+                            }}
+                            disabled={currentPage === 1}
+                          >
+                            <Text style={styles.paginationButtonText}>
+                              {language === 'vi' ? 'Trước' : 'Previous'}
+                            </Text>
+                          </TouchableOpacity>
+
+                          {/* Nút Next */}
+                          <TouchableOpacity
+                            style={[
+                              styles.paginationButton,
+                              currentPage >=
+                                Math.ceil(stats.dailyData.length / pageSize) &&
+                                styles.paginationButtonDisabled,
+                            ]}
+                            onPress={() => {
+                              if (
+                                currentPage <
+                                Math.ceil(stats.dailyData.length / pageSize)
+                              ) {
+                                setCurrentPage(currentPage + 1)
+                                // Cuộn lên đầu danh sách
+                                if (flatListRef.current) {
+                                  flatListRef.current.scrollToOffset({
+                                    offset: 0,
+                                    animated: true,
+                                  })
+                                }
+                              }
+                            }}
+                            disabled={
+                              currentPage >=
+                              Math.ceil(stats.dailyData.length / pageSize)
+                            }
+                          >
+                            <Text style={styles.paginationButtonText}>
+                              {language === 'vi' ? 'Tiếp' : 'Next'}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    ) : stats.dailyData.length > visibleRecords ? (
+                      // Hiển thị nút "Xem thêm" cho các tab khác
                       <TouchableOpacity
                         style={styles.loadMoreButton}
                         onPress={() => {
@@ -2340,6 +2574,35 @@ const styles = StyleSheet.create({
   },
   weekdayCell: {
     flex: 1,
+  },
+  // Styles cho phân trang
+  paginationContainer: {
+    marginVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  paginationText: {
+    fontSize: 14,
+    marginBottom: 8,
+  },
+  paginationButtons: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  paginationButton: {
+    backgroundColor: '#8a56ff',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 4,
+    marginHorizontal: 8,
+  },
+  paginationButtonDisabled: {
+    backgroundColor: '#cccccc',
+    opacity: 0.5,
+  },
+  paginationButtonText: {
+    color: '#ffffff',
+    fontWeight: 'bold',
   },
   exportFormatOption: {
     alignItems: 'center',
