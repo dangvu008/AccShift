@@ -33,7 +33,7 @@ import { WORK_STATUS } from '../components/WeeklyStatusGrid'
 const StatisticsScreen = ({ navigation }) => {
   const { t, darkMode, shifts, attendanceLogs, language, theme } =
     useContext(AppContext)
-  const [timeRange, setTimeRange] = useState('month') // 'week', 'month', 'year', 'custom'
+  const [timeRange, setTimeRange] = useState('week') // 'week', 'month', 'year', 'custom'
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
   const [stats, setStats] = useState({
@@ -53,6 +53,7 @@ const StatisticsScreen = ({ navigation }) => {
   const [exportFormat, setExportFormat] = useState('csv') // 'csv', 'pdf', 'excel'
   const [exportProgress, setExportProgress] = useState(0)
   const [isExporting, setIsExporting] = useState(false)
+  const [visibleRecords, setVisibleRecords] = useState(15) // Số lượng bản ghi hiển thị ban đầu
 
   const getDateRange = useCallback(
     (range) => {
@@ -117,7 +118,7 @@ const StatisticsScreen = ({ navigation }) => {
         }
 
         // Giới hạn số lượng ngày để tránh quá tải
-        const MAX_DAYS = 10 // Giảm xuống 10 ngày để cải thiện hiệu suất
+        const MAX_DAYS = 31 // Tăng lên 31 ngày để hiển thị cả tháng hiện tại
 
         // Tính số ngày trong khoảng
         const daysDiff =
@@ -231,10 +232,10 @@ const StatisticsScreen = ({ navigation }) => {
           `Batches thành công: ${successfulBatches}/${batches.length}, thất bại: ${failedBatches}/${batches.length}`
         )
 
-        // Sắp xếp dữ liệu theo ngày để đảm bảo thứ tự đúng
+        // Sắp xếp dữ liệu theo ngày để đảm bảo thứ tự đúng (mới nhất trước)
         filteredStatusData.sort((a, b) => {
           if (!a.date || !b.date) return 0
-          return a.date.localeCompare(b.date)
+          return b.date.localeCompare(a.date) // Sắp xếp giảm dần (mới nhất trước)
         })
 
         const result = {
@@ -576,12 +577,12 @@ const StatisticsScreen = ({ navigation }) => {
         }
 
         // Sắp xếp dữ liệu theo ngày (giới hạn số lượng bản ghi)
-        const MAX_RECORDS_TO_DISPLAY = 50
+        const MAX_RECORDS_TO_DISPLAY = 100 // Tăng giới hạn lên 100 bản ghi
         if (stats.dailyData.length > MAX_RECORDS_TO_DISPLAY) {
           stats.dailyData = stats.dailyData.slice(0, MAX_RECORDS_TO_DISPLAY)
         }
 
-        // Sắp xếp dữ liệu theo ngày
+        // Sắp xếp dữ liệu theo ngày (mới nhất trước)
         stats.dailyData.sort((a, b) => {
           try {
             // Chuyển đổi định dạng ngày DD/MM/YYYY thành YYYY-MM-DD để so sánh
@@ -596,7 +597,8 @@ const StatisticsScreen = ({ navigation }) => {
             const dateStrA = `${partsA[2]}-${partsA[1]}-${partsA[0]}`
             const dateStrB = `${partsB[2]}-${partsB[1]}-${partsB[0]}`
 
-            return dateStrA.localeCompare(dateStrB)
+            // Sắp xếp giảm dần (mới nhất trước)
+            return dateStrB.localeCompare(dateStrA)
           } catch (sortError) {
             return 0
           }
@@ -638,6 +640,12 @@ const StatisticsScreen = ({ navigation }) => {
   const applyCustomDateRange = () => {
     setTimeRange('custom')
     setCustomRangeModalVisible(false)
+
+    // Xóa cache để đảm bảo dữ liệu mới được tải
+    workStatusCache.current = {}
+    loadStatisticsCache.current = {}
+    // Đặt lại số lượng bản ghi hiển thị
+    setVisibleRecords(15)
 
     // Tải dữ liệu mới trong background mà không chặn UI
     setTimeout(() => {
@@ -1185,6 +1193,11 @@ const StatisticsScreen = ({ navigation }) => {
           onPress={() => {
             if (timeRange !== 'week') {
               setTimeRange('week')
+              // Xóa cache để đảm bảo dữ liệu mới được tải
+              workStatusCache.current = {}
+              loadStatisticsCache.current = {}
+              // Đặt lại số lượng bản ghi hiển thị
+              setVisibleRecords(15)
               // Tải dữ liệu mới trong background mà không chặn UI
               setTimeout(() => loadStatistics(), 0)
             }
@@ -1210,6 +1223,11 @@ const StatisticsScreen = ({ navigation }) => {
           onPress={() => {
             if (timeRange !== 'month') {
               setTimeRange('month')
+              // Xóa cache để đảm bảo dữ liệu mới được tải
+              workStatusCache.current = {}
+              loadStatisticsCache.current = {}
+              // Đặt lại số lượng bản ghi hiển thị
+              setVisibleRecords(15)
               // Tải dữ liệu mới trong background mà không chặn UI
               setTimeout(() => loadStatistics(), 0)
             }
@@ -1235,6 +1253,11 @@ const StatisticsScreen = ({ navigation }) => {
           onPress={() => {
             if (timeRange !== 'year') {
               setTimeRange('year')
+              // Xóa cache để đảm bảo dữ liệu mới được tải
+              workStatusCache.current = {}
+              loadStatisticsCache.current = {}
+              // Đặt lại số lượng bản ghi hiển thị
+              setVisibleRecords(15)
               // Tải dữ liệu mới trong background mà không chặn UI
               setTimeout(() => loadStatistics(), 0)
             }
@@ -1534,11 +1557,11 @@ const StatisticsScreen = ({ navigation }) => {
             <View style={styles.tableBody}>
               {stats.dailyData.length > 0 ? (
                 <FlatList
-                  data={stats.dailyData.slice(0, 20)} // Giới hạn số lượng dòng hiển thị để cải thiện hiệu suất
+                  data={stats.dailyData.slice(0, visibleRecords)} // Hiển thị số lượng bản ghi giới hạn
                   keyExtractor={(item, index) => `day-${index}`}
-                  initialNumToRender={10} // Chỉ render 10 dòng đầu tiên
-                  maxToRenderPerBatch={5} // Mỗi lần render thêm tối đa 5 dòng
-                  windowSize={5} // Giảm kích thước cửa sổ để cải thiện hiệu suất
+                  initialNumToRender={15} // Tăng số dòng render ban đầu
+                  maxToRenderPerBatch={10} // Tăng số dòng render mỗi lần
+                  windowSize={10} // Tăng kích thước cửa sổ để hiển thị nhiều dữ liệu hơn
                   removeClippedSubviews={true} // Loại bỏ các view không hiển thị để tiết kiệm bộ nhớ
                   renderItem={({ item: day, index }) => {
                     // Log để debug
@@ -1553,12 +1576,18 @@ const StatisticsScreen = ({ navigation }) => {
                         day.status === 'DU_CONG',
                     })
 
-                    // Chỉ render các dòng có dữ liệu, 10 dòng đầu tiên, hoặc trạng thái DU_CONG
+                    // Hiển thị các dòng có dữ liệu hoặc 15 dòng đầu tiên
                     if (
-                      index < 10 ||
+                      index < 15 ||
                       day.standardHours > 0 ||
                       day.otHours > 0 ||
-                      day.status === 'DU_CONG'
+                      day.sundayHours > 0 ||
+                      day.nightHours > 0 ||
+                      day.status === 'DU_CONG' ||
+                      day.status === 'DI_MUON' ||
+                      day.status === 'VE_SOM' ||
+                      day.status === 'DI_MUON_VE_SOM' ||
+                      day.status === 'THIEU_LOG'
                     ) {
                       return (
                         <View
@@ -1660,17 +1689,28 @@ const StatisticsScreen = ({ navigation }) => {
                   }}
                   ListEmptyComponent={null}
                   ListFooterComponent={
-                    stats.dailyData.length > 20 ? (
-                      <Text
-                        style={[
-                          styles.moreDataText,
-                          { color: theme.subtextColor },
-                        ]}
+                    stats.dailyData.length > visibleRecords ? (
+                      <TouchableOpacity
+                        style={styles.loadMoreButton}
+                        onPress={() => {
+                          // Tăng số lượng bản ghi hiển thị thêm 15 bản ghi
+                          const newVisibleRecords = Math.min(
+                            visibleRecords + 15,
+                            stats.dailyData.length
+                          )
+                          setVisibleRecords(newVisibleRecords)
+                        }}
                       >
-                        {language === 'vi'
-                          ? `...và ${stats.dailyData.length - 20} ngày khác`
-                          : `...and ${stats.dailyData.length - 20} more days`}
-                      </Text>
+                        <Text style={styles.loadMoreButtonText}>
+                          {language === 'vi'
+                            ? `Xem thêm (${
+                                stats.dailyData.length - visibleRecords
+                              } ngày khác)`
+                            : `Load more (${
+                                stats.dailyData.length - visibleRecords
+                              } more days)`}
+                        </Text>
+                      </TouchableOpacity>
                     ) : null
                   }
                 />
@@ -1721,12 +1761,14 @@ const StatisticsScreen = ({ navigation }) => {
                           // Xóa dữ liệu cũ trước khi tạo mới
                           await clearAllWorkStatusData()
 
-                          // Tạo dữ liệu mẫu cho 15 ngày
+                          // Tạo dữ liệu mẫu cho 30 ngày
                           const sampleResult = await generateSampleWorkStatus(
-                            10
+                            30
                           )
 
                           if (sampleResult) {
+                            // Đặt lại số lượng bản ghi hiển thị
+                            setVisibleRecords(15)
                             // Tải lại dữ liệu thống kê trong background mà không chặn UI
                             if (isMountedRef.current) {
                               setTimeout(() => loadStatistics(), 0)
@@ -1788,10 +1830,12 @@ const StatisticsScreen = ({ navigation }) => {
                         // Xóa dữ liệu cũ trước khi tạo mới
                         await clearAllWorkStatusData()
 
-                        // Tạo dữ liệu mẫu cho 10 ngày
-                        const sampleResult = await generateSampleWorkStatus(10)
+                        // Tạo dữ liệu mẫu cho 30 ngày
+                        const sampleResult = await generateSampleWorkStatus(30)
 
                         if (sampleResult) {
+                          // Đặt lại số lượng bản ghi hiển thị
+                          setVisibleRecords(15)
                           // Tải lại dữ liệu thống kê trong background mà không chặn UI
                           if (isMountedRef.current) {
                             setTimeout(() => loadStatistics(), 0)
@@ -2395,6 +2439,19 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 12,
+  },
+  loadMoreButton: {
+    backgroundColor: '#8a56ff',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignSelf: 'center',
+    marginVertical: 15,
+  },
+  loadMoreButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 14,
   },
 })
 

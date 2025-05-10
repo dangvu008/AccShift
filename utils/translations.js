@@ -401,6 +401,7 @@ export const translations = {
     'Nhắc nhở chấm công ra sau (phút)': 'Nhắc nhở chấm công ra sau (phút)',
 
     'Thời gian nhắc nhở': 'Thời gian nhắc nhở',
+    'Tạo dữ liệu mẫu': 'Tạo dữ liệu mẫu',
 
     // Navigation
     Home: 'Trang chủ',
@@ -678,6 +679,7 @@ export const translations = {
     'Nhắc theo ca': 'Remind by Shift',
 
     'Thời gian nhắc nhở': 'Reminder time',
+    'Tạo dữ liệu mẫu': 'Generate Sample Data',
     'Chọn ca làm việc': 'Select work shifts',
     'Nhắc nhở sẽ được đặt trước 5 phút giờ xuất phát (departureTime) của (các) ca đã chọn.':
       'Reminders will be set 5 minutes before the departure time of selected shift(s).',

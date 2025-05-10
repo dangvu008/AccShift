@@ -44,46 +44,8 @@ import LogHistoryDetailScreen from './screens/LogHistoryDetailScreen'
 import ImageViewerScreen from './screens/ImageViewerScreen'
 import AlarmScreen from './screens/AlarmScreen'
 import MapPickerScreen from './screens/MapPickerScreen'
-import DebugScreen from './screens/DebugScreen'
-import DebugStatisticsData from './DebugStatisticsData' // Import DebugStatisticsData tạm thời
-// Tạo component NotesDebugScreen trực tiếp trong App.js thay vì import
 import React from 'react'
 import { View, Text, ScrollView } from 'react-native'
-// Sử dụng React.memo để tránh render lại không cần thiết
-const SimpleNotesDebugScreen = React.memo(() => {
-  const { darkMode } = useContext(AppContext)
-  return (
-    <View
-      style={{
-        flex: 1,
-        padding: 16,
-        backgroundColor: darkMode ? '#121212' : '#f5f5f5',
-      }}
-    >
-      <Text
-        style={{
-          fontSize: 24,
-          fontWeight: 'bold',
-          marginBottom: 16,
-          color: darkMode ? '#fff' : '#333',
-        }}
-      >
-        Debug Ghi Chú Đơn Giản
-      </Text>
-      <ScrollView style={{ flex: 1 }}>
-        <Text
-          style={{
-            fontSize: 16,
-            color: darkMode ? '#fff' : '#333',
-            marginBottom: 12,
-          }}
-        >
-          Đây là màn hình debug đơn giản cho ghi chú.
-        </Text>
-      </ScrollView>
-    </View>
-  )
-})
 
 // Set up notification handler
 try {
@@ -120,8 +82,8 @@ function HomeStack() {
     >
       <Stack.Screen
         name="Home"
-        component={DebugStatisticsData}
-        options={{ title: 'Debug dữ liệu thống kê' }}
+        component={HomeScreen}
+        options={{ title: t('Home') }}
       />
       <Stack.Screen
         name="Statistics"
@@ -313,16 +275,6 @@ function SettingsStack() {
         name="WeatherApiKeys"
         component={WeatherApiKeysScreen}
         options={{ title: t('Weather API Keys') }}
-      />
-      <Stack.Screen
-        name="Debug"
-        component={DebugScreen}
-        options={{ title: t('Debug') }}
-      />
-      <Stack.Screen
-        name="NotesDebug"
-        component={SimpleNotesDebugScreen}
-        options={{ title: t('Notes Debug') }}
       />
     </Stack.Navigator>
   )
