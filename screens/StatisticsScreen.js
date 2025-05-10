@@ -1814,51 +1814,20 @@ const StatisticsScreen = ({ navigation }) => {
 
                   <TouchableOpacity
                     style={styles.sampleDataButton}
-                    onPress={async () => {
-                      try {
-                        // Đặt lại trạng thái
-                        setLoadError(null)
-                        setIsLoading(true)
-                        isLoadingRef.current = true
+                    onPress={() => {
+                      // Đặt lại trạng thái
+                      setLoadError(null)
+                      setIsLoading(true)
+                      isLoadingRef.current = true
 
-                        // Import động để tránh circular dependency
-                        const {
-                          generateSampleWorkStatus,
-                          clearAllWorkStatusData,
-                        } = require('../utils/sampleDataGenerator')
-
-                        // Xóa dữ liệu cũ trước khi tạo mới
-                        await clearAllWorkStatusData()
-
-                        // Tạo dữ liệu mẫu cho 30 ngày
-                        const sampleResult = await generateSampleWorkStatus(30)
-
-                        if (sampleResult) {
-                          // Đặt lại số lượng bản ghi hiển thị
-                          setVisibleRecords(15)
-                          // Tải lại dữ liệu thống kê trong background mà không chặn UI
-                          if (isMountedRef.current) {
-                            setTimeout(() => loadStatistics(), 0)
-                          }
-                        } else {
-                          setLoadError(
-                            'Không thể tạo dữ liệu mẫu, vui lòng thử lại'
-                          )
-                          setIsLoading(false)
-                          isLoadingRef.current = false
-                        }
-                      } catch (error) {
-                        console.error('Lỗi khi tạo dữ liệu mẫu:', error)
-                        setLoadError(
-                          'Lỗi khi tạo dữ liệu mẫu: ' + error.message
-                        )
-                        setIsLoading(false)
-                        isLoadingRef.current = false
+                      // Tải lại dữ liệu thống kê
+                      if (isMountedRef.current) {
+                        setTimeout(() => loadStatistics(), 0)
                       }
                     }}
                   >
                     <Text style={styles.sampleDataButtonText}>
-                      {t('Tạo dữ liệu mẫu')}
+                      {t('Làm mới dữ liệu')}
                     </Text>
                   </TouchableOpacity>
                 </View>
