@@ -308,6 +308,19 @@ export const translations = {
       'Bạn có muốn đặt lại trạng thái chấm công hôm nay không? Tất cả dữ liệu nhấn nút cho hôm nay sẽ bị xóa.',
     'No shift selected': 'Không có ca nào được chọn',
     'Worked for': 'Đã làm việc trong',
+    'Ca làm việc đã được hoàn thành': 'Ca làm việc đã được hoàn thành',
+    'Bắt đầu hành trình đi làm': 'Bắt đầu hành trình đi làm',
+    'Bắt đầu giờ làm việc': 'Bắt đầu giờ làm việc',
+    'Kết thúc giờ làm việc': 'Kết thúc giờ làm việc',
+    'Xác nhận hoàn thành ca làm việc': 'Xác nhận hoàn thành ca làm việc',
+    'Xác nhận đang làm việc': 'Xác nhận đang làm việc',
+    'Đã đến nơi làm việc, sẵn sàng check-in':
+      'Đã đến nơi làm việc, sẵn sàng check-in',
+    'Đang làm việc, nhấn để check-out': 'Đang làm việc, nhấn để check-out',
+    'Đã check-out, sẵn sàng ký công': 'Đã check-out, sẵn sàng ký công',
+    'Bắt đầu ca làm việc': 'Bắt đầu ca làm việc',
+    Punch: 'Ký Công',
+    'Hoàn thành ca làm việc': 'Hoàn thành ca làm việc',
 
     // Alarm
     Alarm: 'Báo thức',
@@ -724,6 +737,19 @@ export const translations = {
       "Do you want to reset today's attendance status? All button press data for today will be deleted.",
     'No shift selected': 'No shift selected',
     'Worked for': 'Worked for',
+    'Ca làm việc đã được hoàn thành': 'Work shift has been completed',
+    'Bắt đầu hành trình đi làm': 'Start your journey to work',
+    'Bắt đầu giờ làm việc': 'Start work hours',
+    'Kết thúc giờ làm việc': 'End work hours',
+    'Xác nhận hoàn thành ca làm việc': 'Confirm work shift completion',
+    'Xác nhận đang làm việc': 'Confirm you are working',
+    'Đã đến nơi làm việc, sẵn sàng check-in':
+      'Arrived at workplace, ready to check in',
+    'Đang làm việc, nhấn để check-out': 'Working, tap to check out',
+    'Đã check-out, sẵn sàng ký công': 'Checked out, ready to sign work',
+    'Bắt đầu ca làm việc': 'Start work shift',
+    Punch: 'Sign Work',
+    'Hoàn thành ca làm việc': 'Complete work shift',
 
     // Alarm
     Alarm: 'Alarm',

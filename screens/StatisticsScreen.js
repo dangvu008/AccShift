@@ -12,6 +12,7 @@ import {
   Modal,
   Platform,
   Alert,
+  FlatList,
 } from 'react-native'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import { Ionicons } from '@expo/vector-icons'
@@ -91,6 +92,9 @@ const StatisticsScreen = ({ navigation }) => {
     [startDate, endDate]
   )
 
+  // Lưu cache dữ liệu đã tải để tránh tải lại nhiều lần
+  const workStatusCache = useRef({})
+
   const loadDailyWorkStatuses = useCallback(
     async (startDate, endDate) => {
       try {
@@ -103,8 +107,17 @@ const StatisticsScreen = ({ navigation }) => {
           )}`
         )
 
+        // Tạo cache key dựa trên khoảng thời gian
+        const cacheKey = `${formatDate(startDate)}_${formatDate(endDate)}`
+
+        // Kiểm tra cache trước khi tải dữ liệu mới
+        if (workStatusCache.current[cacheKey]) {
+          console.log('[DEBUG] Sử dụng dữ liệu từ cache')
+          return workStatusCache.current[cacheKey]
+        }
+
         // Giới hạn số lượng ngày để tránh quá tải
-        const MAX_DAYS = 15 // Giảm xuống 15 ngày để tránh quá tải và cải thiện hiệu suất
+        const MAX_DAYS = 10 // Giảm xuống 10 ngày để cải thiện hiệu suất
 
         // Tính số ngày trong khoảng
         const daysDiff =
@@ -127,7 +140,7 @@ const StatisticsScreen = ({ navigation }) => {
         }
         console.log(`Cần xử lý ${daysToProcess.length} ngày`)
 
-        // Tạo danh sách keys cần lấy trực tiếp từ ngày, không cần getAllKeys
+        // Tạo danh sách keys cần lấy trực tiếp từ ngày
         const keysToGet = daysToProcess.map(
           (dateKey) => `${STORAGE_KEYS.DAILY_WORK_STATUS_PREFIX}${dateKey}`
         )
@@ -136,25 +149,11 @@ const StatisticsScreen = ({ navigation }) => {
 
         if (keysToGet.length === 0) {
           console.log('Không có dữ liệu nào trong khoảng thời gian này')
-          return []
-        }
-
-        // Kiểm tra xem có dữ liệu thực tế không
-        let hasRealData = false
-        try {
-          // Chỉ kiểm tra một vài key để xác định có dữ liệu không
-          const sampleKeys = keysToGet.slice(0, Math.min(5, keysToGet.length))
-          const sampleData = await AsyncStorage.multiGet(sampleKeys)
-          hasRealData = sampleData.some(([_, value]) => value !== null)
-          console.log(
-            `Kiểm tra dữ liệu thực tế: ${hasRealData ? 'Có' : 'Không'}`
-          )
-        } catch (checkError) {
-          console.warn('Lỗi khi kiểm tra dữ liệu thực tế:', checkError)
+          return { data: [], hasRealData: false, successRate: 0 }
         }
 
         // Chia nhỏ danh sách keys thành các batch để tránh quá tải
-        const BATCH_SIZE = 3 // Giảm kích thước batch xuống 3 để tránh quá tải
+        const BATCH_SIZE = 5 // Tăng kích thước batch lên 5 để giảm số lần gọi AsyncStorage
         const batches = []
         for (let i = 0; i < keysToGet.length; i += BATCH_SIZE) {
           batches.push(keysToGet.slice(i, i + BATCH_SIZE))
@@ -168,46 +167,21 @@ const StatisticsScreen = ({ navigation }) => {
         const filteredStatusData = []
         let successfulBatches = 0
         let failedBatches = 0
+        let hasRealData = false
 
-        // Giới hạn số lượng batch để xử lý
-        const MAX_BATCHES = 10
-        const batchesToProcess = batches.slice(0, MAX_BATCHES)
-
-        if (batches.length > MAX_BATCHES) {
-          console.log(
-            `[DEBUG] Giới hạn số lượng batch từ ${batches.length} xuống ${MAX_BATCHES}`
-          )
-        }
-
-        for (let i = 0; i < batchesToProcess.length; i++) {
-          const batch = batchesToProcess[i]
+        // Xử lý tất cả các batch cùng lúc để tăng tốc độ
+        const batchPromises = batches.map(async (batch, index) => {
           try {
-            console.log(
-              `[DEBUG] Xử lý batch ${i + 1}/${batchesToProcess.length}`
-            )
-
-            // Tạo promise với timeout
-            const multiGetPromise = AsyncStorage.multiGet(batch)
-            const timeoutPromise = new Promise((_, reject) => {
-              setTimeout(() => {
-                reject(
-                  new Error(
-                    `Lấy dữ liệu batch ${i + 1}/${
-                      batchesToProcess.length
-                    } quá thời gian`
-                  )
-                )
-              }, 1000) // 1 giây timeout cho mỗi batch
-            })
-
-            // Đợi kết quả hoặc timeout
+            // Sử dụng Promise.race với timeout để tránh treo
             const statusPairs = await Promise.race([
-              multiGetPromise,
-              timeoutPromise,
+              AsyncStorage.multiGet(batch),
+              new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Timeout')), 2000)
+              ),
             ])
 
             // Xử lý dữ liệu trong batch
-            let validItemsInBatch = 0
+            const validItems = []
             for (const [key, value] of statusPairs) {
               if (!value) continue
 
@@ -219,52 +193,36 @@ const StatisticsScreen = ({ navigation }) => {
                 const status = JSON.parse(value)
 
                 // Kiểm tra dữ liệu hợp lệ
-                if (!status || typeof status !== 'object') {
-                  console.warn(`Bỏ qua dữ liệu không hợp lệ cho key ${key}`)
-                  continue
-                }
+                if (!status || typeof status !== 'object') continue
 
                 // Thêm trường date nếu chưa có
-                if (!status.date) {
-                  status.date = dateKey
-                }
+                if (!status.date) status.date = dateKey
 
                 // Kiểm tra các trường bắt buộc
-                if (!status.status) {
-                  status.status = 'CHUA_CAP_NHAT'
-                }
+                if (!status.status) status.status = 'CHUA_CAP_NHAT'
 
-                filteredStatusData.push(status)
-                validItemsInBatch++
+                validItems.push(status)
+                hasRealData = true
               } catch (parseError) {
-                console.error(
-                  `Lỗi khi phân tích dữ liệu cho key ${key}:`,
-                  parseError
-                )
-                // Tiếp tục với key tiếp theo
+                // Bỏ qua các mục không hợp lệ
               }
             }
 
-            console.log(
-              `Batch ${i + 1}/${
-                batches.length
-              }: ${validItemsInBatch} mục hợp lệ`
-            )
             successfulBatches++
+            return validItems
           } catch (batchError) {
-            console.error(
-              `Lỗi khi lấy dữ liệu batch ${i + 1}/${batches.length}:`,
-              batchError
-            )
             failedBatches++
-            // Tiếp tục với batch tiếp theo
+            return []
           }
+        })
 
-          // Thêm một khoảng thời gian nhỏ giữa các batch để tránh treo UI
-          if (i < batches.length - 1) {
-            await new Promise((resolve) => setTimeout(resolve, 10))
-          }
-        }
+        // Đợi tất cả các batch hoàn thành
+        const batchResults = await Promise.all(batchPromises)
+
+        // Gộp kết quả từ tất cả các batch
+        batchResults.forEach((items) => {
+          filteredStatusData.push(...items)
+        })
 
         console.log(
           `Đã lọc được ${filteredStatusData.length} bản ghi có dữ liệu`
@@ -279,12 +237,17 @@ const StatisticsScreen = ({ navigation }) => {
           return a.date.localeCompare(b.date)
         })
 
-        return {
+        const result = {
           data: filteredStatusData,
           hasRealData,
           successRate:
             batches.length > 0 ? successfulBatches / batches.length : 0,
         }
+
+        // Lưu kết quả vào cache
+        workStatusCache.current[cacheKey] = result
+
+        return result
       } catch (error) {
         console.error('Lỗi khi tải dữ liệu trạng thái làm việc:', error)
         return {
@@ -393,11 +356,25 @@ const StatisticsScreen = ({ navigation }) => {
     [shifts]
   )
 
+  // Cache cho kết quả tính toán thống kê
+  const statsCache = useRef({})
+
   const calculateStatistics = useCallback(
     (workStatuses, startDate, endDate) => {
       console.log('[DEBUG] Bắt đầu tính toán thống kê...')
 
       try {
+        // Tạo cache key dựa trên khoảng thời gian và số lượng bản ghi
+        const cacheKey = `${formatDate(startDate)}_${formatDate(endDate)}_${
+          workStatuses.length
+        }`
+
+        // Kiểm tra cache trước khi tính toán lại
+        if (statsCache.current[cacheKey]) {
+          console.log('[DEBUG] Sử dụng kết quả tính toán từ cache')
+          return statsCache.current[cacheKey]
+        }
+
         // Kiểm tra dữ liệu đầu vào
         if (!Array.isArray(workStatuses)) {
           console.error('[DEBUG] workStatuses không phải là mảng')
@@ -417,7 +394,7 @@ const StatisticsScreen = ({ navigation }) => {
         const processedDates = []
 
         // Giới hạn số lượng bản ghi để xử lý
-        const MAX_RECORDS = 50 // Giảm xuống 50 để cải thiện hiệu suất
+        const MAX_RECORDS = 30 // Giảm xuống 30 để cải thiện hiệu suất
         const recordsToProcess = workStatuses.slice(0, MAX_RECORDS)
 
         if (workStatuses.length > MAX_RECORDS) {
@@ -426,227 +403,152 @@ const StatisticsScreen = ({ navigation }) => {
           )
         }
 
-        console.log(
-          `[DEBUG] Số lượng bản ghi để xử lý: ${recordsToProcess.length}`
-        )
-
-        console.log(
-          `Xử lý ${recordsToProcess.length} bản ghi trạng thái làm việc`
-        )
-
-        // Biến đếm lỗi để theo dõi số lượng lỗi
-        let errorCount = 0
-        const MAX_ERRORS = 5 // Giảm số lỗi tối đa cho phép
-
-        // Xử lý từng bản ghi trạng thái làm việc theo batch để tránh treo UI
-        const BATCH_SIZE = 20 // Xử lý 20 bản ghi mỗi lần
-        const numBatches = Math.ceil(recordsToProcess.length / BATCH_SIZE)
-
-        // Xử lý từng batch
-        for (let batchIndex = 0; batchIndex < numBatches; batchIndex++) {
-          // Kiểm tra nếu có quá nhiều lỗi, dừng xử lý
-          if (errorCount >= MAX_ERRORS) {
-            console.error(
-              `Đã vượt quá số lượng lỗi cho phép (${MAX_ERRORS}), dừng xử lý`
-            )
-            break
-          }
-
-          const startIdx = batchIndex * BATCH_SIZE
-          const endIdx = Math.min(
-            (batchIndex + 1) * BATCH_SIZE,
-            recordsToProcess.length
-          )
-
-          // Xử lý từng bản ghi trong batch
-          for (let i = startIdx; i < endIdx; i++) {
-            const status = recordsToProcess[i]
-
-            try {
-              // Kiểm tra bản ghi hợp lệ
-              if (!status || typeof status !== 'object') {
-                console.warn(`Bỏ qua bản ghi không hợp lệ ở vị trí ${i}`)
-                errorCount++
-                continue
-              }
-
-              if (!status.date) {
-                console.warn(`Bỏ qua bản ghi không có ngày ở vị trí ${i}`)
-                errorCount++
-                continue
-              }
-
-              // Thêm vào danh sách ngày đã xử lý
-              processedDates.push(status.date)
-
-              // Chuyển đổi ngày để hiển thị
-              let dateObj
-              try {
-                dateObj = new Date(status.date.split('-').join('/'))
-                if (isNaN(dateObj.getTime())) {
-                  console.warn(`Ngày không hợp lệ: ${status.date}`)
-                  dateObj = new Date() // Sử dụng ngày hiện tại nếu không hợp lệ
-                  errorCount++
-                }
-              } catch (dateError) {
-                console.warn(
-                  `Lỗi khi chuyển đổi ngày ${status.date}:`,
-                  dateError
-                )
-                dateObj = new Date() // Sử dụng ngày hiện tại nếu có lỗi
-                errorCount++
-                continue // Bỏ qua bản ghi này nếu không thể chuyển đổi ngày
-              }
-
-              const displayDate = formatShortDate(dateObj, language)
-              const weekday = getWeekdayName(dateObj.getDay())
-
-              // Chuyển đổi và kiểm tra các giá trị số
-              const standardHours =
-                parseFloat(status.standardHoursScheduled) || 0
-              const otHours = parseFloat(status.otHoursScheduled) || 0
-              const sundayHours = parseFloat(status.sundayHoursScheduled) || 0
-              const nightHours = parseFloat(status.nightHoursScheduled) || 0
-
-              // Kiểm tra giá trị hợp lệ trước khi cộng dồn
-              if (
-                isNaN(standardHours) ||
-                isNaN(otHours) ||
-                isNaN(sundayHours) ||
-                isNaN(nightHours)
-              ) {
-                console.warn(
-                  `Bỏ qua bản ghi có giá trị giờ không hợp lệ: ${status.date}`
-                )
-                errorCount++
-                continue
-              }
-
-              // Cộng dồn vào tổng
-              stats.standardHours += standardHours
-              stats.otHours += otHours
-              stats.sundayHours += sundayHours
-              stats.nightHours += nightHours
-              stats.totalWorkTime += standardHours * 60
-              stats.overtime += otHours * 60
-
-              // Cập nhật số lượng theo trạng thái
-              if (
-                status.status &&
-                stats.statusCounts.hasOwnProperty(status.status)
-              ) {
-                stats.statusCounts[status.status]++
-              } else {
-                stats.statusCounts.CHUA_CAP_NHAT++
-              }
-
-              // Thêm vào dữ liệu hàng ngày
-              stats.dailyData.push({
-                date: displayDate,
-                weekday: weekday,
-                checkIn: status.vaoLogTime || '--:--',
-                checkOut: status.raLogTime || '--:--',
-                standardHours: standardHours,
-                otHours: otHours,
-                sundayHours: sundayHours,
-                nightHours: nightHours,
-                totalHours: parseFloat(status.totalHoursScheduled) || 0,
-                status: status.status || 'CHUA_CAP_NHAT',
-                lateMinutes: parseInt(status.lateMinutes) || 0,
-                earlyMinutes: parseInt(status.earlyMinutes) || 0,
-              })
-            } catch (itemError) {
-              console.error(`Lỗi khi xử lý bản ghi thứ ${i}:`, itemError)
-              errorCount++
-              // Tiếp tục với bản ghi tiếp theo
+        // Xử lý tất cả các bản ghi cùng lúc để tăng tốc độ
+        recordsToProcess.forEach((status) => {
+          try {
+            // Kiểm tra bản ghi hợp lệ
+            if (!status || typeof status !== 'object' || !status.date) {
+              return // Bỏ qua bản ghi không hợp lệ
             }
+
+            // Thêm vào danh sách ngày đã xử lý
+            processedDates.push(status.date)
+
+            // Chuyển đổi ngày để hiển thị
+            let dateObj
+            try {
+              dateObj = new Date(status.date.split('-').join('/'))
+              if (isNaN(dateObj.getTime())) {
+                return // Bỏ qua nếu ngày không hợp lệ
+              }
+            } catch (dateError) {
+              return // Bỏ qua nếu không thể chuyển đổi ngày
+            }
+
+            const displayDate = formatShortDate(dateObj, language)
+            const weekday = getWeekdayName(dateObj.getDay())
+
+            // Chuyển đổi và kiểm tra các giá trị số
+            const standardHours = parseFloat(status.standardHoursScheduled) || 0
+            const otHours = parseFloat(status.otHoursScheduled) || 0
+            const sundayHours = parseFloat(status.sundayHoursScheduled) || 0
+            const nightHours = parseFloat(status.nightHoursScheduled) || 0
+
+            // Kiểm tra giá trị hợp lệ trước khi cộng dồn
+            if (
+              isNaN(standardHours) ||
+              isNaN(otHours) ||
+              isNaN(sundayHours) ||
+              isNaN(nightHours)
+            ) {
+              return // Bỏ qua nếu có giá trị không hợp lệ
+            }
+
+            // Cộng dồn vào tổng
+            stats.standardHours += standardHours
+            stats.otHours += otHours
+            stats.sundayHours += sundayHours
+            stats.nightHours += nightHours
+            stats.totalWorkTime += standardHours * 60
+            stats.overtime += otHours * 60
+
+            // Cập nhật số lượng theo trạng thái
+            if (
+              status.status &&
+              stats.statusCounts.hasOwnProperty(status.status)
+            ) {
+              stats.statusCounts[status.status]++
+            } else {
+              stats.statusCounts.CHUA_CAP_NHAT++
+            }
+
+            // Thêm vào dữ liệu hàng ngày
+            stats.dailyData.push({
+              date: displayDate,
+              weekday: weekday,
+              checkIn: status.vaoLogTime || '--:--',
+              checkOut: status.raLogTime || '--:--',
+              standardHours: standardHours,
+              otHours: otHours,
+              sundayHours: sundayHours,
+              nightHours: nightHours,
+              totalHours: parseFloat(status.totalHoursScheduled) || 0,
+              status: status.status || 'CHUA_CAP_NHAT',
+              lateMinutes: parseInt(status.lateMinutes) || 0,
+              earlyMinutes: parseInt(status.earlyMinutes) || 0,
+            })
+          } catch (itemError) {
+            // Bỏ qua lỗi và tiếp tục với bản ghi tiếp theo
           }
+        })
+
+        // Thêm các ngày thiếu trong khoảng thời gian (giới hạn số ngày)
+        const MAX_DAYS_TO_ADD = 15
+        let daysAdded = 0
+        const currentDate = new Date(startDate)
+
+        while (currentDate <= endDate && daysAdded < MAX_DAYS_TO_ADD) {
+          const dateKey = formatDate(currentDate)
+
+          if (!processedDates.includes(dateKey)) {
+            // Ngày chưa có trạng thái, đánh dấu là chưa cập nhật
+            stats.statusCounts.CHUA_CAP_NHAT++
+
+            // Định dạng ngày để hiển thị
+            const displayDate = formatShortDate(currentDate, language)
+            const weekday = getWeekdayName(currentDate.getDay())
+
+            stats.dailyData.push({
+              date: displayDate,
+              weekday: weekday,
+              checkIn: '--:--',
+              checkOut: '--:--',
+              standardHours: 0,
+              otHours: 0,
+              sundayHours: 0,
+              nightHours: 0,
+              totalHours: 0,
+              status: 'CHUA_CAP_NHAT',
+              lateMinutes: 0,
+              earlyMinutes: 0,
+            })
+
+            daysAdded++
+          }
+
+          // Chuyển sang ngày tiếp theo
+          currentDate.setDate(currentDate.getDate() + 1)
         }
 
-        console.log(
-          `Đã xử lý ${stats.dailyData.length} bản ghi thành công, có ${errorCount} lỗi`
-        )
-
-        // Thêm các ngày thiếu trong khoảng thời gian
-        try {
-          console.log('Đang thêm các ngày thiếu trong khoảng thời gian...')
-          const currentDate = new Date(startDate)
-          let daysAdded = 0
-          const MAX_DAYS = 30 // Giảm xuống 30 ngày để tránh quá tải
-
-          while (currentDate <= endDate && daysAdded < MAX_DAYS) {
-            const dateKey = formatDate(currentDate)
-
-            if (!processedDates.includes(dateKey)) {
-              // Ngày chưa có trạng thái, đánh dấu là chưa cập nhật
-              stats.statusCounts.CHUA_CAP_NHAT++
-
-              // Định dạng ngày để hiển thị
-              const displayDate = formatShortDate(currentDate, language)
-              const weekday = getWeekdayName(currentDate.getDay())
-
-              stats.dailyData.push({
-                date: displayDate,
-                weekday: weekday,
-                checkIn: '--:--',
-                checkOut: '--:--',
-                standardHours: 0,
-                otHours: 0,
-                sundayHours: 0,
-                nightHours: 0,
-                totalHours: 0,
-                status: 'CHUA_CAP_NHAT',
-                lateMinutes: 0,
-                earlyMinutes: 0,
-              })
-
-              daysAdded++
-            }
-
-            // Chuyển sang ngày tiếp theo
-            currentDate.setDate(currentDate.getDate() + 1)
-          }
-          console.log(`Đã thêm ${daysAdded} ngày thiếu`)
-        } catch (missingDaysError) {
-          console.error('Lỗi khi xử lý các ngày thiếu:', missingDaysError)
+        // Sắp xếp dữ liệu theo ngày (giới hạn số lượng bản ghi)
+        const MAX_RECORDS_TO_DISPLAY = 50
+        if (stats.dailyData.length > MAX_RECORDS_TO_DISPLAY) {
+          stats.dailyData = stats.dailyData.slice(0, MAX_RECORDS_TO_DISPLAY)
         }
 
         // Sắp xếp dữ liệu theo ngày
-        try {
-          console.log('Đang sắp xếp dữ liệu theo ngày...')
+        stats.dailyData.sort((a, b) => {
+          try {
+            // Chuyển đổi định dạng ngày DD/MM/YYYY thành YYYY-MM-DD để so sánh
+            const partsA = a.date.split('/')
+            const partsB = b.date.split('/')
 
-          // Giới hạn số lượng bản ghi để sắp xếp
-          if (stats.dailyData.length > 100) {
-            console.warn(
-              `Giới hạn số lượng bản ghi để sắp xếp từ ${stats.dailyData.length} xuống 100`
-            )
-            stats.dailyData = stats.dailyData.slice(0, 100)
-          }
-
-          // Sử dụng phương pháp sắp xếp an toàn hơn
-          stats.dailyData.sort((a, b) => {
-            try {
-              // Chuyển đổi định dạng ngày DD/MM/YYYY thành YYYY-MM-DD để so sánh
-              const partsA = a.date.split('/')
-              const partsB = b.date.split('/')
-
-              if (partsA.length !== 3 || partsB.length !== 3) {
-                return 0 // Không thể so sánh nếu định dạng không đúng
-              }
-
-              // Tạo chuỗi YYYY-MM-DD
-              const dateStrA = `${partsA[2]}-${partsA[1]}-${partsA[0]}`
-              const dateStrB = `${partsB[2]}-${partsB[1]}-${partsB[0]}`
-
-              return dateStrA.localeCompare(dateStrB)
-            } catch (sortError) {
-              console.warn('Lỗi khi sắp xếp ngày:', sortError)
-              return 0
+            if (partsA.length !== 3 || partsB.length !== 3) {
+              return 0 // Không thể so sánh nếu định dạng không đúng
             }
-          })
-        } catch (sortError) {
-          console.error('Lỗi khi sắp xếp dữ liệu:', sortError)
-        }
+
+            // Tạo chuỗi YYYY-MM-DD
+            const dateStrA = `${partsA[2]}-${partsA[1]}-${partsA[0]}`
+            const dateStrB = `${partsB[2]}-${partsB[1]}-${partsB[0]}`
+
+            return dateStrA.localeCompare(dateStrB)
+          } catch (sortError) {
+            return 0
+          }
+        })
+
+        // Lưu kết quả vào cache
+        statsCache.current[cacheKey] = stats
 
         console.log('[DEBUG] Hoàn thành tính toán thống kê')
         return stats
@@ -656,7 +558,7 @@ const StatisticsScreen = ({ navigation }) => {
         return getDefaultStats()
       }
     },
-    [language]
+    [language, formatDate]
   )
 
   const formatDateRange = () => {
@@ -683,6 +585,9 @@ const StatisticsScreen = ({ navigation }) => {
     setCustomRangeModalVisible(false)
   }
 
+  // Lưu cache cho kết quả tải dữ liệu thống kê
+  const loadStatisticsCache = useRef({})
+
   const loadStatistics = useCallback(async () => {
     // Nếu đã đang tải, không thực hiện tải lại để tránh vòng lặp vô hạn
     if (isLoading) {
@@ -692,222 +597,73 @@ const StatisticsScreen = ({ navigation }) => {
 
     console.log('[DEBUG] Bắt đầu tải dữ liệu thống kê...')
 
-    // Lưu trạng thái đang tải vào ref để các hàm khác có thể kiểm tra
-    isLoadingRef.current = true
+    // Lấy khoảng thời gian
+    const { rangeStart, rangeEnd } = getDateRange(timeRange)
+
+    // Tạo cache key dựa trên khoảng thời gian
+    const cacheKey = `${formatDate(rangeStart)}_${formatDate(rangeEnd)}`
+
+    // Kiểm tra cache trước khi tải dữ liệu mới
+    if (loadStatisticsCache.current[cacheKey]) {
+      console.log('[DEBUG] Sử dụng kết quả từ cache')
+      setStats(loadStatisticsCache.current[cacheKey])
+      return
+    }
 
     // Đánh dấu đang tải
     setIsLoading(true)
+    isLoadingRef.current = true
     setLoadError(null)
 
     // Biến để theo dõi timeout
     let timeoutId = null
-    // Biến để theo dõi nếu đã tạo dữ liệu mẫu
-    let sampleDataCreated = false
 
     try {
-      // Lấy khoảng thời gian
-      const { rangeStart, rangeEnd } = getDateRange(timeRange)
       console.log(
         `Khoảng thời gian: ${formatDate(rangeStart)} - ${formatDate(rangeEnd)}`
       )
 
-      // Đặt timeout tổng thể cho quá trình tải
-      const loadingPromise = (async () => {
+      // Sử dụng Promise với timeout để tránh treo UI
+      const loadDataWithTimeout = async () => {
         try {
-          // Tải dữ liệu trạng thái làm việc với timeout riêng
+          // Tải dữ liệu trạng thái làm việc
           console.log('Đang tải dữ liệu trạng thái làm việc...')
 
-          // Tạo promise với timeout riêng cho việc tải dữ liệu
-          const dataLoadPromise = loadDailyWorkStatuses(rangeStart, rangeEnd)
-          const dataLoadTimeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => {
-              reject(new Error('Tải dữ liệu trạng thái làm việc quá thời gian'))
-            }, 5000) // 5 giây timeout cho việc tải dữ liệu
-          })
-
-          // Đợi kết quả hoặc timeout
-          let workStatusResult
-          try {
-            workStatusResult = await Promise.race([
-              dataLoadPromise,
-              dataLoadTimeoutPromise,
-            ])
-          } catch (loadError) {
-            console.error('Lỗi khi tải dữ liệu trạng thái làm việc:', loadError)
-            return {
-              error:
-                'Không thể tải dữ liệu trạng thái làm việc, vui lòng thử lại',
-              stats: getDefaultStats(),
-            }
-          }
+          const workStatusResult = await Promise.race([
+            loadDailyWorkStatuses(rangeStart, rangeEnd),
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('Timeout')), 8000)
+            ),
+          ])
 
           // Kiểm tra nếu component đã unmounted
-          if (!isMountedRef.current) {
-            console.log('Component đã unmount, dừng xử lý')
-            return null
-          }
+          if (!isMountedRef.current) return null
 
           // Xử lý kết quả từ loadDailyWorkStatuses
           let workStatuses = []
-          let hasRealData = false
-          let successRate = 0
 
           if (workStatusResult && typeof workStatusResult === 'object') {
-            // Định dạng mới (đối tượng với data, hasRealData, successRate)
             workStatuses = Array.isArray(workStatusResult.data)
               ? workStatusResult.data
               : []
-            hasRealData = !!workStatusResult.hasRealData
-            successRate = workStatusResult.successRate || 0
-
-            console.log(
-              `Tỷ lệ thành công khi tải dữ liệu: ${(successRate * 100).toFixed(
-                1
-              )}%`
-            )
-            console.log(`Có dữ liệu thực tế: ${hasRealData ? 'Có' : 'Không'}`)
           } else if (Array.isArray(workStatusResult)) {
-            // Định dạng cũ (mảng dữ liệu trực tiếp)
             workStatuses = workStatusResult
           } else {
-            console.error(
-              'Dữ liệu trạng thái làm việc không hợp lệ:',
-              workStatusResult
-            )
-            return {
-              error: 'Dữ liệu không hợp lệ',
-              stats: getDefaultStats(),
-            }
+            throw new Error('Dữ liệu không hợp lệ')
           }
 
-          // Nếu tỷ lệ thành công quá thấp, hiển thị cảnh báo
-          if (successRate < 0.5 && workStatuses.length > 0) {
-            console.warn(
-              `Tỷ lệ thành công thấp (${(successRate * 100).toFixed(
-                1
-              )}%), nhưng vẫn có ${workStatuses.length} bản ghi`
-            )
-          }
-
-          // Nếu không có dữ liệu, tạo dữ liệu mẫu tự động
-          if (
-            workStatuses.length === 0 ||
-            (!hasRealData && successRate < 0.3)
-          ) {
-            console.log(
-              'Không có dữ liệu hoặc dữ liệu không đáng tin cậy, tạo dữ liệu mẫu tự động...'
-            )
-            try {
-              // Import động để tránh circular dependency
-              const {
-                generateSampleWorkStatus,
-                clearAllWorkStatusData,
-              } = require('../utils/sampleDataGenerator')
-
-              // Nếu có dữ liệu không đáng tin cậy, xóa trước khi tạo mới
-              if (
-                workStatuses.length > 0 &&
-                !hasRealData &&
-                successRate < 0.3
-              ) {
-                console.log(
-                  'Xóa dữ liệu không đáng tin cậy trước khi tạo mới...'
-                )
-                try {
-                  await clearAllWorkStatusData()
-                } catch (clearError) {
-                  console.warn('Lỗi khi xóa dữ liệu cũ:', clearError)
-                  // Tiếp tục ngay cả khi không thể xóa
-                }
-              }
-
-              // Tạo dữ liệu mẫu cho 10 ngày (giảm xuống để tránh quá tải)
-              const sampleResult = await generateSampleWorkStatus(10)
-              sampleDataCreated = true
-
-              if (!sampleResult) {
-                console.error('Tạo dữ liệu mẫu không thành công')
-                return {
-                  error: 'Không thể tạo dữ liệu mẫu',
-                  stats: getDefaultStats(),
-                  sampleDataCreated: false,
-                }
-              }
-
-              // Tải lại dữ liệu sau khi tạo mẫu với timeout riêng
-              const reloadPromise = loadDailyWorkStatuses(rangeStart, rangeEnd)
-              const reloadTimeoutPromise = new Promise((_, reject) => {
-                setTimeout(() => {
-                  reject(
-                    new Error('Tải lại dữ liệu sau khi tạo mẫu quá thời gian')
-                  )
-                }, 3000) // 3 giây timeout cho việc tải lại
-              })
-
-              try {
-                const reloadResult = await Promise.race([
-                  reloadPromise,
-                  reloadTimeoutPromise,
-                ])
-
-                // Xử lý kết quả tải lại
-                if (reloadResult && typeof reloadResult === 'object') {
-                  workStatuses = Array.isArray(reloadResult.data)
-                    ? reloadResult.data
-                    : []
-                  successRate = reloadResult.successRate || 0
-                } else if (Array.isArray(reloadResult)) {
-                  workStatuses = reloadResult
-                }
-
-                console.log(
-                  `Đã tải lại sau khi tạo mẫu: ${workStatuses.length} bản ghi`
-                )
-              } catch (reloadError) {
-                console.error(
-                  'Lỗi khi tải lại dữ liệu sau khi tạo mẫu:',
-                  reloadError
-                )
-                return {
-                  error: 'Đã tạo dữ liệu mẫu nhưng không thể tải lại',
-                  stats: getDefaultStats(),
-                  sampleDataCreated,
-                }
-              }
-
-              // Kiểm tra lại sau khi tạo dữ liệu mẫu
-              if (workStatuses.length === 0) {
-                return {
-                  error: 'Không thể tạo dữ liệu mẫu hoặc không có dữ liệu',
-                  stats: getDefaultStats(),
-                  sampleDataCreated,
-                }
-              }
-            } catch (sampleError) {
-              console.error('Lỗi khi tạo dữ liệu mẫu:', sampleError)
-              // Tiếp tục với dữ liệu trống nếu không thể tạo mẫu
-              return {
-                error: 'Không thể tạo dữ liệu mẫu',
-                stats: getDefaultStats(),
-              }
-            }
-          }
-
-          // Kiểm tra lại nếu component đã unmounted sau khi tạo mẫu
-          if (!isMountedRef.current) {
-            console.log('Component đã unmount sau khi tạo mẫu, dừng xử lý')
+          // Nếu không có dữ liệu, hiển thị thông báo
+          if (workStatuses.length === 0) {
+            setStats(getDefaultStats())
+            setLoadError('Không có dữ liệu trong khoảng thời gian này')
             return null
           }
 
-          // Tính toán thống kê với timeout riêng
-          console.log('Đang tính toán thống kê...')
-          console.log(`Số lượng bản ghi để tính toán: ${workStatuses.length}`)
-
-          // Giới hạn số lượng bản ghi để tính toán nếu quá nhiều
-          const MAX_RECORDS_FOR_CALCULATION = 60
-          if (workStatuses.length > MAX_RECORDS_FOR_CALCULATION) {
-            console.warn(
-              `Giới hạn số lượng bản ghi để tính toán từ ${workStatuses.length} xuống ${MAX_RECORDS_FOR_CALCULATION}`
+          // Giới hạn số lượng bản ghi để tính toán
+          const MAX_RECORDS = 30
+          if (workStatuses.length > MAX_RECORDS) {
+            console.log(
+              `Giới hạn số lượng bản ghi từ ${workStatuses.length} xuống ${MAX_RECORDS}`
             )
 
             // Sắp xếp theo ngày trước khi cắt bớt
@@ -916,157 +672,78 @@ const StatisticsScreen = ({ navigation }) => {
               return b.date.localeCompare(a.date) // Sắp xếp giảm dần (mới nhất trước)
             })
 
-            // Lấy các bản ghi mới nhất
-            workStatuses = workStatuses.slice(0, MAX_RECORDS_FOR_CALCULATION)
+            workStatuses = workStatuses.slice(0, MAX_RECORDS)
           }
 
-          // Tạo promise với timeout riêng cho việc tính toán
-          const calcPromise = new Promise((resolve) => {
+          // Tính toán thống kê
+          console.log('Đang tính toán thống kê...')
+
+          const calculatedStats = await new Promise((resolve, reject) => {
             // Sử dụng setTimeout để tránh treo UI
             setTimeout(() => {
               try {
-                const calculatedStats = calculateStatistics(
+                const stats = calculateStatistics(
                   workStatuses,
                   rangeStart,
                   rangeEnd
                 )
-                resolve(calculatedStats)
-              } catch (innerCalcError) {
-                console.error(
-                  'Lỗi trong quá trình tính toán thống kê:',
-                  innerCalcError
-                )
-                resolve(getDefaultStats()) // Trả về thống kê mặc định nếu có lỗi
+                resolve(stats)
+              } catch (error) {
+                console.error('Lỗi khi tính toán thống kê:', error)
+                reject(error)
               }
             }, 0)
           })
 
-          const calcTimeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => {
-              reject(new Error('Tính toán thống kê quá thời gian'))
-            }, 4000) // 4 giây timeout cho việc tính toán (tăng từ 3 giây)
-          })
+          // Lưu kết quả vào cache
+          loadStatisticsCache.current[cacheKey] = calculatedStats
 
-          // Đợi kết quả hoặc timeout
-          let calculatedStats
-          try {
-            calculatedStats = await Promise.race([
-              calcPromise,
-              calcTimeoutPromise,
-            ])
-
-            // Kiểm tra kết quả tính toán
-            if (!calculatedStats || typeof calculatedStats !== 'object') {
-              console.error('Kết quả tính toán không hợp lệ:', calculatedStats)
-              calculatedStats = getDefaultStats()
-            }
-          } catch (calcError) {
-            console.error('Lỗi khi tính toán thống kê:', calcError)
-            return {
-              error: 'Không thể tính toán thống kê, vui lòng thử lại',
-              stats: getDefaultStats(),
-              sampleDataCreated,
-            }
-          }
-
-          return {
-            stats: calculatedStats,
-            sampleDataCreated,
-          }
-        } catch (innerError) {
-          console.error('Lỗi trong quá trình tải dữ liệu:', innerError)
-          return {
-            error: innerError.message || 'Lỗi khi xử lý dữ liệu thống kê',
-            stats: getDefaultStats(),
-            sampleDataCreated,
-          }
+          return calculatedStats
+        } catch (error) {
+          console.error('Lỗi khi tải hoặc tính toán dữ liệu:', error)
+          throw error
         }
-      })()
+      }
 
-      // Đặt timeout tổng thể ngắn hơn để tránh treo quá lâu
-      const timeoutPromise = new Promise((resolve) => {
+      // Đặt timeout tổng thể
+      const timeoutPromise = new Promise((_, reject) => {
         timeoutId = setTimeout(() => {
-          console.error(
-            '[DEBUG] Tải dữ liệu thống kê quá thời gian (timeout tổng thể)'
-          )
-
-          // Đặt lại trạng thái loading trong ref để tránh bị treo
-          isLoadingRef.current = false
-
-          resolve({
-            error: 'Tải dữ liệu quá thời gian, vui lòng thử lại',
-            stats: getDefaultStats(),
-            timedOut: true,
-          })
-        }, 5000) // Giảm xuống 5 giây để tránh treo quá lâu
+          reject(new Error('Tải dữ liệu quá thời gian'))
+        }, 10000) // 10 giây timeout tổng thể
       })
 
       // Đợi kết quả hoặc timeout
-      const result = await Promise.race([loadingPromise, timeoutPromise])
+      const result = await Promise.race([loadDataWithTimeout(), timeoutPromise])
 
-      // Xóa timeout nếu đã hoàn thành trước khi timeout
+      // Xóa timeout nếu đã hoàn thành
       if (timeoutId) {
         clearTimeout(timeoutId)
         timeoutId = null
       }
 
       // Kiểm tra nếu component đã unmounted
-      if (!isMountedRef.current) {
-        console.log('Component đã unmount, không cập nhật state')
-        return
-      }
+      if (!isMountedRef.current) return
 
-      // Xử lý kết quả
+      // Cập nhật state với kết quả
       if (result) {
-        console.log(
-          '[DEBUG] Nhận kết quả từ quá trình tải dữ liệu:',
-          result.error ? 'Có lỗi' : 'Không lỗi',
-          result.timedOut ? 'Đã timeout' : 'Không timeout'
-        )
-
-        if (result.error) {
-          setLoadError(result.error)
-          console.log('[DEBUG] Đã đặt lỗi:', result.error)
-        }
-
-        if (result.stats) {
-          setStats(result.stats)
-          console.log('[DEBUG] Đã cập nhật dữ liệu thống kê')
-        }
-
-        // Hiển thị thông báo nếu đã tạo dữ liệu mẫu
-        if (result.sampleDataCreated) {
-          // Sử dụng setTimeout để đảm bảo thông báo hiển thị sau khi UI đã cập nhật
-          setTimeout(() => {
-            if (isMountedRef.current) {
-              console.log('[DEBUG] Hiển thị thông báo đã tạo dữ liệu mẫu')
-              Alert.alert(
-                t('Thông báo'),
-                t('Đã tạo dữ liệu mẫu tự động để hiển thị thống kê')
-              )
-            }
-          }, 300) // Giảm thời gian chờ xuống 300ms
-        }
-
-        // Nếu đã timeout, đảm bảo đặt lại trạng thái loading
-        if (result.timedOut) {
-          console.log('[DEBUG] Xử lý kết quả timeout')
-          isLoadingRef.current = false
-        }
-      } else {
-        console.log('[DEBUG] Không nhận được kết quả từ quá trình tải dữ liệu')
-        // Đặt lỗi mặc định nếu không có kết quả
-        setLoadError('Không thể tải dữ liệu, vui lòng thử lại')
-        setStats(getDefaultStats())
+        setStats(result)
+        setLoadError(null)
       }
     } catch (error) {
-      // Xử lý lỗi ngoài cùng
-      console.error('Lỗi ngoài cùng khi tải thống kê:', error)
+      console.error('Lỗi khi tải dữ liệu thống kê:', error)
 
-      if (isMountedRef.current) {
-        setLoadError(error.message || 'Đã xảy ra lỗi không mong đợi')
-        setStats(getDefaultStats())
+      // Hiển thị thông báo lỗi phù hợp
+      if (
+        error.message === 'Timeout' ||
+        error.message === 'Tải dữ liệu quá thời gian'
+      ) {
+        setLoadError('Tải dữ liệu quá thời gian, vui lòng thử lại')
+      } else {
+        setLoadError('Đã xảy ra lỗi khi tải dữ liệu, vui lòng thử lại')
       }
+
+      // Đặt dữ liệu mặc định
+      setStats(getDefaultStats())
     } finally {
       // Xóa timeout nếu vẫn còn
       if (timeoutId) {
@@ -1075,25 +752,12 @@ const StatisticsScreen = ({ navigation }) => {
 
       // Đảm bảo luôn thoát khỏi trạng thái loading
       if (isMountedRef.current) {
-        console.log('[DEBUG] Hoàn thành quá trình tải dữ liệu thống kê')
-
-        // Đặt lại trạng thái loading trong ref
+        // Đặt lại trạng thái loading
         isLoadingRef.current = false
-
-        // Sử dụng setTimeout để đảm bảo UI được cập nhật
-        // Giảm thời gian chờ xuống 100ms để cải thiện trải nghiệm người dùng
-        setTimeout(() => {
-          if (isMountedRef.current) {
-            setIsLoading(false)
-            console.log('[DEBUG] Đã đặt lại trạng thái loading')
-          }
-        }, 100)
+        setIsLoading(false)
       } else {
         // Đặt lại trạng thái loading trong ref ngay cả khi component đã unmount
         isLoadingRef.current = false
-        console.log(
-          '[DEBUG] Component đã unmount, đặt lại trạng thái loading trong ref'
-        )
       }
     }
   }, [
@@ -1103,7 +767,7 @@ const StatisticsScreen = ({ navigation }) => {
     loadDailyWorkStatuses,
     isLoading,
     isMountedRef,
-    t,
+    formatDate,
   ])
 
   // Hàm trả về dữ liệu thống kê mặc định
@@ -1762,124 +1426,278 @@ const StatisticsScreen = ({ navigation }) => {
 
             <View style={styles.tableBody}>
               {stats.dailyData.length > 0 ? (
-                // Giới hạn số lượng dòng hiển thị để tránh treo UI
-                stats.dailyData.slice(0, 30).map((day, index) => {
-                  // Chỉ render các dòng có dữ liệu hoặc 15 dòng đầu tiên
-                  if (index < 15 || day.standardHours > 0 || day.otHours > 0) {
-                    return (
-                      <View
-                        key={index}
+                <FlatList
+                  data={stats.dailyData.slice(0, 20)} // Giới hạn số lượng dòng hiển thị để cải thiện hiệu suất
+                  keyExtractor={(item, index) => `day-${index}`}
+                  initialNumToRender={10} // Chỉ render 10 dòng đầu tiên
+                  maxToRenderPerBatch={5} // Mỗi lần render thêm tối đa 5 dòng
+                  windowSize={5} // Giảm kích thước cửa sổ để cải thiện hiệu suất
+                  removeClippedSubviews={true} // Loại bỏ các view không hiển thị để tiết kiệm bộ nhớ
+                  renderItem={({ item: day, index }) => {
+                    // Chỉ render các dòng có dữ liệu hoặc 10 dòng đầu tiên
+                    if (
+                      index < 10 ||
+                      day.standardHours > 0 ||
+                      day.otHours > 0
+                    ) {
+                      return (
+                        <View
+                          style={[
+                            styles.tableRow,
+                            { borderBottomColor: theme.borderColor },
+                            index % 2 === 0 && {
+                              backgroundColor: darkMode ? '#1a1a1a' : '#f5f5f5',
+                            },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.tableCell,
+                              styles.dayCell,
+                              { color: theme.textColor },
+                            ]}
+                          >
+                            {day.date}
+                          </Text>
+                          <Text
+                            style={[
+                              styles.tableCell,
+                              styles.weekdayCell,
+                              { color: theme.textColor },
+                            ]}
+                          >
+                            {day.weekday}
+                          </Text>
+                          <Text
+                            style={[
+                              styles.tableCell,
+                              styles.timeCell,
+                              { color: theme.textColor },
+                            ]}
+                          >
+                            {day.checkIn || '--:--'}
+                          </Text>
+                          <Text
+                            style={[
+                              styles.tableCell,
+                              styles.timeCell,
+                              { color: theme.textColor },
+                            ]}
+                          >
+                            {day.checkOut || '--:--'}
+                          </Text>
+                          <Text
+                            style={[
+                              styles.tableCell,
+                              styles.hoursCell,
+                              { color: theme.textColor },
+                            ]}
+                          >
+                            {formatDecimalHours(day.standardHours * 60)}
+                          </Text>
+                          <Text
+                            style={[
+                              styles.tableCell,
+                              styles.otCell,
+                              { color: theme.textColor },
+                            ]}
+                          >
+                            {formatDecimalHours(day.otHours * 60)}
+                          </Text>
+                          <Text
+                            style={[
+                              styles.tableCell,
+                              styles.otCell,
+                              { color: theme.textColor },
+                            ]}
+                          >
+                            {formatDecimalHours(day.sundayHours * 60)}
+                          </Text>
+                          <Text
+                            style={[
+                              styles.tableCell,
+                              styles.otCell,
+                              { color: theme.textColor },
+                            ]}
+                          >
+                            {formatDecimalHours(day.nightHours * 60)}
+                          </Text>
+                          <Text
+                            style={[
+                              styles.tableCell,
+                              styles.statusCell,
+                              { color: theme.textColor },
+                            ]}
+                          >
+                            {getStatusIcon(day.status)}
+                          </Text>
+                        </View>
+                      )
+                    }
+                    return null
+                  }}
+                  ListEmptyComponent={null}
+                  ListFooterComponent={
+                    stats.dailyData.length > 20 ? (
+                      <Text
                         style={[
-                          styles.tableRow,
-                          { borderBottomColor: theme.borderColor },
-                          index % 2 === 0 && {
-                            backgroundColor: darkMode ? '#1a1a1a' : '#f5f5f5',
-                          },
+                          styles.moreDataText,
+                          { color: theme.subtextColor },
                         ]}
                       >
-                        <Text
-                          style={[
-                            styles.tableCell,
-                            styles.dayCell,
-                            { color: theme.textColor },
-                          ]}
-                        >
-                          {day.date}
-                        </Text>
-                        <Text
-                          style={[
-                            styles.tableCell,
-                            styles.weekdayCell,
-                            { color: theme.textColor },
-                          ]}
-                        >
-                          {day.weekday}
-                        </Text>
-                        <Text
-                          style={[
-                            styles.tableCell,
-                            styles.timeCell,
-                            { color: theme.textColor },
-                          ]}
-                        >
-                          {day.checkIn || '--:--'}
-                        </Text>
-                        <Text
-                          style={[
-                            styles.tableCell,
-                            styles.timeCell,
-                            { color: theme.textColor },
-                          ]}
-                        >
-                          {day.checkOut || '--:--'}
-                        </Text>
-                        <Text
-                          style={[
-                            styles.tableCell,
-                            styles.hoursCell,
-                            { color: theme.textColor },
-                          ]}
-                        >
-                          {formatDecimalHours(day.standardHours * 60)}
-                        </Text>
-                        <Text
-                          style={[
-                            styles.tableCell,
-                            styles.otCell,
-                            { color: theme.textColor },
-                          ]}
-                        >
-                          {formatDecimalHours(day.otHours * 60)}
-                        </Text>
-                        <Text
-                          style={[
-                            styles.tableCell,
-                            styles.otCell,
-                            { color: theme.textColor },
-                          ]}
-                        >
-                          {formatDecimalHours(day.sundayHours * 60)}
-                        </Text>
-                        <Text
-                          style={[
-                            styles.tableCell,
-                            styles.otCell,
-                            { color: theme.textColor },
-                          ]}
-                        >
-                          {formatDecimalHours(day.nightHours * 60)}
-                        </Text>
-                        <Text
-                          style={[
-                            styles.tableCell,
-                            styles.statusCell,
-                            { color: theme.textColor },
-                          ]}
-                        >
-                          {getStatusIcon(day.status)}
-                        </Text>
-                      </View>
-                    )
+                        {language === 'vi'
+                          ? `...và ${stats.dailyData.length - 20} ngày khác`
+                          : `...and ${stats.dailyData.length - 20} more days`}
+                      </Text>
+                    ) : null
                   }
-                  return null
-                })
+                />
+              ) : loadError ? (
+                // Hiển thị thông báo lỗi trong bảng
+                <View style={styles.tableErrorContainer}>
+                  <Ionicons
+                    name="alert-circle-outline"
+                    size={32}
+                    color="#e74c3c"
+                  />
+                  <Text
+                    style={[styles.tableErrorText, { color: theme.textColor }]}
+                  >
+                    {loadError}
+                  </Text>
+                  <View style={styles.tableErrorButtonsContainer}>
+                    <TouchableOpacity
+                      style={styles.tableRetryButton}
+                      onPress={() => {
+                        // Đặt lại trạng thái và thử lại
+                        setLoadError(null)
+                        setIsLoading(true)
+                        isLoadingRef.current = true
+                        loadStatistics()
+                      }}
+                    >
+                      <Text style={styles.tableButtonText}>{t('Thử lại')}</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.tableSampleDataButton}
+                      onPress={async () => {
+                        try {
+                          // Đặt lại trạng thái
+                          setLoadError(null)
+                          setIsLoading(true)
+                          isLoadingRef.current = true
+
+                          // Import động để tránh circular dependency
+                          const {
+                            generateSampleWorkStatus,
+                            clearAllWorkStatusData,
+                          } = require('../utils/sampleDataGenerator')
+
+                          // Xóa dữ liệu cũ trước khi tạo mới
+                          await clearAllWorkStatusData()
+
+                          // Tạo dữ liệu mẫu cho 15 ngày
+                          const sampleResult = await generateSampleWorkStatus(
+                            10
+                          )
+
+                          if (sampleResult) {
+                            // Tải lại dữ liệu thống kê
+                            setTimeout(() => {
+                              if (isMountedRef.current) {
+                                loadStatistics()
+                              }
+                            }, 300)
+                          } else {
+                            setLoadError(
+                              'Không thể tạo dữ liệu mẫu, vui lòng thử lại'
+                            )
+                            setIsLoading(false)
+                            isLoadingRef.current = false
+                          }
+                        } catch (error) {
+                          console.error('Lỗi khi tạo dữ liệu mẫu:', error)
+                          setLoadError(
+                            'Lỗi khi tạo dữ liệu mẫu: ' + error.message
+                          )
+                          setIsLoading(false)
+                          isLoadingRef.current = false
+                        }
+                      }}
+                    >
+                      <Text style={styles.tableButtonText}>
+                        {t('Tạo dữ liệu mẫu')}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
               ) : (
-                <Text
-                  style={[styles.noDataText, { color: theme.subtextColor }]}
-                >
-                  {language === 'vi'
-                    ? 'Không có dữ liệu trong khoảng thời gian này'
-                    : 'No data available for this time range'}
-                </Text>
-              )}
-              {stats.dailyData.length > 30 && (
-                <Text
-                  style={[styles.moreDataText, { color: theme.subtextColor }]}
-                >
-                  {language === 'vi'
-                    ? `...và ${stats.dailyData.length - 30} ngày khác`
-                    : `...and ${stats.dailyData.length - 30} more days`}
-                </Text>
+                // Hiển thị thông báo không có dữ liệu
+                <View style={styles.noDataContainer}>
+                  <Ionicons
+                    name="information-circle-outline"
+                    size={32}
+                    color="#3498db"
+                  />
+                  <Text
+                    style={[styles.noDataText, { color: theme.subtextColor }]}
+                  >
+                    {language === 'vi'
+                      ? 'Không có dữ liệu trong khoảng thời gian này'
+                      : 'No data available for this time range'}
+                  </Text>
+
+                  <TouchableOpacity
+                    style={styles.sampleDataButton}
+                    onPress={async () => {
+                      try {
+                        // Đặt lại trạng thái
+                        setLoadError(null)
+                        setIsLoading(true)
+                        isLoadingRef.current = true
+
+                        // Import động để tránh circular dependency
+                        const {
+                          generateSampleWorkStatus,
+                          clearAllWorkStatusData,
+                        } = require('../utils/sampleDataGenerator')
+
+                        // Xóa dữ liệu cũ trước khi tạo mới
+                        await clearAllWorkStatusData()
+
+                        // Tạo dữ liệu mẫu cho 10 ngày
+                        const sampleResult = await generateSampleWorkStatus(10)
+
+                        if (sampleResult) {
+                          // Tải lại dữ liệu thống kê
+                          setTimeout(() => {
+                            if (isMountedRef.current) {
+                              loadStatistics()
+                            }
+                          }, 300)
+                        } else {
+                          setLoadError(
+                            'Không thể tạo dữ liệu mẫu, vui lòng thử lại'
+                          )
+                          setIsLoading(false)
+                          isLoadingRef.current = false
+                        }
+                      } catch (error) {
+                        console.error('Lỗi khi tạo dữ liệu mẫu:', error)
+                        setLoadError(
+                          'Lỗi khi tạo dữ liệu mẫu: ' + error.message
+                        )
+                        setIsLoading(false)
+                        isLoadingRef.current = false
+                      }
+                    }}
+                  >
+                    <Text style={styles.sampleDataButtonText}>
+                      {t('Tạo dữ liệu mẫu')}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               )}
             </View>
           </View>
@@ -2400,6 +2218,68 @@ const styles = StyleSheet.create({
   exportProgressText: {
     fontSize: 16,
     marginTop: 12,
+  },
+  // Styles mới cho hiển thị lỗi và không có dữ liệu trong bảng
+  errorButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 16,
+    flexWrap: 'wrap',
+  },
+  sampleDataButton: {
+    backgroundColor: '#3498db',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginLeft: 10,
+  },
+  sampleDataButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  noDataContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  tableErrorContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+    backgroundColor: 'rgba(231, 76, 60, 0.1)',
+    borderRadius: 8,
+    margin: 10,
+  },
+  tableErrorText: {
+    fontSize: 14,
+    marginTop: 10,
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  tableErrorButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 10,
+    flexWrap: 'wrap',
+  },
+  tableRetryButton: {
+    backgroundColor: '#8a56ff',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 6,
+    marginHorizontal: 5,
+  },
+  tableSampleDataButton: {
+    backgroundColor: '#3498db',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 6,
+    marginHorizontal: 5,
+  },
+  tableButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 12,
   },
 })
 
