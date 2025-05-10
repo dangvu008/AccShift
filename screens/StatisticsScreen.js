@@ -583,14 +583,24 @@ const StatisticsScreen = ({ navigation }) => {
   const applyCustomDateRange = () => {
     setTimeRange('custom')
     setCustomRangeModalVisible(false)
+
+    // Tải dữ liệu mới trong background mà không chặn UI
+    setTimeout(() => {
+      if (isMountedRef.current) {
+        loadStatistics()
+      }
+    }, 0)
   }
 
   // Lưu cache cho kết quả tải dữ liệu thống kê
   const loadStatisticsCache = useRef({})
 
+  // Tham chiếu để theo dõi thời gian cập nhật dữ liệu gần nhất
+  const lastUpdateTimeRef = useRef(0)
+
   const loadStatistics = useCallback(async () => {
     // Nếu đã đang tải, không thực hiện tải lại để tránh vòng lặp vô hạn
-    if (isLoading) {
+    if (isLoadingRef.current) {
       console.log('[DEBUG] Đã đang tải dữ liệu, bỏ qua yêu cầu tải lại')
       return
     }
@@ -610,77 +620,102 @@ const StatisticsScreen = ({ navigation }) => {
       return
     }
 
-    // Đánh dấu đang tải
+    // Đánh dấu đang tải nhưng không xóa dữ liệu cũ
     setIsLoading(true)
     isLoadingRef.current = true
     setLoadError(null)
 
-    // Biến để theo dõi timeout
-    let timeoutId = null
+    // Tải dữ liệu trong background mà không chặn UI
+    const loadDataInBackground = async () => {
+      // Biến để theo dõi timeout
+      let timeoutId = null
 
-    try {
-      console.log(
-        `Khoảng thời gian: ${formatDate(rangeStart)} - ${formatDate(rangeEnd)}`
-      )
+      try {
+        console.log(
+          `Khoảng thời gian: ${formatDate(rangeStart)} - ${formatDate(
+            rangeEnd
+          )}`
+        )
 
-      // Sử dụng Promise với timeout để tránh treo UI
-      const loadDataWithTimeout = async () => {
+        // Tải dữ liệu trạng thái làm việc
+        console.log('Đang tải dữ liệu trạng thái làm việc...')
+
+        let workStatusResult
         try {
-          // Tải dữ liệu trạng thái làm việc
-          console.log('Đang tải dữ liệu trạng thái làm việc...')
-
-          const workStatusResult = await Promise.race([
+          workStatusResult = await Promise.race([
             loadDailyWorkStatuses(rangeStart, rangeEnd),
             new Promise((_, reject) =>
               setTimeout(() => reject(new Error('Timeout')), 8000)
             ),
           ])
+        } catch (error) {
+          console.error('Lỗi khi tải dữ liệu trạng thái làm việc:', error)
 
-          // Kiểm tra nếu component đã unmounted
-          if (!isMountedRef.current) return null
-
-          // Xử lý kết quả từ loadDailyWorkStatuses
-          let workStatuses = []
-
-          if (workStatusResult && typeof workStatusResult === 'object') {
-            workStatuses = Array.isArray(workStatusResult.data)
-              ? workStatusResult.data
-              : []
-          } else if (Array.isArray(workStatusResult)) {
-            workStatuses = workStatusResult
-          } else {
-            throw new Error('Dữ liệu không hợp lệ')
+          // Nếu component vẫn mounted, hiển thị lỗi nhưng giữ lại dữ liệu cũ
+          if (isMountedRef.current) {
+            setLoadError('Không thể tải dữ liệu, vui lòng thử lại')
+            setIsLoading(false)
+            isLoadingRef.current = false
           }
+          return
+        }
 
-          // Nếu không có dữ liệu, hiển thị thông báo
-          if (workStatuses.length === 0) {
-            setStats(getDefaultStats())
+        // Kiểm tra nếu component đã unmounted
+        if (!isMountedRef.current) return
+
+        // Xử lý kết quả từ loadDailyWorkStatuses
+        let workStatuses = []
+
+        if (workStatusResult && typeof workStatusResult === 'object') {
+          workStatuses = Array.isArray(workStatusResult.data)
+            ? workStatusResult.data
+            : []
+        } else if (Array.isArray(workStatusResult)) {
+          workStatuses = workStatusResult
+        } else {
+          // Nếu dữ liệu không hợp lệ, hiển thị lỗi nhưng giữ lại dữ liệu cũ
+          if (isMountedRef.current) {
+            setLoadError('Dữ liệu không hợp lệ')
+            setIsLoading(false)
+            isLoadingRef.current = false
+          }
+          return
+        }
+
+        // Nếu không có dữ liệu, hiển thị thông báo nhưng không xóa dữ liệu cũ
+        if (workStatuses.length === 0) {
+          if (isMountedRef.current) {
             setLoadError('Không có dữ liệu trong khoảng thời gian này')
-            return null
+            setIsLoading(false)
+            isLoadingRef.current = false
           }
+          return
+        }
 
-          // Giới hạn số lượng bản ghi để tính toán
-          const MAX_RECORDS = 30
-          if (workStatuses.length > MAX_RECORDS) {
-            console.log(
-              `Giới hạn số lượng bản ghi từ ${workStatuses.length} xuống ${MAX_RECORDS}`
-            )
+        // Giới hạn số lượng bản ghi để tính toán
+        const MAX_RECORDS = 30
+        if (workStatuses.length > MAX_RECORDS) {
+          console.log(
+            `Giới hạn số lượng bản ghi từ ${workStatuses.length} xuống ${MAX_RECORDS}`
+          )
 
-            // Sắp xếp theo ngày trước khi cắt bớt
-            workStatuses.sort((a, b) => {
-              if (!a.date || !b.date) return 0
-              return b.date.localeCompare(a.date) // Sắp xếp giảm dần (mới nhất trước)
-            })
+          // Sắp xếp theo ngày trước khi cắt bớt
+          workStatuses.sort((a, b) => {
+            if (!a.date || !b.date) return 0
+            return b.date.localeCompare(a.date) // Sắp xếp giảm dần (mới nhất trước)
+          })
 
-            workStatuses = workStatuses.slice(0, MAX_RECORDS)
-          }
+          workStatuses = workStatuses.slice(0, MAX_RECORDS)
+        }
 
-          // Tính toán thống kê
-          console.log('Đang tính toán thống kê...')
+        // Tính toán thống kê trong background
+        console.log('Đang tính toán thống kê...')
 
-          const calculatedStats = await new Promise((resolve, reject) => {
-            // Sử dụng setTimeout để tránh treo UI
-            setTimeout(() => {
+        let calculatedStats
+        try {
+          // Sử dụng requestAnimationFrame để tránh treo UI
+          calculatedStats = await new Promise((resolve) => {
+            requestAnimationFrame(() => {
               try {
                 const stats = calculateStatistics(
                   workStatuses,
@@ -690,82 +725,99 @@ const StatisticsScreen = ({ navigation }) => {
                 resolve(stats)
               } catch (error) {
                 console.error('Lỗi khi tính toán thống kê:', error)
-                reject(error)
+                resolve(null)
               }
-            }, 0)
+            })
           })
-
-          // Lưu kết quả vào cache
-          loadStatisticsCache.current[cacheKey] = calculatedStats
-
-          return calculatedStats
         } catch (error) {
-          console.error('Lỗi khi tải hoặc tính toán dữ liệu:', error)
-          throw error
+          console.error('Lỗi khi tính toán thống kê:', error)
+
+          // Nếu component vẫn mounted, hiển thị lỗi nhưng giữ lại dữ liệu cũ
+          if (isMountedRef.current) {
+            setLoadError('Lỗi khi tính toán thống kê')
+            setIsLoading(false)
+            isLoadingRef.current = false
+          }
+          return
+        }
+
+        // Kiểm tra nếu component đã unmounted
+        if (!isMountedRef.current) return
+
+        // Kiểm tra kết quả tính toán
+        if (!calculatedStats) {
+          if (isMountedRef.current) {
+            setLoadError('Lỗi khi tính toán thống kê')
+            setIsLoading(false)
+            isLoadingRef.current = false
+          }
+          return
+        }
+
+        // Lưu kết quả vào cache
+        loadStatisticsCache.current[cacheKey] = calculatedStats
+
+        // Cập nhật state với kết quả mới
+        if (isMountedRef.current) {
+          // Sử dụng requestAnimationFrame để cập nhật UI mượt mà
+          requestAnimationFrame(() => {
+            setStats(calculatedStats)
+            setLoadError(null)
+            setIsLoading(false)
+            isLoadingRef.current = false
+            lastUpdateTimeRef.current = Date.now()
+          })
+        }
+      } catch (error) {
+        console.error('Lỗi khi tải dữ liệu thống kê:', error)
+
+        // Nếu component vẫn mounted, hiển thị lỗi nhưng giữ lại dữ liệu cũ
+        if (isMountedRef.current) {
+          // Hiển thị thông báo lỗi phù hợp
+          if (
+            error.message === 'Timeout' ||
+            error.message === 'Tải dữ liệu quá thời gian'
+          ) {
+            setLoadError('Tải dữ liệu quá thời gian, vui lòng thử lại')
+          } else {
+            setLoadError('Đã xảy ra lỗi khi tải dữ liệu, vui lòng thử lại')
+          }
+
+          setIsLoading(false)
+          isLoadingRef.current = false
+        }
+      } finally {
+        // Xóa timeout nếu vẫn còn
+        if (timeoutId) {
+          clearTimeout(timeoutId)
+        }
+
+        // Đảm bảo luôn thoát khỏi trạng thái loading
+        if (isMountedRef.current) {
+          isLoadingRef.current = false
+          setIsLoading(false)
+        } else {
+          isLoadingRef.current = false
         }
       }
+    }
 
-      // Đặt timeout tổng thể
-      const timeoutPromise = new Promise((_, reject) => {
-        timeoutId = setTimeout(() => {
-          reject(new Error('Tải dữ liệu quá thời gian'))
-        }, 10000) // 10 giây timeout tổng thể
-      })
-
-      // Đợi kết quả hoặc timeout
-      const result = await Promise.race([loadDataWithTimeout(), timeoutPromise])
-
-      // Xóa timeout nếu đã hoàn thành
-      if (timeoutId) {
-        clearTimeout(timeoutId)
-        timeoutId = null
-      }
-
-      // Kiểm tra nếu component đã unmounted
-      if (!isMountedRef.current) return
-
-      // Cập nhật state với kết quả
-      if (result) {
-        setStats(result)
-        setLoadError(null)
-      }
-    } catch (error) {
-      console.error('Lỗi khi tải dữ liệu thống kê:', error)
-
-      // Hiển thị thông báo lỗi phù hợp
-      if (
-        error.message === 'Timeout' ||
-        error.message === 'Tải dữ liệu quá thời gian'
-      ) {
-        setLoadError('Tải dữ liệu quá thời gian, vui lòng thử lại')
-      } else {
-        setLoadError('Đã xảy ra lỗi khi tải dữ liệu, vui lòng thử lại')
-      }
-
-      // Đặt dữ liệu mặc định
-      setStats(getDefaultStats())
-    } finally {
-      // Xóa timeout nếu vẫn còn
-      if (timeoutId) {
-        clearTimeout(timeoutId)
-      }
+    // Bắt đầu tải dữ liệu trong background
+    loadDataInBackground().catch((error) => {
+      console.error('Lỗi không xử lý được khi tải dữ liệu:', error)
 
       // Đảm bảo luôn thoát khỏi trạng thái loading
       if (isMountedRef.current) {
-        // Đặt lại trạng thái loading
         isLoadingRef.current = false
         setIsLoading(false)
-      } else {
-        // Đặt lại trạng thái loading trong ref ngay cả khi component đã unmount
-        isLoadingRef.current = false
+        setLoadError('Đã xảy ra lỗi không mong đợi, vui lòng thử lại')
       }
-    }
+    })
   }, [
     timeRange,
     calculateStatistics,
     getDateRange,
     loadDailyWorkStatuses,
-    isLoading,
     isMountedRef,
     formatDate,
   ])
@@ -1075,7 +1127,13 @@ const StatisticsScreen = ({ navigation }) => {
             { backgroundColor: theme.secondaryCardColor },
             timeRange === 'week' && { backgroundColor: '#8a56ff' },
           ]}
-          onPress={() => setTimeRange('week')}
+          onPress={() => {
+            if (timeRange !== 'week') {
+              setTimeRange('week')
+              // Tải dữ liệu mới trong background mà không chặn UI
+              setTimeout(() => loadStatistics(), 0)
+            }
+          }}
         >
           <Text
             style={[
@@ -1094,7 +1152,13 @@ const StatisticsScreen = ({ navigation }) => {
             { backgroundColor: theme.secondaryCardColor },
             timeRange === 'month' && { backgroundColor: '#8a56ff' },
           ]}
-          onPress={() => setTimeRange('month')}
+          onPress={() => {
+            if (timeRange !== 'month') {
+              setTimeRange('month')
+              // Tải dữ liệu mới trong background mà không chặn UI
+              setTimeout(() => loadStatistics(), 0)
+            }
+          }}
         >
           <Text
             style={[
@@ -1113,7 +1177,13 @@ const StatisticsScreen = ({ navigation }) => {
             { backgroundColor: theme.secondaryCardColor },
             timeRange === 'year' && { backgroundColor: '#8a56ff' },
           ]}
-          onPress={() => setTimeRange('year')}
+          onPress={() => {
+            if (timeRange !== 'year') {
+              setTimeRange('year')
+              // Tải dữ liệu mới trong background mà không chặn UI
+              setTimeout(() => loadStatistics(), 0)
+            }
+          }}
         >
           <Text
             style={[
@@ -1134,13 +1204,11 @@ const StatisticsScreen = ({ navigation }) => {
         </Text>
       </View>
 
-      {/* Hiển thị loading indicator trong khi vẫn hiển thị dữ liệu cũ */}
+      {/* Hiển thị loading indicator nhỏ gọn ở góc màn hình */}
       {isLoading && (
-        <View style={styles.overlayLoadingContainer}>
-          <View style={styles.loadingIndicatorContainer}>
-            <ActivityIndicator size="large" color="#8a56ff" />
-            <Text style={styles.loadingText}>{t('Đang tải thống kê...')}</Text>
-          </View>
+        <View style={styles.cornerLoadingContainer}>
+          <ActivityIndicator size="small" color="#8a56ff" />
+          <Text style={styles.cornerLoadingText}>{t('Đang tải...')}</Text>
         </View>
       )}
 
@@ -1173,43 +1241,27 @@ const StatisticsScreen = ({ navigation }) => {
               setIsLoading(true)
               isLoadingRef.current = true
 
-              try {
-                // Tải lại dữ liệu với timeout ngắn hơn
-                setTimeout(() => {
-                  if (isMountedRef.current) {
-                    console.log(
-                      '[DEBUG] Thực hiện tải lại dữ liệu sau khi nhấn nút thử lại'
-                    )
-                    // Tải lại dữ liệu
-                    loadStatistics().catch((error) => {
-                      console.error(
-                        '[DEBUG] Lỗi khi thử lại tải dữ liệu:',
-                        error
-                      )
+              // Tải lại dữ liệu trong background mà không chặn UI
+              setTimeout(() => {
+                if (isMountedRef.current) {
+                  console.log(
+                    '[DEBUG] Thực hiện tải lại dữ liệu sau khi nhấn nút thử lại'
+                  )
+                  loadStatistics().catch((error) => {
+                    console.error('[DEBUG] Lỗi khi thử lại tải dữ liệu:', error)
 
-                      if (isMountedRef.current) {
-                        setLoadError(
-                          'Không thể tải dữ liệu, vui lòng thử lại sau'
-                        )
-                        // Đảm bảo đặt lại trạng thái loading trong ref
-                        isLoadingRef.current = false
-                      }
-                    })
-                  } else {
-                    // Đảm bảo đặt lại trạng thái loading trong ref nếu component đã unmount
-                    isLoadingRef.current = false
-                  }
-                }, 300)
-              } catch (error) {
-                console.error(
-                  '[DEBUG] Lỗi ngoài cùng khi thử lại tải dữ liệu:',
-                  error
-                )
-                // Đảm bảo đặt lại trạng thái loading trong cả state và ref
-                setIsLoading(false)
-                isLoadingRef.current = false
-                setLoadError('Đã xảy ra lỗi không mong đợi, vui lòng thử lại')
-              }
+                    if (isMountedRef.current) {
+                      setLoadError(
+                        'Không thể tải dữ liệu, vui lòng thử lại sau'
+                      )
+                      isLoadingRef.current = false
+                      setIsLoading(false)
+                    }
+                  })
+                } else {
+                  isLoadingRef.current = false
+                }
+              }, 0)
             }}
           >
             <Text style={styles.retryButtonText}>{t('Thử lại')}</Text>
@@ -1573,7 +1625,9 @@ const StatisticsScreen = ({ navigation }) => {
                         setLoadError(null)
                         setIsLoading(true)
                         isLoadingRef.current = true
-                        loadStatistics()
+
+                        // Tải dữ liệu trong background mà không chặn UI
+                        setTimeout(() => loadStatistics(), 0)
                       }}
                     >
                       <Text style={styles.tableButtonText}>{t('Thử lại')}</Text>
@@ -1603,12 +1657,10 @@ const StatisticsScreen = ({ navigation }) => {
                           )
 
                           if (sampleResult) {
-                            // Tải lại dữ liệu thống kê
-                            setTimeout(() => {
-                              if (isMountedRef.current) {
-                                loadStatistics()
-                              }
-                            }, 300)
+                            // Tải lại dữ liệu thống kê trong background mà không chặn UI
+                            if (isMountedRef.current) {
+                              setTimeout(() => loadStatistics(), 0)
+                            }
                           } else {
                             setLoadError(
                               'Không thể tạo dữ liệu mẫu, vui lòng thử lại'
@@ -1670,12 +1722,10 @@ const StatisticsScreen = ({ navigation }) => {
                         const sampleResult = await generateSampleWorkStatus(10)
 
                         if (sampleResult) {
-                          // Tải lại dữ liệu thống kê
-                          setTimeout(() => {
-                            if (isMountedRef.current) {
-                              loadStatistics()
-                            }
-                          }, 300)
+                          // Tải lại dữ liệu thống kê trong background mà không chặn UI
+                          if (isMountedRef.current) {
+                            setTimeout(() => loadStatistics(), 0)
+                          }
                         } else {
                           setLoadError(
                             'Không thể tạo dữ liệu mẫu, vui lòng thử lại'
@@ -2010,32 +2060,27 @@ const styles = StyleSheet.create({
     backgroundColor: '#34495e',
   },
 
-  // Overlay loading container để hiển thị loading indicator trên dữ liệu
-  overlayLoadingContainer: {
+  // Loading indicator nhỏ gọn ở góc màn hình
+  cornerLoadingContainer: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1000,
-  },
-  loadingIndicatorContainer: {
-    backgroundColor: 'white',
-    padding: 20,
-    borderRadius: 10,
+    top: 10,
+    right: 10,
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.5,
+    elevation: 3,
+    zIndex: 1000,
   },
-  loadingText: {
-    fontSize: 16,
-    marginTop: 16,
+  cornerLoadingText: {
+    fontSize: 12,
+    marginLeft: 5,
     color: '#333',
   },
   errorContainer: {
