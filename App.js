@@ -45,7 +45,7 @@ import ImageViewerScreen from './screens/ImageViewerScreen'
 import AlarmScreen from './screens/AlarmScreen'
 import MapPickerScreen from './screens/MapPickerScreen'
 import DebugScreen from './screens/DebugScreen'
-import CheckAsyncStorage from './CheckAsyncStorage' // Import CheckAsyncStorage tạm thời
+import DebugStatisticsData from './DebugStatisticsData' // Import DebugStatisticsData tạm thời
 // Tạo component NotesDebugScreen trực tiếp trong App.js thay vì import
 import React from 'react'
 import { View, Text, ScrollView } from 'react-native'
@@ -120,8 +120,8 @@ function HomeStack() {
     >
       <Stack.Screen
         name="Home"
-        component={CheckAsyncStorage}
-        options={{ title: 'Kiểm tra dữ liệu' }}
+        component={DebugStatisticsData}
+        options={{ title: 'Debug dữ liệu thống kê' }}
       />
       <Stack.Screen
         name="Statistics"
