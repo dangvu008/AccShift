@@ -428,11 +428,46 @@ const StatisticsScreen = ({ navigation }) => {
             const displayDate = formatShortDate(dateObj, language)
             const weekday = getWeekdayName(dateObj.getDay())
 
+            // Log dữ liệu để debug
+            console.log(
+              `[DEBUG] Dữ liệu trạng thái cho ngày ${status.date}:`,
+              JSON.stringify(status)
+            )
+
             // Chuyển đổi và kiểm tra các giá trị số
-            const standardHours = parseFloat(status.standardHoursScheduled) || 0
-            const otHours = parseFloat(status.otHoursScheduled) || 0
-            const sundayHours = parseFloat(status.sundayHoursScheduled) || 0
-            const nightHours = parseFloat(status.nightHoursScheduled) || 0
+            let standardHours = parseFloat(status.standardHoursScheduled) || 0
+            let otHours = parseFloat(status.otHoursScheduled) || 0
+            let sundayHours = parseFloat(status.sundayHoursScheduled) || 0
+            let nightHours = parseFloat(status.nightHoursScheduled) || 0
+
+            // Nếu trạng thái là DU_CONG nhưng không có giá trị giờ làm, đặt giá trị mặc định
+            if (status.status === 'DU_CONG' && standardHours === 0) {
+              // Đặt giá trị mặc định cho ngày đủ công (8 giờ làm việc chuẩn)
+              standardHours = 8.0
+
+              // Cập nhật lại tổng giờ làm
+              const totalHours = standardHours + otHours + sundayHours
+
+              console.log(
+                `[DEBUG] Đặt giá trị mặc định cho ngày ${status.date} có trạng thái DU_CONG:`,
+                {
+                  standardHours,
+                  otHours,
+                  sundayHours,
+                  nightHours,
+                  totalHours,
+                }
+              )
+            }
+
+            console.log(`[DEBUG] Giá trị giờ làm cho ngày ${status.date}:`, {
+              standardHours,
+              otHours,
+              sundayHours,
+              nightHours,
+              totalHours: parseFloat(status.totalHoursScheduled) || 0,
+              status: status.status,
+            })
 
             // Kiểm tra giá trị hợp lệ trước khi cộng dồn
             if (
@@ -441,8 +476,14 @@ const StatisticsScreen = ({ navigation }) => {
               isNaN(sundayHours) ||
               isNaN(nightHours)
             ) {
+              console.log(
+                `[DEBUG] Bỏ qua ngày ${status.date} do có giá trị không hợp lệ`
+              )
               return // Bỏ qua nếu có giá trị không hợp lệ
             }
+
+            // Tính tổng giờ làm
+            const totalHours = standardHours + otHours + sundayHours
 
             // Cộng dồn vào tổng
             stats.standardHours += standardHours
@@ -451,6 +492,20 @@ const StatisticsScreen = ({ navigation }) => {
             stats.nightHours += nightHours
             stats.totalWorkTime += standardHours * 60
             stats.overtime += otHours * 60
+
+            console.log(`[DEBUG] Cộng dồn giờ làm cho ngày ${status.date}:`, {
+              standardHours,
+              otHours,
+              sundayHours,
+              nightHours,
+              totalHours,
+              runningTotal: {
+                standardHours: stats.standardHours,
+                otHours: stats.otHours,
+                totalWorkTime: stats.totalWorkTime / 60,
+                overtime: stats.overtime / 60,
+              },
+            })
 
             // Cập nhật số lượng theo trạng thái
             if (
@@ -472,7 +527,7 @@ const StatisticsScreen = ({ navigation }) => {
               otHours: otHours,
               sundayHours: sundayHours,
               nightHours: nightHours,
-              totalHours: parseFloat(status.totalHoursScheduled) || 0,
+              totalHours: totalHours, // Sử dụng tổng giờ làm đã tính toán
               status: status.status || 'CHUA_CAP_NHAT',
               lateMinutes: parseInt(status.lateMinutes) || 0,
               earlyMinutes: parseInt(status.earlyMinutes) || 0,
@@ -1486,11 +1541,24 @@ const StatisticsScreen = ({ navigation }) => {
                   windowSize={5} // Giảm kích thước cửa sổ để cải thiện hiệu suất
                   removeClippedSubviews={true} // Loại bỏ các view không hiển thị để tiết kiệm bộ nhớ
                   renderItem={({ item: day, index }) => {
-                    // Chỉ render các dòng có dữ liệu hoặc 10 dòng đầu tiên
+                    // Log để debug
+                    console.log(`[DEBUG] Dữ liệu ngày ${day.date}:`, {
+                      standardHours: day.standardHours,
+                      otHours: day.otHours,
+                      status: day.status,
+                      shouldRender:
+                        index < 10 ||
+                        day.standardHours > 0 ||
+                        day.otHours > 0 ||
+                        day.status === 'DU_CONG',
+                    })
+
+                    // Chỉ render các dòng có dữ liệu, 10 dòng đầu tiên, hoặc trạng thái DU_CONG
                     if (
                       index < 10 ||
                       day.standardHours > 0 ||
-                      day.otHours > 0
+                      day.otHours > 0 ||
+                      day.status === 'DU_CONG'
                     ) {
                       return (
                         <View
@@ -1545,7 +1613,9 @@ const StatisticsScreen = ({ navigation }) => {
                               { color: theme.textColor },
                             ]}
                           >
-                            {formatDecimalHours(day.standardHours * 60)}
+                            {day.status === 'DU_CONG' && day.standardHours === 0
+                              ? '8.0' // Giá trị mặc định cho DU_CONG nếu không có giá trị
+                              : formatDecimalHours(day.standardHours * 60)}
                           </Text>
                           <Text
                             style={[
