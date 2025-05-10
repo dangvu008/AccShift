@@ -1742,58 +1742,6 @@ const StatisticsScreen = ({ navigation }) => {
                     >
                       <Text style={styles.tableButtonText}>{t('Thử lại')}</Text>
                     </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={styles.tableSampleDataButton}
-                      onPress={async () => {
-                        try {
-                          // Đặt lại trạng thái
-                          setLoadError(null)
-                          setIsLoading(true)
-                          isLoadingRef.current = true
-
-                          // Import động để tránh circular dependency
-                          const {
-                            generateSampleWorkStatus,
-                            clearAllWorkStatusData,
-                          } = require('../utils/sampleDataGenerator')
-
-                          // Xóa dữ liệu cũ trước khi tạo mới
-                          await clearAllWorkStatusData()
-
-                          // Tạo dữ liệu mẫu cho 30 ngày
-                          const sampleResult = await generateSampleWorkStatus(
-                            30
-                          )
-
-                          if (sampleResult) {
-                            // Đặt lại số lượng bản ghi hiển thị
-                            setVisibleRecords(15)
-                            // Tải lại dữ liệu thống kê trong background mà không chặn UI
-                            if (isMountedRef.current) {
-                              setTimeout(() => loadStatistics(), 0)
-                            }
-                          } else {
-                            setLoadError(
-                              'Không thể tạo dữ liệu mẫu, vui lòng thử lại'
-                            )
-                            setIsLoading(false)
-                            isLoadingRef.current = false
-                          }
-                        } catch (error) {
-                          console.error('Lỗi khi tạo dữ liệu mẫu:', error)
-                          setLoadError(
-                            'Lỗi khi tạo dữ liệu mẫu: ' + error.message
-                          )
-                          setIsLoading(false)
-                          isLoadingRef.current = false
-                        }
-                      }}
-                    >
-                      <Text style={styles.tableButtonText}>
-                        {t('Tạo dữ liệu mẫu')}
-                      </Text>
-                    </TouchableOpacity>
                   </View>
                 </View>
               ) : (
@@ -1813,7 +1761,10 @@ const StatisticsScreen = ({ navigation }) => {
                   </Text>
 
                   <TouchableOpacity
-                    style={styles.sampleDataButton}
+                    style={[
+                      styles.tableRetryButton,
+                      { backgroundColor: '#3498db' },
+                    ]}
                     onPress={() => {
                       // Đặt lại trạng thái
                       setLoadError(null)
@@ -1826,7 +1777,7 @@ const StatisticsScreen = ({ navigation }) => {
                       }
                     }}
                   >
-                    <Text style={styles.sampleDataButtonText}>
+                    <Text style={styles.tableButtonText}>
                       {t('Làm mới dữ liệu')}
                     </Text>
                   </TouchableOpacity>
@@ -2354,17 +2305,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     flexWrap: 'wrap',
   },
-  sampleDataButton: {
-    backgroundColor: '#3498db',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-    marginLeft: 10,
-  },
-  sampleDataButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
+
   noDataContainer: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -2397,13 +2338,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     marginHorizontal: 5,
   },
-  tableSampleDataButton: {
-    backgroundColor: '#3498db',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 6,
-    marginHorizontal: 5,
-  },
+
   tableButtonText: {
     color: '#fff',
     fontWeight: 'bold',

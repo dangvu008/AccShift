@@ -1,14 +1,8 @@
 'use client'
 
 import { useContext, useState, useEffect, useRef, useMemo } from 'react'
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  Alert,
-} from 'react-native'
+import { View, Text, TouchableOpacity, ScrollView, Alert } from 'react-native'
+import styles from '../styles/screens/homeScreen'
 import { Ionicons } from '@expo/vector-icons'
 import { AppContext } from '../context/AppContext'
 import { formatDuration } from '../utils/helpers'
@@ -284,23 +278,5 @@ const HomeScreen = ({ navigation, route }) => {
     </ScrollView>
   )
 }
-
-const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  dateTimeContainer: {
-    alignItems: 'flex-start',
-  },
-  shiftEditIcon: {
-    position: 'absolute',
-    right: 10,
-    top: '50%',
-    marginTop: -10,
-  },
-})
 
 export default HomeScreen
