@@ -156,15 +156,29 @@ const AttendanceStatsScreen = ({ navigation }) => {
     setIsLoading(true)
     setLoadError(null)
 
+    // Đánh dấu đang tải trong ref
+    isLoadingRef.current = true
+
     try {
+      console.log('[DEBUG] Bắt đầu tải dữ liệu thống kê chuyên cần...')
+
       // Get all keys from AsyncStorage
       const keys = await AsyncStorage.getAllKeys()
       const statusKeys = keys.filter((key) =>
         key.startsWith('dailyWorkStatus_')
       )
 
+      console.log(
+        `[DEBUG] Tìm thấy ${statusKeys.length} key trạng thái làm việc`
+      )
+
       // Get date range based on selected time range
       const { startDate, endDate } = getDateRange(timeRange)
+      console.log(
+        `[DEBUG] Khoảng thời gian: ${formatDate(startDate)} - ${formatDate(
+          endDate
+        )}`
+      )
 
       // Filter keys within the date range
       const filteredKeys = statusKeys.filter((key) => {
@@ -173,21 +187,77 @@ const AttendanceStatsScreen = ({ navigation }) => {
         return date >= startDate && date <= endDate
       })
 
-      // Get all status data
-      const statusPairs = await AsyncStorage.multiGet(filteredKeys)
-      const statusData = statusPairs.map(([key, value]) => {
-        const dateStr = key.replace('dailyWorkStatus_', '')
-        return {
-          date: new Date(dateStr),
-          ...JSON.parse(value),
-        }
-      })
+      console.log(
+        `[DEBUG] Lọc được ${filteredKeys.length} key trong khoảng thời gian`
+      )
 
-      // Calculate statistics
-      const calculatedStats = calculateStats(statusData, startDate, endDate)
-      setStats(calculatedStats)
+      // Giới hạn số lượng key để tránh quá tải
+      const MAX_KEYS = 20
+      const keysToProcess = filteredKeys.slice(0, MAX_KEYS)
+
+      if (filteredKeys.length > MAX_KEYS) {
+        console.log(
+          `[DEBUG] Giới hạn số lượng key từ ${filteredKeys.length} xuống ${MAX_KEYS}`
+        )
+      }
+
+      // Get all status data with timeout
+      try {
+        console.log(
+          `[DEBUG] Đang lấy dữ liệu cho ${keysToProcess.length} key...`
+        )
+
+        // Tạo promise với timeout
+        const multiGetPromise = AsyncStorage.multiGet(keysToProcess)
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => {
+            reject(new Error('Lấy dữ liệu trạng thái làm việc quá thời gian'))
+          }, 3000) // 3 giây timeout
+        })
+
+        // Đợi kết quả hoặc timeout
+        const statusPairs = await Promise.race([
+          multiGetPromise,
+          timeoutPromise,
+        ])
+
+        console.log(`[DEBUG] Đã lấy được ${statusPairs.length} cặp key-value`)
+
+        // Xử lý dữ liệu
+        const statusData = []
+        for (const [key, value] of statusPairs) {
+          if (!value) continue
+
+          try {
+            const dateStr = key.replace('dailyWorkStatus_', '')
+            const parsedValue = JSON.parse(value)
+            statusData.push({
+              date: new Date(dateStr),
+              ...parsedValue,
+            })
+          } catch (parseError) {
+            console.error(
+              `[DEBUG] Lỗi khi phân tích dữ liệu cho key ${key}:`,
+              parseError
+            )
+          }
+        }
+
+        console.log(
+          `[DEBUG] Đã xử lý được ${statusData.length} bản ghi dữ liệu`
+        )
+
+        // Calculate statistics
+        console.log('[DEBUG] Tính toán thống kê...')
+        const calculatedStats = calculateStats(statusData, startDate, endDate)
+        setStats(calculatedStats)
+        console.log('[DEBUG] Đã cập nhật dữ liệu thống kê')
+      } catch (innerError) {
+        console.error('[DEBUG] Lỗi khi xử lý dữ liệu:', innerError)
+        throw innerError // Ném lỗi để xử lý ở catch bên ngoài
+      }
     } catch (error) {
-      console.error('Error loading attendance stats:', error)
+      console.error('[DEBUG] Lỗi khi tải dữ liệu thống kê:', error)
       setLoadError(error.message || 'Lỗi khi tải dữ liệu thống kê')
 
       // Đặt dữ liệu mặc định để tránh màn hình trống
@@ -208,7 +278,12 @@ const AttendanceStatsScreen = ({ navigation }) => {
         },
       })
     } finally {
+      // Đặt lại trạng thái loading trong cả state và ref
       setIsLoading(false)
+      isLoadingRef.current = false
+      console.log(
+        '[DEBUG] Hoàn thành quá trình tải dữ liệu thống kê chuyên cần'
+      )
     }
   }, [timeRange, calculateStats, getDateRange])
 
@@ -231,54 +306,76 @@ const AttendanceStatsScreen = ({ navigation }) => {
   // Sử dụng useFocusEffect để kiểm soát việc tải lại dữ liệu khi màn hình được focus
   useFocusEffect(
     useCallback(() => {
+      console.log('[DEBUG] AttendanceStatsScreen được focus')
       const now = Date.now()
 
       // Nếu đang tải, không thực hiện tải lại
       if (isLoadingRef.current) {
-        console.log('Đang tải dữ liệu, bỏ qua yêu cầu tải lại')
+        console.log('[DEBUG] Đang tải dữ liệu, bỏ qua yêu cầu tải lại')
         return
       }
 
       // Chỉ tải lại dữ liệu nếu đã qua ít nhất 10 giây từ lần tải trước
-      // Tăng thời gian chờ lên 10 giây để tránh tải lại quá thường xuyên
       if (now - lastLoadTimeRef.current > 10000) {
-        console.log(
-          'AttendanceStatsScreen được focus, tải lại dữ liệu thống kê'
-        )
+        console.log('[DEBUG] Tải lại dữ liệu thống kê khi focus')
 
         // Đánh dấu đang tải
         isLoadingRef.current = true
 
-        // Thực hiện tải dữ liệu
-        loadAttendanceStats()
-          .then(() => {
-            // Đặt lại số lần thử lại khi tải thành công
-            retryCountRef.current = 0
-          })
-          .catch((error) => {
-            console.error('Lỗi khi tải dữ liệu thống kê:', error)
-            // Tăng số lần thử lại
-            retryCountRef.current++
+        try {
+          // Thực hiện tải dữ liệu với timeout
+          const loadPromise = loadAttendanceStats()
 
-            // Nếu thử lại quá 3 lần, hiển thị thông báo lỗi
-            if (retryCountRef.current > 3) {
-              setLoadError(
-                'Không thể tải dữ liệu thống kê sau nhiều lần thử lại'
-              )
-            }
+          // Đặt timeout để tránh treo
+          const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => {
+              reject(new Error('Tải dữ liệu thống kê quá thời gian'))
+            }, 5000) // 5 giây timeout
           })
-          .finally(() => {
-            // Cập nhật thời gian tải gần nhất
-            lastLoadTimeRef.current = Date.now()
-            // Đánh dấu đã tải xong
-            isLoadingRef.current = false
-          })
+
+          // Đợi kết quả hoặc timeout
+          Promise.race([loadPromise, timeoutPromise])
+            .then(() => {
+              // Đặt lại số lần thử lại khi tải thành công
+              retryCountRef.current = 0
+              console.log('[DEBUG] Tải dữ liệu thành công khi focus')
+            })
+            .catch((error) => {
+              console.error('[DEBUG] Lỗi khi tải dữ liệu khi focus:', error)
+              // Tăng số lần thử lại
+              retryCountRef.current++
+
+              // Nếu thử lại quá 3 lần, hiển thị thông báo lỗi
+              if (retryCountRef.current > 3) {
+                setLoadError(
+                  'Không thể tải dữ liệu thống kê sau nhiều lần thử lại'
+                )
+              }
+            })
+            .finally(() => {
+              // Cập nhật thời gian tải gần nhất
+              lastLoadTimeRef.current = Date.now()
+              // Đánh dấu đã tải xong
+              isLoadingRef.current = false
+            })
+        } catch (error) {
+          console.error(
+            '[DEBUG] Lỗi ngoài cùng khi tải dữ liệu khi focus:',
+            error
+          )
+          // Đảm bảo đặt lại trạng thái loading
+          isLoadingRef.current = false
+          lastLoadTimeRef.current = Date.now()
+        }
       } else {
-        console.log('Bỏ qua tải lại dữ liệu thống kê do mới tải gần đây')
+        console.log(
+          '[DEBUG] Bỏ qua tải lại dữ liệu thống kê do mới tải gần đây'
+        )
       }
 
       return () => {
         // Cleanup khi component bị unfocus
+        console.log('[DEBUG] AttendanceStatsScreen bị unfocus')
       }
     }, [loadAttendanceStats])
   )
@@ -630,7 +727,61 @@ const AttendanceStatsScreen = ({ navigation }) => {
           <TouchableOpacity
             style={styles.retryButton}
             onPress={() => {
-              loadAttendanceStats()
+              console.log('[DEBUG] Thử lại tải dữ liệu thống kê')
+
+              // Kiểm tra trạng thái loading từ ref
+              if (isLoadingRef.current) {
+                console.log('[DEBUG] Đang tải dữ liệu, bỏ qua yêu cầu thử lại')
+                return
+              }
+
+              // Đặt lại trạng thái
+              setLoadError(null)
+              retryCountRef.current = 0
+
+              // Đánh dấu đang tải
+              setIsLoading(true)
+              isLoadingRef.current = true
+
+              try {
+                // Thực hiện tải dữ liệu với timeout
+                const loadPromise = loadAttendanceStats()
+
+                // Đặt timeout để tránh treo
+                const timeoutPromise = new Promise((_, reject) => {
+                  setTimeout(() => {
+                    reject(new Error('Tải dữ liệu thống kê quá thời gian'))
+                  }, 5000) // 5 giây timeout
+                })
+
+                // Đợi kết quả hoặc timeout
+                Promise.race([loadPromise, timeoutPromise])
+                  .catch((error) => {
+                    console.error('[DEBUG] Lỗi khi thử lại tải dữ liệu:', error)
+                    if (error.message.includes('thời gian')) {
+                      setLoadError(
+                        'Tải dữ liệu quá thời gian, vui lòng thử lại'
+                      )
+                    } else {
+                      setLoadError(
+                        'Không thể tải dữ liệu, vui lòng thử lại sau'
+                      )
+                    }
+                  })
+                  .finally(() => {
+                    // Đảm bảo đặt lại trạng thái loading
+                    isLoadingRef.current = false
+                  })
+              } catch (error) {
+                console.error(
+                  '[DEBUG] Lỗi ngoài cùng khi thử lại tải dữ liệu:',
+                  error
+                )
+                // Đảm bảo đặt lại trạng thái loading
+                setIsLoading(false)
+                isLoadingRef.current = false
+                setLoadError('Đã xảy ra lỗi không mong đợi, vui lòng thử lại')
+              }
             }}
           >
             <Text style={styles.retryButtonText}>{t('Retry')}</Text>
