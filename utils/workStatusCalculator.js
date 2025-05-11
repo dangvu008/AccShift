@@ -341,8 +341,13 @@ export const calculateDailyWorkStatus = async (date, shift) => {
 
     /**
      * Tính toán thời gian làm việc theo lịch trình ca
+     *
+     * Hàm này tính toán giờ làm việc dựa trên lịch trình ca, không phụ thuộc vào
+     * thời gian check-in/check-out thực tế. Kết quả được sử dụng khi trạng thái
+     * là "Đủ công" để đảm bảo giờ công luôn phản ánh đúng lịch trình ca.
+     *
      * @param {Object} shift Ca làm việc
-     * @param {Date} baseDate Ngày cơ sở để tính toán
+     * @param {Date} baseDate Ngày cơ sở để tính toán (ngày bắt đầu ca)
      * @param {Object} userSettings Cài đặt người dùng
      * @returns {Object} Thông tin thời gian làm việc theo lịch trình
      */
@@ -358,57 +363,83 @@ export const calculateDailyWorkStatus = async (date, shift) => {
         }
       }
 
+      // Đảm bảo baseDate chỉ chứa thông tin ngày, không có giờ phút giây
+      const workdayDate = new Date(baseDate)
+      workdayDate.setHours(0, 0, 0, 0)
+
+      console.log(
+        `[DEBUG] calculateScheduledWorkTime: workdayDate=${workdayDate.toISOString()}, shift=${
+          shift.name
+        }`
+      )
+
       // Xác định loại ngày (thường, thứ 7, chủ nhật, lễ)
-      const dayOfWeek = baseDate.getDay() // 0: CN, 1-5: T2-T6, 6: T7
+      const dayOfWeek = workdayDate.getDay() // 0: CN, 1-5: T2-T6, 6: T7
       const isSunday = dayOfWeek === 0
       const isHolidayWork = false // Chưa có logic xác định ngày lễ, cần bổ sung sau
 
       // Kiểm tra xem ca làm việc có phải là ca qua đêm không
       const isOvernight = isOvernightShift(shift.startTime, shift.endTime)
+      console.log(
+        `[DEBUG] calculateScheduledWorkTime: isOvernight=${isOvernight}`
+      )
 
-      // Tạo khoảng thời gian đầy đủ cho ca làm việc
-      const shiftInterval = createShiftInterval(
-        baseDate,
+      // Xây dựng các timestamp chuẩn cho ngày làm việc
+      // 1. Timestamp đầy đủ cho thời gian bắt đầu ca (luôn dùng ngày gốc)
+      const scheduledStartTime = createFullTimestamp(
+        workdayDate,
         shift.startTime,
-        shift.endTime
+        false
+      )
+
+      // 2. Timestamp đầy đủ cho thời gian kết thúc giờ hành chính
+      // Nếu là ca qua đêm và officeEndTime < startTime, thì officeEndTime thuộc ngày tiếp theo
+      const isOfficeEndTimeNextDay =
+        isOvernight &&
+        new Date(`1970-01-01T${shift.officeEndTime}:00`).getHours() <
+          new Date(`1970-01-01T${shift.startTime}:00`).getHours()
+
+      const scheduledOfficeEndTime = createFullTimestamp(
+        workdayDate,
+        shift.officeEndTime,
+        isOfficeEndTimeNextDay
+      )
+
+      // 3. Timestamp đầy đủ cho thời gian kết thúc ca (bao gồm OT)
+      const scheduledEndTime = createFullTimestamp(
+        workdayDate,
+        shift.endTime || shift.officeEndTime,
+        isOvernight
+      )
+
+      console.log(
+        `[DEBUG] Timestamps: start=${scheduledStartTime.toISOString()}, officeEnd=${scheduledOfficeEndTime.toISOString()}, end=${scheduledEndTime.toISOString()}`
       )
 
       // Tạo khoảng thời gian đầy đủ cho giờ làm việc hành chính
-      const officeShiftInterval = createShiftInterval(
-        baseDate,
-        shift.startTime,
-        shift.officeEndTime
-      )
+      const officeShiftInterval = {
+        start: scheduledStartTime,
+        end: scheduledOfficeEndTime,
+      }
 
-      // Tạo khoảng thời gian đầy đủ cho giờ OT
+      // Tạo khoảng thời gian đầy đủ cho giờ OT (nếu có)
       let otInterval = null
       if (shift.endTime && shift.endTime !== shift.officeEndTime) {
-        // Tạo timestamp đầy đủ cho thời gian kết thúc giờ hành chính
-        const officeEndTime = createFullTimestamp(
-          baseDate,
-          shift.officeEndTime,
-          isOvernight &&
-            new Date(`1970-01-01T${shift.officeEndTime}:00`).getHours() <
-              new Date(`1970-01-01T${shift.startTime}:00`).getHours()
-        )
-
-        // Tạo timestamp đầy đủ cho thời gian kết thúc ca
-        const endTime = createFullTimestamp(
-          baseDate,
-          shift.endTime,
-          isOvernight
-        )
-
-        otInterval = { start: officeEndTime, end: endTime }
+        otInterval = {
+          start: scheduledOfficeEndTime,
+          end: scheduledEndTime,
+        }
       }
 
       // Tính thời gian ca làm việc chuẩn (giờ)
+      // Công thức: (thời gian từ startTime đến officeEndTime) - thời gian nghỉ
       const standardHoursScheduled = Math.max(
         0,
         durationInHours(officeShiftInterval) - (shift.breakMinutes || 0) / 60
       )
 
       // Tính thời gian OT theo lịch trình (giờ)
+      // Công thức: thời gian từ officeEndTime đến endTime
       const otHoursScheduled = otInterval ? durationInHours(otInterval) : 0
 
       // Tính tổng thời gian làm việc theo lịch trình (giờ)
@@ -421,7 +452,7 @@ export const calculateDailyWorkStatus = async (date, shift) => {
         sundayHoursScheduled = totalHoursScheduled
       } else if (isOvernight) {
         // Nếu ca qua đêm và ngày tiếp theo là chủ nhật, tính phần giờ làm việc vào chủ nhật
-        const nextDay = new Date(baseDate)
+        const nextDay = new Date(workdayDate)
         nextDay.setDate(nextDay.getDate() + 1)
         if (nextDay.getDay() === 0) {
           // Tạo timestamp cho 00:00 của ngày tiếp theo (chủ nhật)
@@ -431,7 +462,7 @@ export const calculateDailyWorkStatus = async (date, shift) => {
           // Tạo khoảng thời gian làm việc vào chủ nhật
           const sundayWorkInterval = {
             start: sundayStart,
-            end: shiftInterval.end,
+            end: scheduledEndTime,
           }
 
           // Tính giờ làm việc vào chủ nhật
@@ -445,38 +476,23 @@ export const calculateDailyWorkStatus = async (date, shift) => {
 
       // Sử dụng hàm mới để tính giờ làm đêm
       const nightHoursScheduled = calculateTotalNightHours(
-        baseDate,
+        workdayDate,
         shift.startTime,
         shift.endTime,
         nightStartTime,
         nightEndTime
       )
 
-      // Tạo các timestamp đầy đủ cho thời gian bắt đầu và kết thúc ca
-      const scheduledStartTime = createFullTimestamp(
-        baseDate,
-        shift.startTime,
-        false
-      )
-      const scheduledOfficeEndTime = createFullTimestamp(
-        baseDate,
-        shift.officeEndTime,
-        isOvernight &&
-          new Date(`1970-01-01T${shift.officeEndTime}:00`).getHours() <
-            new Date(`1970-01-01T${shift.startTime}:00`).getHours()
-      )
-      const scheduledEndTime = createFullTimestamp(
-        baseDate,
-        shift.endTime,
-        isOvernight
+      console.log(
+        `[DEBUG] Giờ công theo lịch trình: standard=${standardHoursScheduled}, OT=${otHoursScheduled}, total=${totalHoursScheduled}`
       )
 
       return {
-        standardHoursScheduled,
-        otHoursScheduled,
-        sundayHoursScheduled,
-        nightHoursScheduled,
-        totalHoursScheduled,
+        standardHoursScheduled: parseFloat(standardHoursScheduled.toFixed(1)),
+        otHoursScheduled: parseFloat(otHoursScheduled.toFixed(1)),
+        sundayHoursScheduled: parseFloat(sundayHoursScheduled.toFixed(1)),
+        nightHoursScheduled: parseFloat(nightHoursScheduled.toFixed(1)),
+        totalHoursScheduled: parseFloat(totalHoursScheduled.toFixed(1)),
         isHolidayWork,
         scheduledStartTime,
         scheduledOfficeEndTime,
@@ -1256,6 +1272,11 @@ export const calculateAndSaveDailyWorkStatus = async (date, shift) => {
 
 /**
  * Cập nhật trạng thái làm việc thủ công
+ *
+ * Hàm này cập nhật trạng thái làm việc thủ công cho một ngày cụ thể.
+ * Khi trạng thái là "DU_CONG", giờ công sẽ được tính dựa trên lịch trình ca,
+ * không phụ thuộc vào thời gian check-in/check-out thực tế.
+ *
  * @param {string} date Ngày cần cập nhật (định dạng YYYY-MM-DD)
  * @param {string} status Trạng thái mới
  * @param {Object} additionalData Dữ liệu bổ sung (tùy chọn)
@@ -1267,6 +1288,10 @@ export const updateWorkStatusManually = async (
   additionalData = {}
 ) => {
   try {
+    console.log(
+      `[DEBUG] updateWorkStatusManually: date=${date}, status=${status}`
+    )
+
     // Lấy trạng thái hiện tại
     const currentStatus = (await storage.getDailyWorkStatus(date)) || {}
 
@@ -1278,6 +1303,108 @@ export const updateWorkStatusManually = async (
       status,
       isManuallyUpdated: true,
       updatedAt: new Date().toISOString(),
+    }
+
+    // Kiểm tra xem thời gian check-out có trước check-in không
+    if (updatedStatus.vaoLogTime && updatedStatus.raLogTime) {
+      const [checkInHours, checkInMinutes] = updatedStatus.vaoLogTime
+        .split(':')
+        .map(Number)
+      const [checkOutHours, checkOutMinutes] = updatedStatus.raLogTime
+        .split(':')
+        .map(Number)
+
+      const checkInMinutesTotal = checkInHours * 60 + checkInMinutes
+      const checkOutMinutesTotal = checkOutHours * 60 + checkOutMinutes
+
+      // Nếu thời gian check-out <= check-in, đặt trạng thái thành LOI_DU_LIEU
+      if (checkOutMinutesTotal <= checkInMinutesTotal) {
+        console.warn('Phát hiện lỗi dữ liệu: Check-out trước Check-in')
+        updatedStatus.status = WORK_STATUS.LOI_DU_LIEU
+
+        // Đặt giờ công về 0 khi có lỗi dữ liệu
+        updatedStatus.standardHoursScheduled = 0
+        updatedStatus.otHoursScheduled = 0
+        updatedStatus.sundayHoursScheduled = 0
+        updatedStatus.nightHoursScheduled = 0
+        updatedStatus.totalHoursScheduled = 0
+      }
+    }
+
+    // Nếu chỉ có check-in mà không có check-out, đặt trạng thái thành DANG_LAM_VIEC
+    if (
+      updatedStatus.vaoLogTime &&
+      !updatedStatus.raLogTime &&
+      status !== WORK_STATUS.NGHI_PHEP &&
+      status !== WORK_STATUS.NGHI_BENH &&
+      status !== WORK_STATUS.NGHI_LE &&
+      status !== WORK_STATUS.VANG_MAT
+    ) {
+      console.log('Phát hiện trường hợp chỉ có check-in, không có check-out')
+      updatedStatus.status = WORK_STATUS.DANG_LAM_VIEC
+
+      // Đặt giờ công về 0 khi đang làm việc (chưa hoàn thành)
+      updatedStatus.standardHoursScheduled = 0
+      updatedStatus.otHoursScheduled = 0
+      updatedStatus.sundayHoursScheduled = 0
+      updatedStatus.nightHoursScheduled = 0
+      updatedStatus.totalHoursScheduled = 0
+    }
+
+    // Nếu trạng thái là DU_CONG, đảm bảo giờ công được tính dựa trên lịch trình ca
+    if (
+      status === WORK_STATUS.DU_CONG &&
+      !updatedStatus.standardHoursScheduled
+    ) {
+      // Lấy ca làm việc
+      const shift = await storage.getShiftById(updatedStatus.shiftId)
+
+      if (shift) {
+        // Tính toán giờ công dựa trên lịch trình ca
+        const baseDate = new Date(date)
+        const userSettings = await storage.getUserSettings()
+
+        // Tính toán giờ làm theo lịch trình ca
+        const scheduledTimes = calculateScheduledWorkTime(
+          shift,
+          baseDate,
+          userSettings
+        )
+
+        // Cập nhật giờ công
+        updatedStatus.standardHoursScheduled =
+          scheduledTimes.standardHoursScheduled
+        updatedStatus.otHoursScheduled = scheduledTimes.otHoursScheduled
+        updatedStatus.sundayHoursScheduled = scheduledTimes.sundayHoursScheduled
+        updatedStatus.nightHoursScheduled = scheduledTimes.nightHoursScheduled
+        updatedStatus.totalHoursScheduled = scheduledTimes.totalHoursScheduled
+
+        // Lưu thông tin về ca qua đêm
+        updatedStatus.isOvernight = scheduledTimes.isOvernight
+
+        // Lưu các timestamp đầy đủ
+        if (scheduledTimes.scheduledStartTime) {
+          updatedStatus.scheduledStartTime =
+            scheduledTimes.scheduledStartTime.toISOString()
+        }
+        if (scheduledTimes.scheduledOfficeEndTime) {
+          updatedStatus.scheduledOfficeEndTime =
+            scheduledTimes.scheduledOfficeEndTime.toISOString()
+        }
+        if (scheduledTimes.scheduledEndTime) {
+          updatedStatus.scheduledEndTime =
+            scheduledTimes.scheduledEndTime.toISOString()
+        }
+
+        console.log(
+          `[DEBUG] Đã tính toán giờ làm cho ngày ${date} theo lịch trình ca:`,
+          scheduledTimes
+        )
+      } else {
+        console.warn(
+          `Không tìm thấy ca làm việc với ID ${updatedStatus.shiftId}`
+        )
+      }
     }
 
     // Lưu trạng thái mới
@@ -1856,4 +1983,5 @@ export default {
   updateWorkStatusManually,
   calculateTodayWorkStatus,
   calculateWorkStatusForDateRange,
+  calculateScheduledWorkTime,
 }

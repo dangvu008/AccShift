@@ -12,6 +12,8 @@ export const WORK_STATUS = {
   DI_MUON_VE_SOM: 'DI_MUON_VE_SOM', // Đi muộn và về sớm
   NGAY_TUONG_LAI: 'NGAY_TUONG_LAI', // Ngày tương lai
   QUEN_CHECK_OUT: 'QUEN_CHECK_OUT', // Quên check-out
+  LOI_DU_LIEU: 'LOI_DU_LIEU', // Lỗi dữ liệu (ví dụ: check-out trước check-in)
+  DANG_LAM_VIEC: 'DANG_LAM_VIEC', // Đang làm việc (chỉ có check-in, chưa check-out)
 }
 
 export const API_CONFIG = {

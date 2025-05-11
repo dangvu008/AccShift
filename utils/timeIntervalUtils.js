@@ -135,6 +135,17 @@ export const createNightInterval = (baseDate, nightStartTime, nightEndTime) => {
 
 /**
  * Tạo timestamp đầy đủ cho thời gian ca làm việc dựa trên ngày cơ sở
+ *
+ * Hàm này tạo một đối tượng Date đầy đủ bằng cách kết hợp ngày từ baseDate
+ * với giờ:phút từ timeString. Nếu isNextDay=true, ngày sẽ được tăng lên 1
+ * để xử lý các mốc thời gian của ca qua đêm.
+ *
+ * Ví dụ:
+ * - baseDate = 2025-05-12, timeString = "22:00", isNextDay = false
+ *   => 2025-05-12T22:00:00
+ * - baseDate = 2025-05-12, timeString = "06:00", isNextDay = true
+ *   => 2025-05-13T06:00:00
+ *
  * @param {Date} baseDate Ngày cơ sở (ngày bắt đầu ca)
  * @param {string} timeString Chuỗi thời gian (định dạng HH:MM)
  * @param {boolean} isNextDay Có phải là ngày tiếp theo không
@@ -147,8 +158,13 @@ export const createFullTimestamp = (
 ) => {
   if (!baseDate || !timeString) return null
 
+  // Tạo một bản sao của baseDate để không làm thay đổi tham số đầu vào
+  const timestamp = new Date(baseDate.getTime())
+
+  // Phân tích chuỗi thời gian
   const [hours, minutes] = timeString.split(':').map(Number)
-  const timestamp = new Date(baseDate)
+
+  // Đặt giờ và phút, giây và mili giây đặt về 0
   timestamp.setHours(hours, minutes, 0, 0)
 
   // Nếu là ngày tiếp theo, tăng ngày lên 1
@@ -161,6 +177,12 @@ export const createFullTimestamp = (
 
 /**
  * Kiểm tra xem một ca làm việc có phải là ca qua đêm không
+ * Một ca được coi là ca qua đêm nếu thời gian kết thúc (endTime) của nó
+ * theo logic giờ thuần túy nhỏ hơn thời gian bắt đầu (startTime).
+ *
+ * Ví dụ: Ca 22:00 - 06:00 là ca qua đêm vì 06:00 < 22:00
+ * Ví dụ: Ca 08:00 - 17:00 không phải ca qua đêm vì 17:00 > 08:00
+ *
  * @param {string} startTime Thời gian bắt đầu ca (định dạng HH:MM)
  * @param {string} endTime Thời gian kết thúc ca (định dạng HH:MM)
  * @returns {boolean} true nếu là ca qua đêm
@@ -171,14 +193,27 @@ export const isOvernightShift = (startTime, endTime) => {
   const [startHour, startMinute] = startTime.split(':').map(Number)
   const [endHour, endMinute] = endTime.split(':').map(Number)
 
-  // Ca qua đêm khi giờ kết thúc < giờ bắt đầu hoặc giờ bằng nhau nhưng phút kết thúc < phút bắt đầu
-  return (
-    endHour < startHour || (endHour === startHour && endMinute < startMinute)
-  )
+  // Chuyển đổi thành số phút từ 00:00 để dễ so sánh
+  const startMinutes = startHour * 60 + startMinute
+  const endMinutes = endHour * 60 + endMinute
+
+  // Ca qua đêm khi thời gian kết thúc < thời gian bắt đầu
+  // Ví dụ: 22:00 - 06:00 => 1320 phút > 360 phút => ca qua đêm
+  return endMinutes < startMinutes
 }
 
 /**
  * Tạo khoảng thời gian đầy đủ cho ca làm việc
+ *
+ * Hàm này tạo một khoảng thời gian đầy đủ cho ca làm việc bằng cách:
+ * 1. Xác định xem ca có phải là ca qua đêm không
+ * 2. Tạo timestamp đầy đủ cho thời gian bắt đầu (luôn dùng ngày gốc)
+ * 3. Tạo timestamp đầy đủ cho thời gian kết thúc (nếu là ca qua đêm, sẽ dùng ngày tiếp theo)
+ *
+ * Ví dụ:
+ * - Ca ngày (8:00-17:00): {start: 2025-05-12T08:00:00, end: 2025-05-12T17:00:00}
+ * - Ca đêm (22:00-06:00): {start: 2025-05-12T22:00:00, end: 2025-05-13T06:00:00}
+ *
  * @param {Date} workdayDate Ngày làm việc (ngày bắt đầu ca)
  * @param {string} startTime Thời gian bắt đầu ca (định dạng HH:MM)
  * @param {string} endTime Thời gian kết thúc ca (định dạng HH:MM)
@@ -190,9 +225,20 @@ export const createShiftInterval = (workdayDate, startTime, endTime) => {
   // Kiểm tra xem có phải ca qua đêm không
   const isOvernight = isOvernightShift(startTime, endTime)
 
-  // Tạo timestamp đầy đủ cho thời gian bắt đầu và kết thúc
+  // Tạo timestamp đầy đủ cho thời gian bắt đầu (luôn dùng ngày gốc)
   const shiftStart = createFullTimestamp(workdayDate, startTime, false)
+
+  // Tạo timestamp đầy đủ cho thời gian kết thúc
+  // Nếu là ca qua đêm, sử dụng ngày tiếp theo
   const shiftEnd = createFullTimestamp(workdayDate, endTime, isOvernight)
+
+  // Log để debug
+  console.log(
+    `[DEBUG] createShiftInterval: workdayDate=${workdayDate.toISOString()}, startTime=${startTime}, endTime=${endTime}, isOvernight=${isOvernight}`
+  )
+  console.log(
+    `[DEBUG] createShiftInterval: shiftStart=${shiftStart.toISOString()}, shiftEnd=${shiftEnd.toISOString()}`
+  )
 
   return { start: shiftStart, end: shiftEnd }
 }
