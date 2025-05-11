@@ -10,14 +10,16 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   FlatList,
+  Alert,
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { AppContext } from '../context/AppContext'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { STORAGE_KEYS } from '../config/appConfig'
+import { recalculateWorkStatusForDateRange } from '../utils/workStatusCalculator'
 
 const StatisticsScreen = ({ navigation }) => {
-  const { t, darkMode } = useContext(AppContext)
+  const { t, darkMode, language } = useContext(AppContext)
   const [selectedPeriod, setSelectedPeriod] = useState('week') // 'week', 'month', 'year'
   const [dateRange, setDateRange] = useState({ startDate: null, endDate: null })
   const [isLoading, setIsLoading] = useState(true)
@@ -76,6 +78,68 @@ const StatisticsScreen = ({ navigation }) => {
     },
     [calculateDateRange]
   )
+
+  // Xử lý khi người dùng muốn tính toán lại trạng thái làm việc
+  const handleRecalculate = useCallback(async () => {
+    try {
+      // Hiển thị hộp thoại xác nhận
+      Alert.alert(
+        t('Xác nhận'),
+        t(
+          'Bạn có muốn tính toán lại trạng thái làm việc cho khoảng thời gian này không?'
+        ),
+        [
+          {
+            text: t('Hủy'),
+            style: 'cancel',
+          },
+          {
+            text: t('Tính toán lại'),
+            onPress: async () => {
+              // Hiển thị trạng thái đang tải
+              setIsLoading(true)
+
+              try {
+                // Tính toán lại trạng thái làm việc cho khoảng thời gian
+                await recalculateWorkStatusForDateRange(
+                  dateRange.startDate,
+                  dateRange.endDate
+                )
+
+                // Tải lại dữ liệu
+                await loadAndProcessStatistics(
+                  dateRange.startDate,
+                  dateRange.endDate
+                )
+
+                // Hiển thị thông báo thành công
+                Alert.alert(
+                  t('Thành công'),
+                  t('Đã tính toán lại trạng thái làm việc thành công.')
+                )
+              } catch (error) {
+                console.error(
+                  'Lỗi khi tính toán lại trạng thái làm việc:',
+                  error
+                )
+
+                // Hiển thị thông báo lỗi
+                Alert.alert(
+                  t('Lỗi'),
+                  t('Đã xảy ra lỗi khi tính toán lại trạng thái làm việc.')
+                )
+              } finally {
+                // Ẩn trạng thái đang tải
+                setIsLoading(false)
+              }
+            },
+          },
+        ]
+      )
+    } catch (error) {
+      console.error('Lỗi khi hiển thị hộp thoại xác nhận:', error)
+    }
+  }, [dateRange, loadAndProcessStatistics, t])
 
   // Định dạng ngày hiển thị (chỉ ngày và tháng)
   const formatDate = useCallback((date) => {
@@ -268,10 +332,41 @@ const StatisticsScreen = ({ navigation }) => {
 
           // Cập nhật dữ liệu tổng hợp
           if (statusEntry) {
-            totalWorkHours += statusEntry.totalHoursScheduled || 0
-            totalOtHours += statusEntry.otHoursScheduled || 0
-            if (statusEntry.totalHoursScheduled > 0) {
+            // Lấy giờ công từ bản ghi
+            const stdHours = statusEntry.standardHoursScheduled || 0
+            const otHours = statusEntry.otHoursScheduled || 0
+            const totalHours = statusEntry.totalHoursScheduled || 0
+            const status = statusEntry.status || ''
+
+            // Cập nhật tổng giờ làm việc và giờ OT
+            totalWorkHours += totalHours
+            totalOtHours += otHours
+
+            // Kiểm tra xem ngày này có phải là ngày làm việc không
+            // Một ngày được tính là ngày làm việc khi:
+            // 1. Có giờ công (totalHours > 0)
+            // 2. Trạng thái KHÔNG phải là một trong các trạng thái nghỉ
+            const isRestDay = [
+              'NGHI_PHEP',
+              'NGHI_BENH',
+              'NGHI_LE',
+              'VANG_MAT',
+              'NGHI_THUONG',
+            ].includes(status)
+
+            if (totalHours > 0 && !isRestDay) {
               workDays++
+              console.log(
+                `[DEBUG] Ngày ${dateStr} - ${status}: Tính là ngày làm việc. Std=${stdHours}, OT=${otHours}, Total=${totalHours}`
+              )
+            } else if (isRestDay) {
+              console.log(
+                `[DEBUG] Ngày ${dateStr} - ${status}: Không tính là ngày làm việc (ngày nghỉ).`
+              )
+            } else if (totalHours <= 0) {
+              console.log(
+                `[DEBUG] Ngày ${dateStr} - ${status}: Không tính là ngày làm việc (không có giờ công).`
+              )
             }
           }
         }
@@ -464,13 +559,35 @@ const StatisticsScreen = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      {/* Hiển thị khoảng thời gian */}
-      {dateRange.startDate && dateRange.endDate && (
-        <Text style={[styles.dateRangeText, darkMode && styles.darkText]}>
-          {formatFullDate(dateRange.startDate)} -{' '}
-          {formatFullDate(dateRange.endDate)}
-        </Text>
-      )}
+      {/* Hiển thị khoảng thời gian và nút tính toán lại */}
+      <View style={styles.dateRangeContainer}>
+        {dateRange.startDate && dateRange.endDate && (
+          <Text style={[styles.dateRangeText, darkMode && styles.darkText]}>
+            {formatFullDate(dateRange.startDate)} -{' '}
+            {formatFullDate(dateRange.endDate)}
+          </Text>
+        )}
+
+        {/* Nút tính toán lại */}
+        <TouchableOpacity
+          style={[
+            styles.recalculateButton,
+            darkMode && styles.darkRecalculateButton,
+          ]}
+          onPress={handleRecalculate}
+        >
+          <Ionicons
+            name="refresh-outline"
+            size={16}
+            color={darkMode ? '#fff' : '#333'}
+          />
+          <Text
+            style={[styles.recalculateButtonText, darkMode && styles.darkText]}
+          >
+            {t('Tính toán lại')}
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       {isLoading ? (
         <View style={styles.loadingContainer}>
@@ -660,11 +777,33 @@ const styles = StyleSheet.create({
   activePeriodButtonText: {
     color: '#fff',
   },
+  dateRangeContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingHorizontal: 8,
+  },
   dateRangeText: {
     fontSize: 14,
     color: '#666',
-    marginBottom: 16,
-    textAlign: 'center',
+    flex: 1,
+  },
+  recalculateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#e0e0e0',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  darkRecalculateButton: {
+    backgroundColor: '#333',
+  },
+  recalculateButtonText: {
+    fontSize: 12,
+    color: '#333',
+    marginLeft: 4,
   },
   loadingContainer: {
     flex: 1,

@@ -760,6 +760,39 @@ export const calculateDailyWorkStatus = async (date, shift) => {
       }
     }
 
+    // Đảm bảo rằng khi trạng thái là DU_CONG, giờ công luôn phản ánh đúng lịch trình ca làm việc
+    if (status === WORK_STATUS.DU_CONG && shift) {
+      // Nếu trạng thái là DU_CONG, tính lại giờ công theo lịch trình ca
+      const baseDate = new Date(
+        isSimpleMode && goWorkLog
+          ? goWorkLog.timestamp
+          : checkInTime
+          ? checkInTime.getTime()
+          : new Date()
+      )
+
+      // Tính toán giờ công theo lịch trình
+      const scheduledTimes = calculateScheduledWorkTime(
+        shift,
+        baseDate,
+        userSettings
+      )
+
+      // Cập nhật các giá trị theo lịch trình ca
+      standardHoursScheduled = scheduledTimes.standardHoursScheduled
+      otHoursScheduled = scheduledTimes.otHoursScheduled
+      sundayHoursScheduled = scheduledTimes.sundayHoursScheduled
+      nightHoursScheduled = scheduledTimes.nightHoursScheduled
+      totalHoursScheduled = scheduledTimes.totalHoursScheduled
+
+      console.log(
+        `[DEBUG] Trạng thái DU_CONG: Cập nhật giờ công theo lịch trình ca`
+      )
+      console.log(`[DEBUG] standardHoursScheduled: ${standardHoursScheduled}`)
+      console.log(`[DEBUG] otHoursScheduled: ${otHoursScheduled}`)
+      console.log(`[DEBUG] totalHoursScheduled: ${totalHoursScheduled}`)
+    }
+
     // Xác định loại ngày (thường, thứ 7, chủ nhật, lễ)
     const dayOfWeek = new Date(date).getDay() // 0: CN, 1-5: T2-T6, 6: T7
     let dayType = 'weekday' // Mặc định là ngày thường
@@ -1294,6 +1327,96 @@ export const calculateTodayWorkStatus = async (
       error
     )
     return null
+  }
+}
+
+/**
+ * Tính toán lại trạng thái làm việc cho một khoảng thời gian
+ * @param {Date} startDate Ngày bắt đầu
+ * @param {Date} endDate Ngày kết thúc
+ * @param {Object} shift Ca làm việc áp dụng (tùy chọn, nếu không cung cấp sẽ lấy ca đang áp dụng)
+ * @returns {Promise<Array>} Danh sách trạng thái làm việc đã tính toán và lưu
+ */
+export const recalculateWorkStatusForDateRange = async (
+  startDate,
+  endDate,
+  shift = null
+) => {
+  try {
+    console.log(
+      `[DEBUG] Bắt đầu tính toán lại trạng thái làm việc cho khoảng thời gian: ${
+        startDate.toISOString().split('T')[0]
+      } - ${endDate.toISOString().split('T')[0]}`
+    )
+
+    // Nếu không cung cấp ca làm việc, lấy ca đang áp dụng
+    const activeShift = shift || (await storage.getActiveShift())
+
+    if (!activeShift) {
+      console.log(
+        '[DEBUG] Không có ca làm việc được áp dụng, không thể tính toán lại trạng thái'
+      )
+      return []
+    }
+
+    // Lấy cài đặt người dùng để xác định chế độ nút
+    const userSettings = await storage.getUserSettings()
+    const isSimpleMode = userSettings?.multiButtonMode === 'simple'
+
+    // Tạo mảng tất cả các ngày trong khoảng thời gian
+    const allDatesInRange = []
+    const currentDate = new Date(startDate)
+    while (currentDate <= endDate) {
+      allDatesInRange.push(new Date(currentDate))
+      currentDate.setDate(currentDate.getDate() + 1)
+    }
+
+    // Tính toán và lưu trạng thái cho từng ngày
+    const results = []
+    for (const date of allDatesInRange) {
+      const dateStr = date.toISOString().split('T')[0]
+
+      // Lấy trạng thái hiện tại
+      const currentStatus = await storage.getDailyWorkStatus(dateStr)
+
+      // Nếu trạng thái đã được cập nhật thủ công hoặc là ngày nghỉ, không tính toán lại
+      if (
+        currentStatus &&
+        (currentStatus.isManuallyUpdated ||
+          [
+            'NGHI_PHEP',
+            'NGHI_BENH',
+            'NGHI_LE',
+            'VANG_MAT',
+            'NGHI_THUONG',
+          ].includes(currentStatus.status))
+      ) {
+        console.log(
+          `[DEBUG] Giữ nguyên trạng thái cho ngày ${dateStr}: ${currentStatus.status}`
+        )
+        results.push(currentStatus)
+        continue
+      }
+
+      // Tính toán trạng thái mới
+      const newStatus = await calculateDailyWorkStatus(dateStr, activeShift)
+
+      // Lưu trạng thái mới
+      await storage.setDailyWorkStatus(dateStr, newStatus)
+
+      results.push(newStatus)
+    }
+
+    console.log(
+      `[DEBUG] Đã tính toán lại trạng thái làm việc cho ${results.length} ngày`
+    )
+    return results
+  } catch (error) {
+    console.error(
+      'Lỗi khi tính toán lại trạng thái làm việc cho khoảng thời gian:',
+      error
+    )
+    return []
   }
 }
 
