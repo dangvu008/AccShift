@@ -32,6 +32,7 @@ const WeeklyStatusGrid = () => {
     attendanceLogs,
     buttonState,
     currentShift,
+    shifts,
     notifyWorkStatusUpdate,
   } = useContext(AppContext)
   const [weekDays, setWeekDays] = useState([])
@@ -52,6 +53,14 @@ const WeeklyStatusGrid = () => {
   const [currentEditingTime, setCurrentEditingTime] = useState(null) // 'checkIn' hoặc 'checkOut'
   const [timeValidationError, setTimeValidationError] = useState('')
 
+  // State cho dropdown và chức năng mới
+  const [availableShifts, setAvailableShifts] = useState([])
+  const [selectedShift, setSelectedShift] = useState(null)
+  const [selectedStatus, setSelectedStatus] = useState(null)
+  const [showShiftDropdown, setShowShiftDropdown] = useState(false)
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false)
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
+
   // Format date to YYYY-MM-DD for storage key
   const formatDateKey = useCallback((date) => {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
@@ -64,7 +73,30 @@ const WeeklyStatusGrid = () => {
   useEffect(() => {
     generateWeekDays()
     loadDailyStatuses()
+    loadAvailableShifts()
   }, [generateWeekDays, loadDailyStatuses])
+
+  // Tải danh sách ca làm việc từ context hoặc AsyncStorage
+  const loadAvailableShifts = useCallback(async () => {
+    try {
+      // Nếu đã có danh sách ca làm việc từ context, sử dụng nó
+      if (shifts && shifts.length > 0) {
+        setAvailableShifts(shifts)
+        return
+      }
+
+      // Nếu không, tải từ AsyncStorage
+      const shiftsJson = await AsyncStorage.getItem('shift_list')
+      if (shiftsJson) {
+        const parsedShifts = JSON.parse(shiftsJson)
+        if (Array.isArray(parsedShifts) && parsedShifts.length > 0) {
+          setAvailableShifts(parsedShifts)
+        }
+      }
+    } catch (error) {
+      console.error('Lỗi khi tải danh sách ca làm việc:', error)
+    }
+  }, [shifts])
 
   // Thêm hàm refresh để làm mới dữ liệu
   const refreshData = useCallback(() => {
@@ -368,7 +400,11 @@ const WeeklyStatusGrid = () => {
     try {
       // Kiểm tra tính hợp lệ của thời gian nếu có nhập thủ công
       if (manualCheckInTime || manualCheckOutTime) {
-        const isValid = validateTimes(manualCheckInTime, manualCheckOutTime)
+        const isValid = validateTimes(
+          manualCheckInTime,
+          manualCheckOutTime,
+          selectedShift
+        )
         if (!isValid) {
           // Nếu thời gian không hợp lệ, không tiếp tục cập nhật
           return
@@ -387,15 +423,17 @@ const WeeklyStatusGrid = () => {
         minute: '2-digit',
       })
 
-      // Sử dụng currentShift từ props thay vì gọi useContext ở đây
+      // Sử dụng ca làm việc được chọn từ dropdown
+      const shiftToUse = selectedShift || currentShift
+
       const updatedStatus = {
         ...existingStatus,
         status: newStatus,
         updatedAt: now.toISOString(),
         isManuallyUpdated: true, // Đánh dấu là đã cập nhật thủ công
-        // Lưu thông tin ca làm việc nếu có
-        shiftId: currentShift ? currentShift.id : existingStatus.shiftId,
-        shiftName: currentShift ? currentShift.name : existingStatus.shiftName,
+        // Lưu thông tin ca làm việc được chọn
+        shiftId: shiftToUse ? shiftToUse.id : existingStatus.shiftId,
+        shiftName: shiftToUse ? shiftToUse.name : existingStatus.shiftName,
       }
 
       // Lưu thời gian chấm công thực tế
@@ -404,7 +442,8 @@ const WeeklyStatusGrid = () => {
         newStatus === WORK_STATUS.THIEU_LOG ||
         newStatus === WORK_STATUS.DI_MUON ||
         newStatus === WORK_STATUS.VE_SOM ||
-        newStatus === WORK_STATUS.DI_MUON_VE_SOM
+        newStatus === WORK_STATUS.DI_MUON_VE_SOM ||
+        newStatus === WORK_STATUS.QUEN_CHECK_OUT
       ) {
         // Sử dụng thời gian nhập thủ công nếu có
         if (manualCheckInTime) {
@@ -426,9 +465,9 @@ const WeeklyStatusGrid = () => {
       }
 
       // Nếu trạng thái là DU_CONG, tính toán giờ làm dựa trên ca làm việc
-      if (newStatus === WORK_STATUS.DU_CONG && currentShift) {
+      if (newStatus === WORK_STATUS.DU_CONG && shiftToUse) {
         try {
-          // Tính toán giờ làm dựa trên ca làm việc
+          // Tính toán giờ làm dựa trên ca làm việc được chọn
           const baseDate = new Date(day.date) // Sử dụng ngày được chọn
 
           // Tính toán thời gian làm việc theo lịch trình ca
@@ -601,7 +640,7 @@ const WeeklyStatusGrid = () => {
 
           // Tính toán giờ làm
           const scheduledTimes = calculateScheduledWorkTime(
-            currentShift,
+            shiftToUse,
             baseDate
           )
 
@@ -776,6 +815,10 @@ const WeeklyStatusGrid = () => {
     // Reset các giá trị thời gian thủ công và lỗi
     setTimeValidationError('')
 
+    // Đóng tất cả các dropdown
+    setShowShiftDropdown(false)
+    setShowStatusDropdown(false)
+
     // Lấy thông tin trạng thái hiện tại của ngày được chọn
     const dateKey = formatDateKey(day.date)
     const currentStatus = dailyStatuses[dateKey] || {}
@@ -783,6 +826,19 @@ const WeeklyStatusGrid = () => {
     // Đặt giá trị thời gian check-in và check-out từ trạng thái hiện tại (nếu có)
     setManualCheckInTime(currentStatus.vaoLogTime || '')
     setManualCheckOutTime(currentStatus.raLogTime || '')
+
+    // Đặt trạng thái làm việc hiện tại
+    setSelectedStatus(currentStatus.status || WORK_STATUS.CHUA_CAP_NHAT)
+
+    // Tìm và đặt ca làm việc hiện tại
+    if (currentStatus.shiftId) {
+      const dayShift = availableShifts.find(
+        (shift) => shift.id === currentStatus.shiftId
+      )
+      setSelectedShift(dayShift || currentShift)
+    } else {
+      setSelectedShift(currentShift)
+    }
 
     setStatusModalVisible(true)
   }
@@ -817,8 +873,52 @@ const WeeklyStatusGrid = () => {
     setTimePickerVisible(false)
   }
 
+  // Xử lý khi người dùng chọn ca làm việc từ dropdown
+  const handleSelectShift = (shift) => {
+    setSelectedShift(shift)
+    setShowShiftDropdown(false)
+
+    // Kiểm tra lại tính hợp lệ của thời gian check-in/check-out với ca mới
+    if (manualCheckInTime || manualCheckOutTime) {
+      validateTimes(manualCheckInTime, manualCheckOutTime, shift)
+    }
+  }
+
+  // Xử lý khi người dùng chọn trạng thái từ dropdown
+  const handleSelectStatus = (status) => {
+    setSelectedStatus(status)
+    setShowStatusDropdown(false)
+  }
+
+  // Xử lý khi người dùng nhấn nút Lưu
+  const handleSaveChanges = () => {
+    // Kiểm tra tính hợp lệ của thời gian
+    if (manualCheckInTime || manualCheckOutTime) {
+      const isValid = validateTimes(
+        manualCheckInTime,
+        manualCheckOutTime,
+        selectedShift
+      )
+      if (!isValid) return
+    }
+
+    // Hiển thị hộp thoại xác nhận
+    setShowConfirmDialog(true)
+  }
+
+  // Xử lý khi người dùng xác nhận lưu thay đổi
+  const handleConfirmSave = () => {
+    // Đóng hộp thoại xác nhận
+    setShowConfirmDialog(false)
+
+    // Cập nhật trạng thái
+    if (selectedDay && selectedStatus) {
+      updateDayStatus(selectedDay, selectedStatus)
+    }
+  }
+
   // Kiểm tra tính hợp lệ của thời gian check-in và check-out
-  const validateTimes = (checkInTime, checkOutTime) => {
+  const validateTimes = (checkInTime, checkOutTime, shift = selectedShift) => {
     // Reset lỗi
     setTimeValidationError('')
 
@@ -852,13 +952,73 @@ const WeeklyStatusGrid = () => {
       }
     }
 
-    // Kiểm tra thời gian check-in phải trước thời gian check-out
-    // Xử lý trường hợp ca qua đêm
-    if (currentShift && currentShift.isOvernightShift) {
-      // Với ca qua đêm, check-out có thể nhỏ hơn check-in
-      return true
-    } else {
+    // Nếu có ca làm việc được chọn, kiểm tra thời gian check-in/check-out có phù hợp không
+    if (shift) {
+      // Kiểm tra xem ca làm việc có phải là ca qua đêm không
+      const isOvernightShift = (startTime, endTime) => {
+        if (!startTime || !endTime) return false
+
+        const [startHour, startMinute] = startTime.split(':').map(Number)
+        const [endHour, endMinute] = endTime.split(':').map(Number)
+
+        return (
+          endHour < startHour ||
+          (endHour === startHour && endMinute < startMinute)
+        )
+      }
+
+      const isOvernight = isOvernightShift(shift.startTime, shift.endTime)
+
+      // Tạo đối tượng Date cho thời gian bắt đầu ca
+      const [shiftStartHours, shiftStartMinutes] = shift.startTime
+        .split(':')
+        .map(Number)
+      const shiftStartDate = new Date(today)
+      shiftStartDate.setHours(shiftStartHours, shiftStartMinutes, 0)
+
+      // Tạo đối tượng Date cho thời gian kết thúc ca
+      const [shiftEndHours, shiftEndMinutes] = shift.endTime
+        .split(':')
+        .map(Number)
+      const shiftEndDate = new Date(today)
+      shiftEndDate.setHours(shiftEndHours, shiftEndMinutes, 0)
+
+      // Nếu là ca qua đêm và thời gian kết thúc < thời gian bắt đầu, thêm 1 ngày vào thời gian kết thúc
+      if (isOvernight && shiftEndDate < shiftStartDate) {
+        shiftEndDate.setDate(shiftEndDate.getDate() + 1)
+      }
+
+      // Kiểm tra thời gian check-in có quá sớm so với thời gian bắt đầu ca không (cho phép sớm tối đa 1 giờ)
+      const oneHourBeforeShiftStart = new Date(shiftStartDate)
+      oneHourBeforeShiftStart.setHours(oneHourBeforeShiftStart.getHours() - 1)
+
+      if (checkInDate < oneHourBeforeShiftStart) {
+        setTimeValidationError(
+          `Thời gian check-in quá sớm so với giờ bắt đầu ca (${shift.startTime})`
+        )
+        return false
+      }
+
+      // Kiểm tra thời gian check-out có quá muộn so với thời gian kết thúc ca không (cho phép muộn tối đa 2 giờ)
+      const twoHoursAfterShiftEnd = new Date(shiftEndDate)
+      twoHoursAfterShiftEnd.setHours(twoHoursAfterShiftEnd.getHours() + 2)
+
+      if (checkOutDate > twoHoursAfterShiftEnd) {
+        setTimeValidationError(
+          `Thời gian check-out quá muộn so với giờ kết thúc ca (${shift.endTime})`
+        )
+        return false
+      }
+
       // Với ca thông thường, check-in phải trước check-out
+      if (!isOvernight && checkInDate >= checkOutDate) {
+        setTimeValidationError(
+          'Thời gian check-in phải trước thời gian check-out'
+        )
+        return false
+      }
+    } else {
+      // Nếu không có ca làm việc, chỉ kiểm tra check-in phải trước check-out
       if (checkInDate >= checkOutDate) {
         setTimeValidationError(
           'Thời gian check-in phải trước thời gian check-out'
@@ -870,8 +1030,48 @@ const WeeklyStatusGrid = () => {
     return true
   }
 
-  // Render status icon
-  const renderStatusIcon = (status, isInGrid = false, day = null) => {
+  // Render status icon for dropdown
+  const renderStatusIcon = (status) => {
+    switch (status) {
+      case WORK_STATUS.DU_CONG:
+        return <Ionicons name="checkmark-circle" size={24} color="#4caf50" />
+      case WORK_STATUS.DI_MUON:
+        return <Ionicons name="alert-circle" size={24} color="#ff9800" />
+      case WORK_STATUS.VE_SOM:
+        return <Ionicons name="alert-circle" size={24} color="#ff9800" />
+      case WORK_STATUS.DI_MUON_VE_SOM:
+        return <Ionicons name="alert-circle" size={24} color="#ff9800" />
+      case WORK_STATUS.THIEU_LOG:
+        return <Ionicons name="close-circle" size={24} color="#f44336" />
+      case WORK_STATUS.NGHI_PHEP:
+        return <Ionicons name="document-text" size={24} color="#2196f3" />
+      case WORK_STATUS.NGHI_BENH:
+        return <Ionicons name="medkit" size={24} color="#e91e63" />
+      case WORK_STATUS.NGHI_LE:
+        return <Ionicons name="calendar" size={24} color="#9c27b0" />
+      case WORK_STATUS.NGHI_THUONG:
+        return <Ionicons name="home" size={24} color="#795548" />
+      case WORK_STATUS.VANG_MAT:
+        return <Ionicons name="help-circle" size={24} color="#607d8b" />
+      case WORK_STATUS.NGAY_TUONG_LAI:
+        return <Ionicons name="time" size={24} color="#9e9e9e" />
+      case WORK_STATUS.CHUA_CAP_NHAT:
+        return (
+          <Ionicons
+            name="ellipsis-horizontal-circle"
+            size={24}
+            color="#9e9e9e"
+          />
+        )
+      case WORK_STATUS.QUEN_CHECK_OUT:
+        return <Ionicons name="alert-circle" size={24} color="#ff9800" />
+      default:
+        return <Ionicons name="help-circle" size={24} color="#9e9e9e" />
+    }
+  }
+
+  // Render status icon in grid
+  const renderStatusIconInGrid = (status, isInGrid = false, day = null) => {
     // Choose appropriate background style based on dark mode
     const backgroundStyle = isInGrid
       ? darkMode
@@ -906,8 +1106,6 @@ const WeeklyStatusGrid = () => {
     const modalSize = 24
     const size = isInGrid ? gridSize : modalSize
     const fontAwesomeSize = isInGrid ? gridSize - 2 : modalSize - 4
-
-    // Đã khai báo ở trên
 
     if (iconConfig.type === 'ionicons') {
       return (
@@ -1009,7 +1207,7 @@ const WeeklyStatusGrid = () => {
                 {weekdayNames[new Date(day.date).getDay()]}
               </Text>
               <View style={styles.statusContainer}>
-                {renderStatusIcon(status, true, day)}
+                {renderStatusIconInGrid(status, true, day)}
               </View>
             </TouchableOpacity>
           )
@@ -1272,7 +1470,7 @@ const WeeklyStatusGrid = () => {
                   <Text
                     style={[styles.modalTitle, darkMode && styles.darkText]}
                   >
-                    {t('Update Status')} - {formatDate(selectedDay.date)}
+                    {t('Cập nhật trạng thái')} - {formatDate(selectedDay.date)}
                   </Text>
                   <TouchableOpacity
                     onPress={() => setStatusModalVisible(false)}
@@ -1283,6 +1481,504 @@ const WeeklyStatusGrid = () => {
                       color={darkMode ? '#fff' : '#000'}
                     />
                   </TouchableOpacity>
+                </View>
+
+                {/* Dropdown chọn ca làm việc */}
+                <View style={styles.dropdownSection}>
+                  <Text
+                    style={[styles.dropdownLabel, darkMode && styles.darkText]}
+                  >
+                    {t('Ca làm việc')}
+                  </Text>
+                  <TouchableOpacity
+                    style={[
+                      styles.dropdownButton,
+                      darkMode && styles.darkDropdownButton,
+                    ]}
+                    onPress={() => {
+                      setShowShiftDropdown(!showShiftDropdown)
+                      setShowStatusDropdown(false)
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.dropdownButtonText,
+                        darkMode && styles.darkText,
+                      ]}
+                    >
+                      {selectedShift
+                        ? selectedShift.name
+                        : t('Chọn ca làm việc')}
+                    </Text>
+                    <Ionicons
+                      name={showShiftDropdown ? 'chevron-up' : 'chevron-down'}
+                      size={20}
+                      color={darkMode ? '#fff' : '#333'}
+                    />
+                  </TouchableOpacity>
+
+                  {/* Dropdown menu cho ca làm việc */}
+                  {showShiftDropdown && (
+                    <View
+                      style={[
+                        styles.dropdownMenu,
+                        darkMode && styles.darkDropdownMenu,
+                      ]}
+                    >
+                      <ScrollView
+                        style={styles.dropdownScrollView}
+                        nestedScrollEnabled={true}
+                      >
+                        {availableShifts.map((shift) => (
+                          <TouchableOpacity
+                            key={shift.id}
+                            style={[
+                              styles.dropdownItem,
+                              selectedShift &&
+                                selectedShift.id === shift.id &&
+                                styles.dropdownItemSelected,
+                              darkMode && styles.darkDropdownItem,
+                              selectedShift &&
+                                selectedShift.id === shift.id &&
+                                darkMode &&
+                                styles.darkDropdownItemSelected,
+                            ]}
+                            onPress={() => handleSelectShift(shift)}
+                          >
+                            <Text
+                              style={[
+                                styles.dropdownItemText,
+                                darkMode && styles.darkText,
+                                selectedShift &&
+                                  selectedShift.id === shift.id &&
+                                  styles.dropdownItemTextSelected,
+                              ]}
+                            >
+                              {shift.name}
+                            </Text>
+                            {selectedShift && selectedShift.id === shift.id && (
+                              <Ionicons
+                                name="checkmark"
+                                size={20}
+                                color={darkMode ? '#fff' : '#8a56ff'}
+                              />
+                            )}
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  )}
+                </View>
+
+                {/* Dropdown chọn trạng thái */}
+                <View style={styles.dropdownSection}>
+                  <Text
+                    style={[styles.dropdownLabel, darkMode && styles.darkText]}
+                  >
+                    {t('Trạng thái')}
+                  </Text>
+                  <TouchableOpacity
+                    style={[
+                      styles.dropdownButton,
+                      darkMode && styles.darkDropdownButton,
+                    ]}
+                    onPress={() => {
+                      setShowStatusDropdown(!showStatusDropdown)
+                      setShowShiftDropdown(false)
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.dropdownButtonText,
+                        darkMode && styles.darkText,
+                      ]}
+                    >
+                      {selectedStatus
+                        ? getStatusText(selectedStatus)
+                        : t('Chọn trạng thái')}
+                    </Text>
+                    <Ionicons
+                      name={showStatusDropdown ? 'chevron-up' : 'chevron-down'}
+                      size={20}
+                      color={darkMode ? '#fff' : '#333'}
+                    />
+                  </TouchableOpacity>
+
+                  {/* Dropdown menu cho trạng thái */}
+                  {showStatusDropdown && (
+                    <View
+                      style={[
+                        styles.dropdownMenu,
+                        darkMode && styles.darkDropdownMenu,
+                      ]}
+                    >
+                      <ScrollView
+                        style={styles.dropdownScrollView}
+                        nestedScrollEnabled={true}
+                      >
+                        {/* Hiển thị tất cả các tùy chọn cho ngày hiện tại và quá khứ */}
+                        {(!selectedDay.isFuture || selectedDay.isToday) && (
+                          <>
+                            <TouchableOpacity
+                              style={[
+                                styles.dropdownItem,
+                                selectedStatus === WORK_STATUS.DU_CONG &&
+                                  styles.dropdownItemSelected,
+                                darkMode && styles.darkDropdownItem,
+                                selectedStatus === WORK_STATUS.DU_CONG &&
+                                  darkMode &&
+                                  styles.darkDropdownItemSelected,
+                              ]}
+                              onPress={() =>
+                                handleSelectStatus(WORK_STATUS.DU_CONG)
+                              }
+                            >
+                              <View style={styles.statusIconContainer}>
+                                {renderStatusIcon(WORK_STATUS.DU_CONG)}
+                              </View>
+                              <Text
+                                style={[
+                                  styles.dropdownItemText,
+                                  darkMode && styles.darkText,
+                                  selectedStatus === WORK_STATUS.DU_CONG &&
+                                    styles.dropdownItemTextSelected,
+                                ]}
+                              >
+                                {getStatusText(WORK_STATUS.DU_CONG)}
+                              </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                              style={[
+                                styles.dropdownItem,
+                                selectedStatus === WORK_STATUS.THIEU_LOG &&
+                                  styles.dropdownItemSelected,
+                                darkMode && styles.darkDropdownItem,
+                                selectedStatus === WORK_STATUS.THIEU_LOG &&
+                                  darkMode &&
+                                  styles.darkDropdownItemSelected,
+                              ]}
+                              onPress={() =>
+                                handleSelectStatus(WORK_STATUS.THIEU_LOG)
+                              }
+                            >
+                              <View style={styles.statusIconContainer}>
+                                {renderStatusIcon(WORK_STATUS.THIEU_LOG)}
+                              </View>
+                              <Text
+                                style={[
+                                  styles.dropdownItemText,
+                                  darkMode && styles.darkText,
+                                  selectedStatus === WORK_STATUS.THIEU_LOG &&
+                                    styles.dropdownItemTextSelected,
+                                ]}
+                              >
+                                {getStatusText(WORK_STATUS.THIEU_LOG)}
+                              </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                              style={[
+                                styles.dropdownItem,
+                                selectedStatus === WORK_STATUS.DI_MUON &&
+                                  styles.dropdownItemSelected,
+                                darkMode && styles.darkDropdownItem,
+                                selectedStatus === WORK_STATUS.DI_MUON &&
+                                  darkMode &&
+                                  styles.darkDropdownItemSelected,
+                              ]}
+                              onPress={() =>
+                                handleSelectStatus(WORK_STATUS.DI_MUON)
+                              }
+                            >
+                              <View style={styles.statusIconContainer}>
+                                {renderStatusIcon(WORK_STATUS.DI_MUON)}
+                              </View>
+                              <Text
+                                style={[
+                                  styles.dropdownItemText,
+                                  darkMode && styles.darkText,
+                                  selectedStatus === WORK_STATUS.DI_MUON &&
+                                    styles.dropdownItemTextSelected,
+                                ]}
+                              >
+                                {getStatusText(WORK_STATUS.DI_MUON)}
+                              </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                              style={[
+                                styles.dropdownItem,
+                                selectedStatus === WORK_STATUS.VE_SOM &&
+                                  styles.dropdownItemSelected,
+                                darkMode && styles.darkDropdownItem,
+                                selectedStatus === WORK_STATUS.VE_SOM &&
+                                  darkMode &&
+                                  styles.darkDropdownItemSelected,
+                              ]}
+                              onPress={() =>
+                                handleSelectStatus(WORK_STATUS.VE_SOM)
+                              }
+                            >
+                              <View style={styles.statusIconContainer}>
+                                {renderStatusIcon(WORK_STATUS.VE_SOM)}
+                              </View>
+                              <Text
+                                style={[
+                                  styles.dropdownItemText,
+                                  darkMode && styles.darkText,
+                                  selectedStatus === WORK_STATUS.VE_SOM &&
+                                    styles.dropdownItemTextSelected,
+                                ]}
+                              >
+                                {getStatusText(WORK_STATUS.VE_SOM)}
+                              </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                              style={[
+                                styles.dropdownItem,
+                                selectedStatus === WORK_STATUS.DI_MUON_VE_SOM &&
+                                  styles.dropdownItemSelected,
+                                darkMode && styles.darkDropdownItem,
+                                selectedStatus === WORK_STATUS.DI_MUON_VE_SOM &&
+                                  darkMode &&
+                                  styles.darkDropdownItemSelected,
+                              ]}
+                              onPress={() =>
+                                handleSelectStatus(WORK_STATUS.DI_MUON_VE_SOM)
+                              }
+                            >
+                              <View style={styles.statusIconContainer}>
+                                {renderStatusIcon(WORK_STATUS.DI_MUON_VE_SOM)}
+                              </View>
+                              <Text
+                                style={[
+                                  styles.dropdownItemText,
+                                  darkMode && styles.darkText,
+                                  selectedStatus ===
+                                    WORK_STATUS.DI_MUON_VE_SOM &&
+                                    styles.dropdownItemTextSelected,
+                                ]}
+                              >
+                                {getStatusText(WORK_STATUS.DI_MUON_VE_SOM)}
+                              </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                              style={[
+                                styles.dropdownItem,
+                                selectedStatus === WORK_STATUS.VANG_MAT &&
+                                  styles.dropdownItemSelected,
+                                darkMode && styles.darkDropdownItem,
+                                selectedStatus === WORK_STATUS.VANG_MAT &&
+                                  darkMode &&
+                                  styles.darkDropdownItemSelected,
+                              ]}
+                              onPress={() =>
+                                handleSelectStatus(WORK_STATUS.VANG_MAT)
+                              }
+                            >
+                              <View style={styles.statusIconContainer}>
+                                {renderStatusIcon(WORK_STATUS.VANG_MAT)}
+                              </View>
+                              <Text
+                                style={[
+                                  styles.dropdownItemText,
+                                  darkMode && styles.darkText,
+                                  selectedStatus === WORK_STATUS.VANG_MAT &&
+                                    styles.dropdownItemTextSelected,
+                                ]}
+                              >
+                                {getStatusText(WORK_STATUS.VANG_MAT)}
+                              </Text>
+                            </TouchableOpacity>
+                          </>
+                        )}
+
+                        {/* Luôn hiển thị các tùy chọn này cho tất cả các ngày */}
+                        <TouchableOpacity
+                          style={[
+                            styles.dropdownItem,
+                            selectedStatus === WORK_STATUS.NGHI_PHEP &&
+                              styles.dropdownItemSelected,
+                            darkMode && styles.darkDropdownItem,
+                            selectedStatus === WORK_STATUS.NGHI_PHEP &&
+                              darkMode &&
+                              styles.darkDropdownItemSelected,
+                          ]}
+                          onPress={() =>
+                            handleSelectStatus(WORK_STATUS.NGHI_PHEP)
+                          }
+                        >
+                          <View style={styles.statusIconContainer}>
+                            {renderStatusIcon(WORK_STATUS.NGHI_PHEP)}
+                          </View>
+                          <Text
+                            style={[
+                              styles.dropdownItemText,
+                              darkMode && styles.darkText,
+                              selectedStatus === WORK_STATUS.NGHI_PHEP &&
+                                styles.dropdownItemTextSelected,
+                            ]}
+                          >
+                            {getStatusText(WORK_STATUS.NGHI_PHEP)}
+                          </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={[
+                            styles.dropdownItem,
+                            selectedStatus === WORK_STATUS.NGHI_BENH &&
+                              styles.dropdownItemSelected,
+                            darkMode && styles.darkDropdownItem,
+                            selectedStatus === WORK_STATUS.NGHI_BENH &&
+                              darkMode &&
+                              styles.darkDropdownItemSelected,
+                          ]}
+                          onPress={() =>
+                            handleSelectStatus(WORK_STATUS.NGHI_BENH)
+                          }
+                        >
+                          <View style={styles.statusIconContainer}>
+                            {renderStatusIcon(WORK_STATUS.NGHI_BENH)}
+                          </View>
+                          <Text
+                            style={[
+                              styles.dropdownItemText,
+                              darkMode && styles.darkText,
+                              selectedStatus === WORK_STATUS.NGHI_BENH &&
+                                styles.dropdownItemTextSelected,
+                            ]}
+                          >
+                            {getStatusText(WORK_STATUS.NGHI_BENH)}
+                          </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={[
+                            styles.dropdownItem,
+                            selectedStatus === WORK_STATUS.NGHI_LE &&
+                              styles.dropdownItemSelected,
+                            darkMode && styles.darkDropdownItem,
+                            selectedStatus === WORK_STATUS.NGHI_LE &&
+                              darkMode &&
+                              styles.darkDropdownItemSelected,
+                          ]}
+                          onPress={() =>
+                            handleSelectStatus(WORK_STATUS.NGHI_LE)
+                          }
+                        >
+                          <View style={styles.statusIconContainer}>
+                            {renderStatusIcon(WORK_STATUS.NGHI_LE)}
+                          </View>
+                          <Text
+                            style={[
+                              styles.dropdownItemText,
+                              darkMode && styles.darkText,
+                              selectedStatus === WORK_STATUS.NGHI_LE &&
+                                styles.dropdownItemTextSelected,
+                            ]}
+                          >
+                            {getStatusText(WORK_STATUS.NGHI_LE)}
+                          </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={[
+                            styles.dropdownItem,
+                            selectedStatus === WORK_STATUS.NGHI_THUONG &&
+                              styles.dropdownItemSelected,
+                            darkMode && styles.darkDropdownItem,
+                            selectedStatus === WORK_STATUS.NGHI_THUONG &&
+                              darkMode &&
+                              styles.darkDropdownItemSelected,
+                          ]}
+                          onPress={() =>
+                            handleSelectStatus(WORK_STATUS.NGHI_THUONG)
+                          }
+                        >
+                          <View style={styles.statusIconContainer}>
+                            {renderStatusIcon(WORK_STATUS.NGHI_THUONG)}
+                          </View>
+                          <Text
+                            style={[
+                              styles.dropdownItemText,
+                              darkMode && styles.darkText,
+                              selectedStatus === WORK_STATUS.NGHI_THUONG &&
+                                styles.dropdownItemTextSelected,
+                            ]}
+                          >
+                            {getStatusText(WORK_STATUS.NGHI_THUONG)}
+                          </Text>
+                        </TouchableOpacity>
+
+                        {/* Chỉ hiển thị tùy chọn "Chưa cập nhật" cho ngày hiện tại và quá khứ */}
+                        {(!selectedDay.isFuture || selectedDay.isToday) && (
+                          <TouchableOpacity
+                            style={[
+                              styles.dropdownItem,
+                              selectedStatus === WORK_STATUS.CHUA_CAP_NHAT &&
+                                styles.dropdownItemSelected,
+                              darkMode && styles.darkDropdownItem,
+                              selectedStatus === WORK_STATUS.CHUA_CAP_NHAT &&
+                                darkMode &&
+                                styles.darkDropdownItemSelected,
+                            ]}
+                            onPress={() =>
+                              handleSelectStatus(WORK_STATUS.CHUA_CAP_NHAT)
+                            }
+                          >
+                            <View style={styles.statusIconContainer}>
+                              {renderStatusIcon(WORK_STATUS.CHUA_CAP_NHAT)}
+                            </View>
+                            <Text
+                              style={[
+                                styles.dropdownItemText,
+                                darkMode && styles.darkText,
+                                selectedStatus === WORK_STATUS.CHUA_CAP_NHAT &&
+                                  styles.dropdownItemTextSelected,
+                              ]}
+                            >
+                              {getStatusText(WORK_STATUS.CHUA_CAP_NHAT)}
+                            </Text>
+                          </TouchableOpacity>
+                        )}
+
+                        {/* Chỉ hiển thị tùy chọn "Ngày tương lai" cho ngày tương lai */}
+                        {selectedDay.isFuture && (
+                          <TouchableOpacity
+                            style={[
+                              styles.dropdownItem,
+                              selectedStatus === WORK_STATUS.NGAY_TUONG_LAI &&
+                                styles.dropdownItemSelected,
+                              darkMode && styles.darkDropdownItem,
+                              selectedStatus === WORK_STATUS.NGAY_TUONG_LAI &&
+                                darkMode &&
+                                styles.darkDropdownItemSelected,
+                            ]}
+                            onPress={() =>
+                              handleSelectStatus(WORK_STATUS.NGAY_TUONG_LAI)
+                            }
+                          >
+                            <View style={styles.statusIconContainer}>
+                              {renderStatusIcon(WORK_STATUS.NGAY_TUONG_LAI)}
+                            </View>
+                            <Text
+                              style={[
+                                styles.dropdownItemText,
+                                darkMode && styles.darkText,
+                                selectedStatus === WORK_STATUS.NGAY_TUONG_LAI &&
+                                  styles.dropdownItemTextSelected,
+                              ]}
+                            >
+                              {getStatusText(WORK_STATUS.NGAY_TUONG_LAI)}
+                            </Text>
+                          </TouchableOpacity>
+                        )}
+                      </ScrollView>
+                    </View>
+                  )}
                 </View>
 
                 {/* Phần nhập thời gian check-in và check-out thủ công */}
@@ -1369,252 +2065,60 @@ const WeeklyStatusGrid = () => {
                   </View>
                 )}
 
-                <ScrollView style={styles.statusList}>
-                  {/* Hiển thị tất cả các tùy chọn cho ngày hiện tại và quá khứ */}
-                  {(!selectedDay.isFuture || selectedDay.isToday) && (
-                    <>
-                      <TouchableOpacity
-                        style={styles.statusOption}
-                        onPress={() =>
-                          updateDayStatus(selectedDay, WORK_STATUS.DU_CONG)
-                        }
-                      >
-                        <View style={styles.statusIconContainer}>
-                          {renderStatusIcon(WORK_STATUS.DU_CONG)}
-                        </View>
-                        <Text
-                          style={[
-                            styles.statusOptionText,
-                            darkMode && styles.darkText,
-                          ]}
-                        >
-                          {getStatusText(WORK_STATUS.DU_CONG)}
-                        </Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        style={styles.statusOption}
-                        onPress={() =>
-                          updateDayStatus(selectedDay, WORK_STATUS.THIEU_LOG)
-                        }
-                      >
-                        <View style={styles.statusIconContainer}>
-                          {renderStatusIcon(WORK_STATUS.THIEU_LOG)}
-                        </View>
-                        <Text
-                          style={[
-                            styles.statusOptionText,
-                            darkMode && styles.darkText,
-                          ]}
-                        >
-                          {getStatusText(WORK_STATUS.THIEU_LOG)}
-                        </Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        style={styles.statusOption}
-                        onPress={() =>
-                          updateDayStatus(selectedDay, WORK_STATUS.DI_MUON)
-                        }
-                      >
-                        <View style={styles.statusIconContainer}>
-                          {renderStatusIcon(WORK_STATUS.DI_MUON)}
-                        </View>
-                        <Text
-                          style={[
-                            styles.statusOptionText,
-                            darkMode && styles.darkText,
-                          ]}
-                        >
-                          {getStatusText(WORK_STATUS.DI_MUON)}
-                        </Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        style={styles.statusOption}
-                        onPress={() =>
-                          updateDayStatus(selectedDay, WORK_STATUS.VE_SOM)
-                        }
-                      >
-                        <View style={styles.statusIconContainer}>
-                          {renderStatusIcon(WORK_STATUS.VE_SOM)}
-                        </View>
-                        <Text
-                          style={[
-                            styles.statusOptionText,
-                            darkMode && styles.darkText,
-                          ]}
-                        >
-                          {getStatusText(WORK_STATUS.VE_SOM)}
-                        </Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        style={styles.statusOption}
-                        onPress={() =>
-                          updateDayStatus(
-                            selectedDay,
-                            WORK_STATUS.DI_MUON_VE_SOM
-                          )
-                        }
-                      >
-                        <View style={styles.statusIconContainer}>
-                          {renderStatusIcon(WORK_STATUS.DI_MUON_VE_SOM)}
-                        </View>
-                        <Text
-                          style={[
-                            styles.statusOptionText,
-                            darkMode && styles.darkText,
-                          ]}
-                        >
-                          {getStatusText(WORK_STATUS.DI_MUON_VE_SOM)}
-                        </Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        style={styles.statusOption}
-                        onPress={() =>
-                          updateDayStatus(selectedDay, WORK_STATUS.VANG_MAT)
-                        }
-                      >
-                        <View style={styles.statusIconContainer}>
-                          {renderStatusIcon(WORK_STATUS.VANG_MAT)}
-                        </View>
-                        <Text
-                          style={[
-                            styles.statusOptionText,
-                            darkMode && styles.darkText,
-                          ]}
-                        >
-                          {getStatusText(WORK_STATUS.VANG_MAT)}
-                        </Text>
-                      </TouchableOpacity>
-                    </>
-                  )}
-
-                  {/* Luôn hiển thị các tùy chọn này cho tất cả các ngày (bao gồm cả ngày tương lai) */}
-                  <TouchableOpacity
-                    style={styles.statusOption}
-                    onPress={() =>
-                      updateDayStatus(selectedDay, WORK_STATUS.NGHI_PHEP)
-                    }
-                  >
-                    <View style={styles.statusIconContainer}>
-                      {renderStatusIcon(WORK_STATUS.NGHI_PHEP)}
-                    </View>
-                    <Text
-                      style={[
-                        styles.statusOptionText,
-                        darkMode && styles.darkText,
-                      ]}
-                    >
-                      {getStatusText(WORK_STATUS.NGHI_PHEP)}
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.statusOption}
-                    onPress={() =>
-                      updateDayStatus(selectedDay, WORK_STATUS.NGHI_BENH)
-                    }
-                  >
-                    <View style={styles.statusIconContainer}>
-                      {renderStatusIcon(WORK_STATUS.NGHI_BENH)}
-                    </View>
-                    <Text
-                      style={[
-                        styles.statusOptionText,
-                        darkMode && styles.darkText,
-                      ]}
-                    >
-                      {getStatusText(WORK_STATUS.NGHI_BENH)}
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.statusOption}
-                    onPress={() =>
-                      updateDayStatus(selectedDay, WORK_STATUS.NGHI_LE)
-                    }
-                  >
-                    <View style={styles.statusIconContainer}>
-                      {renderStatusIcon(WORK_STATUS.NGHI_LE)}
-                    </View>
-                    <Text
-                      style={[
-                        styles.statusOptionText,
-                        darkMode && styles.darkText,
-                      ]}
-                    >
-                      {getStatusText(WORK_STATUS.NGHI_LE)}
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.statusOption}
-                    onPress={() =>
-                      updateDayStatus(selectedDay, WORK_STATUS.NGHI_THUONG)
-                    }
-                  >
-                    <View style={styles.statusIconContainer}>
-                      {renderStatusIcon(WORK_STATUS.NGHI_THUONG)}
-                    </View>
-                    <Text
-                      style={[
-                        styles.statusOptionText,
-                        darkMode && styles.darkText,
-                      ]}
-                    >
-                      {getStatusText(WORK_STATUS.NGHI_THUONG)}
-                    </Text>
-                  </TouchableOpacity>
-
-                  {/* Chỉ hiển thị tùy chọn "Chưa cập nhật" cho ngày hiện tại và quá khứ */}
-                  {(!selectedDay.isFuture || selectedDay.isToday) && (
-                    <TouchableOpacity
-                      style={styles.statusOption}
-                      onPress={() =>
-                        updateDayStatus(selectedDay, WORK_STATUS.CHUA_CAP_NHAT)
-                      }
-                    >
-                      <View style={styles.statusIconContainer}>
-                        {renderStatusIcon(WORK_STATUS.CHUA_CAP_NHAT)}
-                      </View>
-                      <Text
-                        style={[
-                          styles.statusOptionText,
-                          darkMode && styles.darkText,
-                        ]}
-                      >
-                        {getStatusText(WORK_STATUS.CHUA_CAP_NHAT)}
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-
-                  {/* Chỉ hiển thị tùy chọn "Ngày tương lai" cho ngày tương lai */}
-                  {selectedDay.isFuture && (
-                    <TouchableOpacity
-                      style={styles.statusOption}
-                      onPress={() =>
-                        updateDayStatus(selectedDay, WORK_STATUS.NGAY_TUONG_LAI)
-                      }
-                    >
-                      <View style={styles.statusIconContainer}>
-                        {renderStatusIcon(WORK_STATUS.NGAY_TUONG_LAI)}
-                      </View>
-                      <Text
-                        style={[
-                          styles.statusOptionText,
-                          darkMode && styles.darkText,
-                        ]}
-                      >
-                        {getStatusText(WORK_STATUS.NGAY_TUONG_LAI)}
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-                </ScrollView>
+                {/* Nút Lưu (biểu tượng) */}
+                <TouchableOpacity
+                  style={styles.saveIconButton}
+                  onPress={handleSaveChanges}
+                  accessibilityLabel={t('Lưu thay đổi')}
+                >
+                  <Ionicons name="save-outline" size={24} color="#fff" />
+                </TouchableOpacity>
               </>
             )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Hộp thoại xác nhận */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={showConfirmDialog}
+        onRequestClose={() => setShowConfirmDialog(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View
+            style={[styles.confirmDialog, darkMode && styles.darkModalContent]}
+          >
+            <Text style={[styles.confirmTitle, darkMode && styles.darkText]}>
+              {t('Xác nhận')}
+            </Text>
+            <Text style={[styles.confirmMessage, darkMode && styles.darkText]}>
+              {t('Bạn có chắc chắn muốn lưu thay đổi này không?')}
+            </Text>
+            <View style={styles.confirmButtonsContainer}>
+              <TouchableOpacity
+                style={[styles.confirmButton, styles.cancelButton]}
+                onPress={() => setShowConfirmDialog(false)}
+              >
+                <Text
+                  style={[
+                    styles.confirmButtonText,
+                    darkMode && styles.darkCancelButtonText,
+                  ]}
+                >
+                  {t('Hủy')}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.confirmButton, styles.confirmSaveButton]}
+                onPress={handleConfirmSave}
+              >
+                <Text style={styles.confirmSaveButtonText}>
+                  {t('Xác nhận')}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -1839,6 +2343,155 @@ const styles = StyleSheet.create({
     color: '#e74c3c',
     fontSize: 14,
     marginTop: 5,
+  },
+  // Styles cho dropdown
+  dropdownSection: {
+    marginBottom: 16,
+  },
+  dropdownLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    color: '#333',
+  },
+  dropdownButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#f5f5f5',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 4,
+  },
+  darkDropdownButton: {
+    backgroundColor: '#2a2a2a',
+    borderColor: '#444',
+  },
+  dropdownButtonText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  dropdownMenu: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    marginTop: 4,
+    maxHeight: 200,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    zIndex: 1000,
+  },
+  darkDropdownMenu: {
+    backgroundColor: '#2a2a2a',
+    borderColor: '#444',
+  },
+  dropdownScrollView: {
+    maxHeight: 200,
+  },
+  dropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  darkDropdownItem: {
+    borderBottomColor: '#444',
+  },
+  dropdownItemSelected: {
+    backgroundColor: '#f0f0ff',
+  },
+  darkDropdownItemSelected: {
+    backgroundColor: '#3a3a5a',
+  },
+  dropdownItemText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  dropdownItemTextSelected: {
+    color: '#8a56ff',
+    fontWeight: 'bold',
+  },
+  statusIconContainer: {
+    width: 30,
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  // Styles cho nút Lưu (biểu tượng)
+  saveIconButton: {
+    backgroundColor: '#8a56ff',
+    borderRadius: 50,
+    width: 50,
+    height: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 16,
+    alignSelf: 'center',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+  },
+  // Styles cho hộp thoại xác nhận
+  confirmDialog: {
+    width: '80%',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    alignItems: 'center',
+  },
+  confirmTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 12,
+  },
+  confirmMessage: {
+    fontSize: 16,
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  confirmButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  confirmButton: {
+    borderRadius: 8,
+    padding: 12,
+    alignItems: 'center',
+    width: '48%',
+  },
+  cancelButton: {
+    backgroundColor: '#f5f5f5',
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  confirmSaveButton: {
+    backgroundColor: '#8a56ff',
+  },
+  confirmButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  darkCancelButtonText: {
+    color: '#fff',
+  },
+  confirmSaveButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#fff',
   },
 })
 
