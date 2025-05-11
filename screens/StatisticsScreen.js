@@ -28,7 +28,7 @@ const StatisticsScreen = ({ navigation }) => {
     workDays: 0,
   })
   const [error, setError] = useState(null)
-  
+
   // Tham chiếu để theo dõi trạng thái đang tải
   const isLoadingRef = useRef(false)
 
@@ -44,7 +44,9 @@ const StatisticsScreen = ({ navigation }) => {
     switch (period) {
       case 'week':
         // Bắt đầu từ thứ 2 của tuần hiện tại
-        startDate.setDate(now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1))
+        startDate.setDate(
+          now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1)
+        )
         break
       case 'month':
         // Bắt đầu từ ngày đầu tiên của tháng hiện tại
@@ -65,15 +67,28 @@ const StatisticsScreen = ({ navigation }) => {
   }, [])
 
   // Xử lý khi người dùng thay đổi khoảng thời gian
-  const handlePeriodChange = useCallback((newPeriod) => {
-    setSelectedPeriod(newPeriod)
-    setIsLoading(true)
-    const newDateRange = calculateDateRange(newPeriod)
-    loadAndProcessStatistics(newDateRange.startDate, newDateRange.endDate)
-  }, [calculateDateRange])
+  const handlePeriodChange = useCallback(
+    (newPeriod) => {
+      setSelectedPeriod(newPeriod)
+      setIsLoading(true)
+      const newDateRange = calculateDateRange(newPeriod)
+      loadAndProcessStatistics(newDateRange.startDate, newDateRange.endDate)
+    },
+    [calculateDateRange]
+  )
 
-  // Định dạng ngày hiển thị
+  // Định dạng ngày hiển thị (chỉ ngày và tháng)
   const formatDate = useCallback((date) => {
+    if (!date) return ''
+    const day = date.getDate().toString().padStart(2, '0')
+    const month = (date.getMonth() + 1).toString().padStart(2, '0')
+    const year = date.getFullYear()
+    // Chỉ hiển thị ngày và tháng cho bảng dữ liệu
+    return `${day}/${month}`
+  }, [])
+
+  // Định dạng ngày đầy đủ (cho khoảng thời gian)
+  const formatFullDate = useCallback((date) => {
     if (!date) return ''
     const day = date.getDate().toString().padStart(2, '0')
     const month = (date.getMonth() + 1).toString().padStart(2, '0')
@@ -81,23 +96,40 @@ const StatisticsScreen = ({ navigation }) => {
     return `${day}/${month}/${year}`
   }, [])
 
-  // Định dạng thời gian hiển thị
-  const formatTime = useCallback((isoTimestamp) => {
-    if (!isoTimestamp) return '--:--'
-    const date = new Date(isoTimestamp)
-    return date.toLocaleTimeString('vi-VN', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    })
+  // Định dạng thời gian hiển thị (chỉ giờ và phút)
+  const formatTime = useCallback((timeString) => {
+    if (!timeString || timeString === '--:--') return '--:--'
+
+    // Nếu là chuỗi thời gian đầy đủ (HH:MM:SS), cắt bỏ phần giây
+    if (
+      timeString.length === 8 &&
+      timeString.charAt(2) === ':' &&
+      timeString.charAt(5) === ':'
+    ) {
+      return timeString.substring(0, 5)
+    }
+
+    return timeString
   }, [])
 
-  // Lấy tên thứ trong tuần
-  const getDayOfWeek = useCallback((date) => {
-    if (!date) return ''
-    const days = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']
-    return days[date.getDay()]
-  }, [])
+  // Lấy tên thứ trong tuần theo ngôn ngữ
+  const getDayOfWeek = useCallback(
+    (date) => {
+      if (!date) return ''
+
+      // Các thứ viết tắt theo ngôn ngữ
+      const daysByLanguage = {
+        vi: ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'],
+        en: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      }
+
+      // Lấy mảng thứ theo ngôn ngữ hiện tại, mặc định là tiếng Việt
+      const days = daysByLanguage[language] || daysByLanguage.vi
+
+      return days[date.getDay()]
+    },
+    [language]
+  )
 
   // Lấy biểu tượng trạng thái
   const getStatusDisplay = useCallback((status) => {
@@ -122,139 +154,166 @@ const StatisticsScreen = ({ navigation }) => {
   }, [])
 
   // Hàm chính để tải và xử lý dữ liệu thống kê
-  const loadAndProcessStatistics = useCallback(async (startDate, endDate) => {
-    // Đánh dấu đang tải
-    setIsLoading(true)
-    isLoadingRef.current = true
-    setError(null)
+  const loadAndProcessStatistics = useCallback(
+    async (startDate, endDate) => {
+      // Đánh dấu đang tải
+      setIsLoading(true)
+      isLoadingRef.current = true
+      setError(null)
 
-    try {
-      console.log('[DEBUG] Bắt đầu tải dữ liệu thống kê...')
-      console.log(`[DEBUG] Khoảng thời gian: ${formatDate(startDate)} - ${formatDate(endDate)}`)
+      try {
+        console.log('[DEBUG] Bắt đầu tải dữ liệu thống kê...')
+        console.log(
+          `[DEBUG] Khoảng thời gian: ${formatFullDate(
+            startDate
+          )} - ${formatFullDate(endDate)}`
+        )
 
-      // Lấy tất cả các key từ AsyncStorage
-      const keys = await AsyncStorage.getAllKeys()
-      const statusKeys = keys.filter(key => 
-        key.startsWith(STORAGE_KEYS.DAILY_WORK_STATUS_PREFIX)
-      )
+        // Lấy tất cả các key từ AsyncStorage
+        const keys = await AsyncStorage.getAllKeys()
+        const statusKeys = keys.filter((key) =>
+          key.startsWith(STORAGE_KEYS.DAILY_WORK_STATUS_PREFIX)
+        )
 
-      console.log(`[DEBUG] Tìm thấy ${statusKeys.length} key trạng thái làm việc`)
+        console.log(
+          `[DEBUG] Tìm thấy ${statusKeys.length} key trạng thái làm việc`
+        )
 
-      // Lọc các key trong khoảng thời gian
-      const filteredKeys = statusKeys.filter(key => {
-        const dateStr = key.replace(STORAGE_KEYS.DAILY_WORK_STATUS_PREFIX, '')
-        const date = new Date(dateStr)
-        return date >= startDate && date <= endDate
-      })
+        // Lọc các key trong khoảng thời gian
+        const filteredKeys = statusKeys.filter((key) => {
+          const dateStr = key.replace(STORAGE_KEYS.DAILY_WORK_STATUS_PREFIX, '')
+          const date = new Date(dateStr)
+          return date >= startDate && date <= endDate
+        })
 
-      console.log(`[DEBUG] Sau khi lọc còn ${filteredKeys.length} key trong khoảng thời gian`)
+        console.log(
+          `[DEBUG] Sau khi lọc còn ${filteredKeys.length} key trong khoảng thời gian`
+        )
 
-      if (filteredKeys.length === 0) {
+        if (filteredKeys.length === 0) {
+          setStatisticsData([])
+          setSummaryData({
+            totalWorkHours: 0.0,
+            totalOtHours: 0.0,
+            workDays: 0,
+          })
+          setIsLoading(false)
+          isLoadingRef.current = false
+          return
+        }
+
+        // Lấy dữ liệu từ AsyncStorage
+        const statusPairs = await AsyncStorage.multiGet(filteredKeys)
+        console.log(`[DEBUG] Đã lấy được ${statusPairs.length} cặp key-value`)
+
+        // Xử lý dữ liệu
+        const processedData = []
+        let totalWorkHours = 0
+        let totalOtHours = 0
+        let workDays = 0
+
+        // Tạo mảng tất cả các ngày trong khoảng thời gian
+        const allDatesInRange = []
+        const currentDate = new Date(startDate)
+        while (currentDate <= endDate) {
+          allDatesInRange.push(new Date(currentDate))
+          currentDate.setDate(currentDate.getDate() + 1)
+        }
+
+        // Tạo map từ dữ liệu đã lấy được
+        const statusMap = {}
+        for (const [key, value] of statusPairs) {
+          if (!value) continue
+          try {
+            const dateStr = key.replace(
+              STORAGE_KEYS.DAILY_WORK_STATUS_PREFIX,
+              ''
+            )
+            const parsedValue = JSON.parse(value)
+            statusMap[dateStr] = parsedValue
+          } catch (parseError) {
+            console.error(
+              `[DEBUG] Lỗi khi phân tích dữ liệu cho key ${key}:`,
+              parseError
+            )
+          }
+        }
+
+        // Xử lý từng ngày trong khoảng thời gian
+        for (const date of allDatesInRange) {
+          const dateStr = date.toISOString().split('T')[0]
+          const statusEntry = statusMap[dateStr]
+
+          // Tạo dữ liệu cho ngày này
+          const dayData = {
+            date: formatDate(date),
+            dayOfWeek: getDayOfWeek(date),
+            checkIn: statusEntry?.vaoLogTime
+              ? formatTime(statusEntry.vaoLogTime)
+              : '--:--',
+            checkOut: statusEntry?.raLogTime
+              ? formatTime(statusEntry.raLogTime)
+              : '--:--',
+            standardHours: statusEntry?.standardHoursScheduled || 0.0,
+            otHours: statusEntry?.otHoursScheduled || 0.0,
+            sundayHours: statusEntry?.sundayHoursScheduled || 0.0,
+            nightHours: statusEntry?.nightHoursScheduled || 0.0,
+            totalHours: statusEntry?.totalHoursScheduled || 0.0,
+            status: statusEntry?.status
+              ? getStatusDisplay(statusEntry.status)
+              : '-',
+          }
+
+          processedData.push(dayData)
+
+          // Cập nhật dữ liệu tổng hợp
+          if (statusEntry) {
+            totalWorkHours += statusEntry.totalHoursScheduled || 0
+            totalOtHours += statusEntry.otHoursScheduled || 0
+            if (statusEntry.totalHoursScheduled > 0) {
+              workDays++
+            }
+          }
+        }
+
+        // Sắp xếp dữ liệu theo ngày
+        processedData.sort((a, b) => {
+          const dateA = new Date(a.date.split('/').reverse().join('-'))
+          const dateB = new Date(b.date.split('/').reverse().join('-'))
+          return dateA - dateB
+        })
+
+        // Cập nhật state
+        setStatisticsData(processedData)
+        setSummaryData({
+          totalWorkHours: parseFloat(totalWorkHours.toFixed(1)),
+          totalOtHours: parseFloat(totalOtHours.toFixed(1)),
+          workDays,
+        })
+
+        console.log(`[DEBUG] Đã xử lý ${processedData.length} ngày dữ liệu`)
+        console.log(
+          `[DEBUG] Tổng giờ làm: ${totalWorkHours.toFixed(
+            1
+          )}, Tổng OT: ${totalOtHours.toFixed(1)}, Số ngày làm: ${workDays}`
+        )
+      } catch (error) {
+        console.error('[DEBUG] Lỗi khi tải dữ liệu thống kê:', error)
+        setError(error.message || 'Đã xảy ra lỗi khi tải dữ liệu thống kê')
         setStatisticsData([])
         setSummaryData({
           totalWorkHours: 0.0,
           totalOtHours: 0.0,
           workDays: 0,
         })
+      } finally {
         setIsLoading(false)
         isLoadingRef.current = false
-        return
+        console.log('[DEBUG] Hoàn thành quá trình tải dữ liệu thống kê')
       }
-
-      // Lấy dữ liệu từ AsyncStorage
-      const statusPairs = await AsyncStorage.multiGet(filteredKeys)
-      console.log(`[DEBUG] Đã lấy được ${statusPairs.length} cặp key-value`)
-
-      // Xử lý dữ liệu
-      const processedData = []
-      let totalWorkHours = 0
-      let totalOtHours = 0
-      let workDays = 0
-
-      // Tạo mảng tất cả các ngày trong khoảng thời gian
-      const allDatesInRange = []
-      const currentDate = new Date(startDate)
-      while (currentDate <= endDate) {
-        allDatesInRange.push(new Date(currentDate))
-        currentDate.setDate(currentDate.getDate() + 1)
-      }
-
-      // Tạo map từ dữ liệu đã lấy được
-      const statusMap = {}
-      for (const [key, value] of statusPairs) {
-        if (!value) continue
-        try {
-          const dateStr = key.replace(STORAGE_KEYS.DAILY_WORK_STATUS_PREFIX, '')
-          const parsedValue = JSON.parse(value)
-          statusMap[dateStr] = parsedValue
-        } catch (parseError) {
-          console.error(`[DEBUG] Lỗi khi phân tích dữ liệu cho key ${key}:`, parseError)
-        }
-      }
-
-      // Xử lý từng ngày trong khoảng thời gian
-      for (const date of allDatesInRange) {
-        const dateStr = date.toISOString().split('T')[0]
-        const statusEntry = statusMap[dateStr]
-
-        // Tạo dữ liệu cho ngày này
-        const dayData = {
-          date: formatDate(date),
-          dayOfWeek: getDayOfWeek(date),
-          checkIn: statusEntry?.vaoLogTime ? statusEntry.vaoLogTime : '--:--',
-          checkOut: statusEntry?.raLogTime ? statusEntry.raLogTime : '--:--',
-          standardHours: statusEntry?.standardHoursScheduled || 0.0,
-          otHours: statusEntry?.otHoursScheduled || 0.0,
-          sundayHours: statusEntry?.sundayHoursScheduled || 0.0,
-          nightHours: statusEntry?.nightHoursScheduled || 0.0,
-          totalHours: statusEntry?.totalHoursScheduled || 0.0,
-          status: statusEntry?.status ? getStatusDisplay(statusEntry.status) : '-',
-        }
-
-        processedData.push(dayData)
-
-        // Cập nhật dữ liệu tổng hợp
-        if (statusEntry) {
-          totalWorkHours += statusEntry.totalHoursScheduled || 0
-          totalOtHours += statusEntry.otHoursScheduled || 0
-          if (statusEntry.totalHoursScheduled > 0) {
-            workDays++
-          }
-        }
-      }
-
-      // Sắp xếp dữ liệu theo ngày
-      processedData.sort((a, b) => {
-        const dateA = new Date(a.date.split('/').reverse().join('-'))
-        const dateB = new Date(b.date.split('/').reverse().join('-'))
-        return dateA - dateB
-      })
-
-      // Cập nhật state
-      setStatisticsData(processedData)
-      setSummaryData({
-        totalWorkHours: parseFloat(totalWorkHours.toFixed(1)),
-        totalOtHours: parseFloat(totalOtHours.toFixed(1)),
-        workDays,
-      })
-
-      console.log(`[DEBUG] Đã xử lý ${processedData.length} ngày dữ liệu`)
-      console.log(`[DEBUG] Tổng giờ làm: ${totalWorkHours.toFixed(1)}, Tổng OT: ${totalOtHours.toFixed(1)}, Số ngày làm: ${workDays}`)
-    } catch (error) {
-      console.error('[DEBUG] Lỗi khi tải dữ liệu thống kê:', error)
-      setError(error.message || 'Đã xảy ra lỗi khi tải dữ liệu thống kê')
-      setStatisticsData([])
-      setSummaryData({
-        totalWorkHours: 0.0,
-        totalOtHours: 0.0,
-        workDays: 0,
-      })
-    } finally {
-      setIsLoading(false)
-      isLoadingRef.current = false
-      console.log('[DEBUG] Hoàn thành quá trình tải dữ liệu thống kê')
-    }
-  }, [formatDate, getDayOfWeek, getStatusDisplay])
+    },
+    [formatDate, formatFullDate, formatTime, getDayOfWeek, getStatusDisplay]
+  )
 
   // Tải dữ liệu khi component được mount
   useEffect(() => {
@@ -275,28 +334,60 @@ const StatisticsScreen = ({ navigation }) => {
   // Render item cho FlatList
   const renderItem = ({ item }) => (
     <View style={[styles.tableRow, darkMode && styles.darkTableRow]}>
-      <Text style={[styles.tableCell, styles.dateCell, darkMode && styles.darkText]}>
+      <Text
+        style={[styles.tableCell, styles.dateCell, darkMode && styles.darkText]}
+      >
         {item.date}
       </Text>
-      <Text style={[styles.tableCell, styles.dayCell, darkMode && styles.darkText]}>
+      <Text
+        style={[styles.tableCell, styles.dayCell, darkMode && styles.darkText]}
+      >
         {item.dayOfWeek}
       </Text>
-      <Text style={[styles.tableCell, styles.timeCell, darkMode && styles.darkText]}>
+      <Text
+        style={[styles.tableCell, styles.timeCell, darkMode && styles.darkText]}
+      >
         {item.checkIn}
       </Text>
-      <Text style={[styles.tableCell, styles.timeCell, darkMode && styles.darkText]}>
+      <Text
+        style={[styles.tableCell, styles.timeCell, darkMode && styles.darkText]}
+      >
         {item.checkOut}
       </Text>
-      <Text style={[styles.tableCell, styles.hoursCell, darkMode && styles.darkText]}>
+      <Text
+        style={[
+          styles.tableCell,
+          styles.hoursCell,
+          darkMode && styles.darkText,
+        ]}
+      >
         {item.standardHours.toFixed(1)}
       </Text>
-      <Text style={[styles.tableCell, styles.hoursCell, darkMode && styles.darkText]}>
+      <Text
+        style={[
+          styles.tableCell,
+          styles.hoursCell,
+          darkMode && styles.darkText,
+        ]}
+      >
         {item.otHours.toFixed(1)}
       </Text>
-      <Text style={[styles.tableCell, styles.hoursCell, darkMode && styles.darkText]}>
+      <Text
+        style={[
+          styles.tableCell,
+          styles.hoursCell,
+          darkMode && styles.darkText,
+        ]}
+      >
         {item.totalHours.toFixed(1)}
       </Text>
-      <Text style={[styles.tableCell, styles.statusCell, darkMode && styles.darkText]}>
+      <Text
+        style={[
+          styles.tableCell,
+          styles.statusCell,
+          darkMode && styles.darkText,
+        ]}
+      >
         {item.status}
       </Text>
     </View>
@@ -311,7 +402,9 @@ const StatisticsScreen = ({ navigation }) => {
             styles.periodButton,
             selectedPeriod === 'week' && styles.activePeriodButton,
             darkMode && styles.darkPeriodButton,
-            selectedPeriod === 'week' && darkMode && styles.darkActivePeriodButton,
+            selectedPeriod === 'week' &&
+              darkMode &&
+              styles.darkActivePeriodButton,
           ]}
           onPress={() => handlePeriodChange('week')}
         >
@@ -331,7 +424,9 @@ const StatisticsScreen = ({ navigation }) => {
             styles.periodButton,
             selectedPeriod === 'month' && styles.activePeriodButton,
             darkMode && styles.darkPeriodButton,
-            selectedPeriod === 'month' && darkMode && styles.darkActivePeriodButton,
+            selectedPeriod === 'month' &&
+              darkMode &&
+              styles.darkActivePeriodButton,
           ]}
           onPress={() => handlePeriodChange('month')}
         >
@@ -351,7 +446,9 @@ const StatisticsScreen = ({ navigation }) => {
             styles.periodButton,
             selectedPeriod === 'year' && styles.activePeriodButton,
             darkMode && styles.darkPeriodButton,
-            selectedPeriod === 'year' && darkMode && styles.darkActivePeriodButton,
+            selectedPeriod === 'year' &&
+              darkMode &&
+              styles.darkActivePeriodButton,
           ]}
           onPress={() => handlePeriodChange('year')}
         >
@@ -370,7 +467,8 @@ const StatisticsScreen = ({ navigation }) => {
       {/* Hiển thị khoảng thời gian */}
       {dateRange.startDate && dateRange.endDate && (
         <Text style={[styles.dateRangeText, darkMode && styles.darkText]}>
-          {formatDate(dateRange.startDate)} - {formatDate(dateRange.endDate)}
+          {formatFullDate(dateRange.startDate)} -{' '}
+          {formatFullDate(dateRange.endDate)}
         </Text>
       )}
 
@@ -432,29 +530,79 @@ const StatisticsScreen = ({ navigation }) => {
           {/* Bảng dữ liệu */}
           <View style={[styles.tableContainer, darkMode && styles.darkCard]}>
             {/* Header của bảng */}
-            <View style={[styles.tableHeader, darkMode && styles.darkTableHeader]}>
-              <Text style={[styles.headerCell, styles.dateCell, darkMode && styles.darkHeaderText]}>
+            <View
+              style={[styles.tableHeader, darkMode && styles.darkTableHeader]}
+            >
+              <Text
+                style={[
+                  styles.headerCell,
+                  styles.dateCell,
+                  darkMode && styles.darkHeaderText,
+                ]}
+              >
                 {t('Date')}
               </Text>
-              <Text style={[styles.headerCell, styles.dayCell, darkMode && styles.darkHeaderText]}>
+              <Text
+                style={[
+                  styles.headerCell,
+                  styles.dayCell,
+                  darkMode && styles.darkHeaderText,
+                ]}
+              >
                 {t('Day')}
               </Text>
-              <Text style={[styles.headerCell, styles.timeCell, darkMode && styles.darkHeaderText]}>
+              <Text
+                style={[
+                  styles.headerCell,
+                  styles.timeCell,
+                  darkMode && styles.darkHeaderText,
+                ]}
+              >
                 {t('In')}
               </Text>
-              <Text style={[styles.headerCell, styles.timeCell, darkMode && styles.darkHeaderText]}>
+              <Text
+                style={[
+                  styles.headerCell,
+                  styles.timeCell,
+                  darkMode && styles.darkHeaderText,
+                ]}
+              >
                 {t('Out')}
               </Text>
-              <Text style={[styles.headerCell, styles.hoursCell, darkMode && styles.darkHeaderText]}>
+              <Text
+                style={[
+                  styles.headerCell,
+                  styles.hoursCell,
+                  darkMode && styles.darkHeaderText,
+                ]}
+              >
                 {t('Std')}
               </Text>
-              <Text style={[styles.headerCell, styles.hoursCell, darkMode && styles.darkHeaderText]}>
+              <Text
+                style={[
+                  styles.headerCell,
+                  styles.hoursCell,
+                  darkMode && styles.darkHeaderText,
+                ]}
+              >
                 {t('OT')}
               </Text>
-              <Text style={[styles.headerCell, styles.hoursCell, darkMode && styles.darkHeaderText]}>
+              <Text
+                style={[
+                  styles.headerCell,
+                  styles.hoursCell,
+                  darkMode && styles.darkHeaderText,
+                ]}
+              >
                 {t('Total')}
               </Text>
-              <Text style={[styles.headerCell, styles.statusCell, darkMode && styles.darkHeaderText]}>
+              <Text
+                style={[
+                  styles.headerCell,
+                  styles.statusCell,
+                  darkMode && styles.darkHeaderText,
+                ]}
+              >
                 {t('Status')}
               </Text>
             </View>

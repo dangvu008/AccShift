@@ -133,7 +133,7 @@ const HomeScreen = ({ navigation, route }) => {
     <ScrollView
       style={{ flex: 1, backgroundColor: theme.backgroundColor, padding: 16 }}
     >
-      {/* 1. Thanh trên cùng (Ngày/giờ, nút Thống kê) */}
+      {/* 1. Thanh trên cùng (Ngày/giờ) */}
       <View style={styles.header}>
         <View style={styles.dateTimeContainer}>
           <Text
@@ -146,14 +146,6 @@ const HomeScreen = ({ navigation, route }) => {
           >
             {formattedDate}
           </Text>
-        </View>
-        <View style={styles.headerButtons}>
-          <TouchableOpacity
-            style={styles.headerButton}
-            onPress={() => navigation.navigate('Statistics')}
-          >
-            <Ionicons name="stats-chart" size={24} color={theme.primaryColor} />
-          </TouchableOpacity>
         </View>
       </View>
 
@@ -267,27 +259,15 @@ const HomeScreen = ({ navigation, route }) => {
           >
             {t('Weekly Status')}
           </Text>
-          <View style={{ flexDirection: 'row' }}>
-            <TouchableOpacity
-              style={{ marginRight: 10 }}
-              onPress={() => navigation.navigate('Statistics')}
-            >
-              <Ionicons
-                name="stats-chart"
-                size={24}
-                color={theme.subtextColor}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => navigation.navigate('AttendanceStats')}
-            >
-              <Ionicons
-                name="chevron-forward"
-                size={24}
-                color={theme.subtextColor}
-              />
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('AttendanceStats')}
+          >
+            <Ionicons
+              name="chevron-forward"
+              size={24}
+              color={theme.subtextColor}
+            />
+          </TouchableOpacity>
         </View>
         <WeeklyStatusGrid />
       </View>
