@@ -1129,7 +1129,9 @@ const StatisticsScreen = ({ navigation }) => {
 
   // Tải dữ liệu khi component được mount lần đầu
   useEffect(() => {
-    console.log('StatisticsScreen được mount lần đầu, tải dữ liệu thống kê')
+    if (__DEV__) {
+      console.log('StatisticsScreen được mount lần đầu, tải dữ liệu thống kê')
+    }
     isMountedRef.current = true
 
     // Đánh dấu đang tải
@@ -1138,7 +1140,9 @@ const StatisticsScreen = ({ navigation }) => {
 
     // Đảm bảo timeRange được đặt là 'week' khi màn hình được tải lần đầu
     setTimeRange('week')
-    console.log('[DEBUG] Đã đặt timeRange ban đầu là "week"')
+    if (__DEV__) {
+      console.log('[DEBUG] Đã đặt timeRange ban đầu là "week"')
+    }
 
     // Xóa cache để đảm bảo dữ liệu mới được tải
     workStatusCache.current = {}
@@ -1164,14 +1168,18 @@ const StatisticsScreen = ({ navigation }) => {
     return () => {
       clearTimeout(timer)
       isMountedRef.current = false
-      console.log('[DEBUG] StatisticsScreen đã unmount')
+      if (__DEV__) {
+        console.log('[DEBUG] StatisticsScreen đã unmount')
+      }
     }
   }, [loadStatistics])
 
   // Sử dụng useFocusEffect để kiểm soát việc tải lại dữ liệu khi màn hình được focus
   useFocusEffect(
     useCallback(() => {
-      console.log('[DEBUG] StatisticsScreen được focus')
+      if (__DEV__) {
+        console.log('[DEBUG] StatisticsScreen được focus')
+      }
 
       // Đánh dấu component đã mount
       isMountedRef.current = true
@@ -1183,15 +1191,19 @@ const StatisticsScreen = ({ navigation }) => {
       const safeLoadData = () => {
         // Kiểm tra nếu component đã unmount
         if (!isMountedRef.current) {
-          console.log('[DEBUG] Component đã unmount, không tải dữ liệu')
+          if (__DEV__) {
+            console.log('[DEBUG] Component đã unmount, không tải dữ liệu')
+          }
           return
         }
 
         // Kiểm tra trạng thái loading từ ref thay vì state để có thông tin chính xác hơn
         if (isLoadingRef.current) {
-          console.log(
-            '[DEBUG] Đang tải dữ liệu (theo ref), bỏ qua yêu cầu tải lại'
-          )
+          if (__DEV__) {
+            console.log(
+              '[DEBUG] Đang tải dữ liệu (theo ref), bỏ qua yêu cầu tải lại'
+            )
+          }
           return
         }
 
@@ -1199,7 +1211,9 @@ const StatisticsScreen = ({ navigation }) => {
 
         // Tăng thời gian chờ lên 10 giây để tránh tải lại quá thường xuyên
         if (now - lastLoadTimeRef.current > 10000) {
-          console.log('[DEBUG] Tải lại dữ liệu thống kê khi focus')
+          if (__DEV__) {
+            console.log('[DEBUG] Tải lại dữ liệu thống kê khi focus')
+          }
 
           // Cập nhật thời gian tải gần nhất
           lastLoadTimeRef.current = now
@@ -1209,51 +1223,65 @@ const StatisticsScreen = ({ navigation }) => {
 
           try {
             // Gọi hàm tải dữ liệu (đã có xử lý lỗi bên trong)
-            console.log(
-              `[DEBUG] Gọi loadStatistics từ safeLoadData, timeRange: ${timeRange}`
-            )
+            if (__DEV__) {
+              console.log(
+                `[DEBUG] Gọi loadStatistics từ safeLoadData, timeRange: ${timeRange}`
+              )
+            }
             loadStatistics()
               .then(() => {
                 if (isMountedRef.current) {
-                  console.log(
-                    `[DEBUG] Tải dữ liệu thành công khi focus cho tab: ${timeRange}`
-                  )
+                  if (__DEV__) {
+                    console.log(
+                      `[DEBUG] Tải dữ liệu thành công khi focus cho tab: ${timeRange}`
+                    )
+                  }
                   retryCountRef.current = 0
                 }
               })
               .catch((error) => {
-                console.error(
-                  `[DEBUG] Lỗi khi tải dữ liệu khi focus cho tab ${timeRange}:`,
-                  error
-                )
+                if (__DEV__) {
+                  console.error(
+                    `[DEBUG] Lỗi khi tải dữ liệu khi focus cho tab ${timeRange}:`,
+                    error
+                  )
+                }
                 // Đảm bảo đặt lại trạng thái loading trong ref khi có lỗi
                 isLoadingRef.current = false
               })
           } catch (error) {
-            console.error(
-              `[DEBUG] Lỗi ngoài cùng khi tải dữ liệu khi focus cho tab ${timeRange}:`,
-              error
-            )
+            if (__DEV__) {
+              console.error(
+                `[DEBUG] Lỗi ngoài cùng khi tải dữ liệu khi focus cho tab ${timeRange}:`,
+                error
+              )
+            }
             // Đảm bảo đặt lại trạng thái loading trong ref khi có lỗi
             isLoadingRef.current = false
           }
         } else {
-          console.log(
-            '[DEBUG] Bỏ qua tải lại dữ liệu thống kê do mới tải gần đây'
-          )
+          if (__DEV__) {
+            console.log(
+              '[DEBUG] Bỏ qua tải lại dữ liệu thống kê do mới tải gần đây'
+            )
+          }
         }
       }
 
       // Đặt timeout để tránh tải dữ liệu quá sớm khi màn hình đang chuyển đổi
       // Tăng thời gian chờ lên 1000ms để đảm bảo màn hình đã hiển thị hoàn toàn
-      console.log(
-        `[DEBUG] Đặt timer để tải dữ liệu khi focus, timeRange hiện tại: ${timeRange}`
-      )
+      if (__DEV__) {
+        console.log(
+          `[DEBUG] Đặt timer để tải dữ liệu khi focus, timeRange hiện tại: ${timeRange}`
+        )
+      }
       focusTimer = setTimeout(safeLoadData, 1000)
 
       // Cleanup khi component bị unfocus
       return () => {
-        console.log('[DEBUG] StatisticsScreen bị unfocus')
+        if (__DEV__) {
+          console.log('[DEBUG] StatisticsScreen bị unfocus')
+        }
 
         // Xóa timer nếu có
         if (focusTimer) {
@@ -1433,7 +1461,9 @@ const StatisticsScreen = ({ navigation }) => {
             timeRange === 'week' && { backgroundColor: '#8a56ff' },
           ]}
           onPress={() => {
-            console.log('[DEBUG] Đã nhấn nút chuyển sang tab Tuần này')
+            if (__DEV__) {
+              console.log('[DEBUG] Đã nhấn nút chuyển sang tab Tuần này')
+            }
 
             // Đánh dấu đang tải
             setIsLoading(true)
@@ -1454,7 +1484,9 @@ const StatisticsScreen = ({ navigation }) => {
 
             // Tải dữ liệu mới trong background mà không chặn UI
             setTimeout(() => {
-              console.log('[DEBUG] Đang tải dữ liệu cho tab Tuần này')
+              if (__DEV__) {
+                console.log('[DEBUG] Đang tải dữ liệu cho tab Tuần này')
+              }
               loadStatistics()
             }, 100)
           }}
@@ -1477,7 +1509,9 @@ const StatisticsScreen = ({ navigation }) => {
             timeRange === 'month' && { backgroundColor: '#8a56ff' },
           ]}
           onPress={() => {
-            console.log('[DEBUG] Đã nhấn nút chuyển sang tab Tháng này')
+            if (__DEV__) {
+              console.log('[DEBUG] Đã nhấn nút chuyển sang tab Tháng này')
+            }
 
             // Đánh dấu đang tải
             setIsLoading(true)
@@ -1498,7 +1532,9 @@ const StatisticsScreen = ({ navigation }) => {
 
             // Tải dữ liệu mới trong background mà không chặn UI
             setTimeout(() => {
-              console.log('[DEBUG] Đang tải dữ liệu cho tab Tháng này')
+              if (__DEV__) {
+                console.log('[DEBUG] Đang tải dữ liệu cho tab Tháng này')
+              }
               loadStatistics()
             }, 100)
           }}
@@ -1521,7 +1557,9 @@ const StatisticsScreen = ({ navigation }) => {
             timeRange === 'year' && { backgroundColor: '#8a56ff' },
           ]}
           onPress={() => {
-            console.log('[DEBUG] Đã nhấn nút chuyển sang tab Năm nay')
+            if (__DEV__) {
+              console.log('[DEBUG] Đã nhấn nút chuyển sang tab Năm nay')
+            }
 
             // Đánh dấu đang tải
             setIsLoading(true)
@@ -1542,7 +1580,9 @@ const StatisticsScreen = ({ navigation }) => {
 
             // Tải dữ liệu mới trong background mà không chặn UI
             setTimeout(() => {
-              console.log('[DEBUG] Đang tải dữ liệu cho tab Năm nay')
+              if (__DEV__) {
+                console.log('[DEBUG] Đang tải dữ liệu cho tab Năm nay')
+              }
               loadStatistics()
             }, 100)
           }}
@@ -1571,6 +1611,332 @@ const StatisticsScreen = ({ navigation }) => {
         <View style={styles.cornerLoadingContainer}>
           <ActivityIndicator size="small" color="#8a56ff" />
           <Text style={styles.cornerLoadingText}>{t('Đang tải...')}</Text>
+        </View>
+      )}
+
+      {/* Các nút debug - chỉ hiển thị trong môi trường phát triển */}
+      {__DEV__ && (
+        <View style={styles.debugContainer}>
+          <TouchableOpacity
+            style={styles.debugButton}
+            onPress={async () => {
+              try {
+                // Hiển thị thông tin debug về AsyncStorage
+                const keys = await AsyncStorage.getAllKeys()
+                const workStatusKeys = keys.filter((key) =>
+                  key.startsWith(STORAGE_KEYS.DAILY_WORK_STATUS_PREFIX)
+                )
+
+                console.log('[DEBUG] Tất cả các key trong AsyncStorage:', keys)
+                console.log(
+                  '[DEBUG] Số lượng key dailyWorkStatus:',
+                  workStatusKeys.length
+                )
+
+                if (workStatusKeys.length > 0) {
+                  // Lấy mẫu 3 key đầu tiên
+                  const sampleKeys = workStatusKeys.slice(0, 3)
+                  const sampleData = await AsyncStorage.multiGet(sampleKeys)
+
+                  sampleData.forEach(([key, value]) => {
+                    console.log('[DEBUG] Key:', key)
+                    console.log(
+                      '[DEBUG] Value:',
+                      value ? JSON.parse(value) : null
+                    )
+                  })
+
+                  Alert.alert(
+                    'Debug Info',
+                    `Tìm thấy ${workStatusKeys.length} bản ghi dailyWorkStatus.\nXem chi tiết trong console.`
+                  )
+                } else {
+                  Alert.alert(
+                    'Debug Info',
+                    'Không tìm thấy bản ghi dailyWorkStatus nào trong AsyncStorage.'
+                  )
+                }
+              } catch (error) {
+                console.error('[DEBUG] Lỗi khi kiểm tra AsyncStorage:', error)
+                Alert.alert(
+                  'Debug Error',
+                  'Lỗi khi kiểm tra AsyncStorage. Xem console để biết chi tiết.'
+                )
+              }
+            }}
+          >
+            <Text style={styles.debugButtonText}>Kiểm tra AsyncStorage</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.debugButton, { backgroundColor: '#4caf50' }]}
+            onPress={async () => {
+              try {
+                Alert.alert(
+                  'Tạo dữ liệu mẫu',
+                  'Bạn có muốn tạo dữ liệu mẫu cho 7 ngày gần đây không?',
+                  [
+                    {
+                      text: 'Hủy',
+                      style: 'cancel',
+                    },
+                    {
+                      text: 'OK',
+                      onPress: async () => {
+                        // Tạo dữ liệu mẫu cho 7 ngày gần đây
+                        const now = new Date()
+                        const createdData = []
+
+                        for (let i = 0; i < 7; i++) {
+                          const date = new Date(now)
+                          date.setDate(date.getDate() - i)
+
+                          // Format date as YYYY-MM-DD for storage key
+                          const dateStr = `${date.getFullYear()}-${String(
+                            date.getMonth() + 1
+                          ).padStart(2, '0')}-${String(date.getDate()).padStart(
+                            2,
+                            '0'
+                          )}`
+
+                          // Format date as DD/MM/YYYY for display
+                          const displayDate = `${String(
+                            date.getDate()
+                          ).padStart(2, '0')}/${String(
+                            date.getMonth() + 1
+                          ).padStart(2, '0')}/${date.getFullYear()}`
+
+                          // Create random status
+                          const statusOptions = [
+                            'DU_CONG',
+                            'DI_MUON',
+                            'VE_SOM',
+                            'NGHI_PHEP',
+                          ]
+                          const status =
+                            statusOptions[
+                              Math.floor(Math.random() * statusOptions.length)
+                            ]
+
+                          // Create work hours based on status
+                          const standardHours =
+                            status === 'DU_CONG'
+                              ? 8
+                              : status === 'NGHI_PHEP'
+                              ? 0
+                              : 6 + Math.random() * 2
+                          const otHours =
+                            Math.random() > 0.7 ? Math.random() * 2 : 0
+                          const sundayHours = date.getDay() === 0 ? 8 : 0
+                          const nightHours =
+                            Math.random() > 0.8 ? Math.random() * 3 : 0
+
+                          const workStatus = {
+                            date: displayDate,
+                            status: status,
+                            standardHoursScheduled: standardHours,
+                            otHoursScheduled: otHours,
+                            sundayHoursScheduled: sundayHours,
+                            nightHoursScheduled: nightHours,
+                            totalHoursScheduled:
+                              standardHours + otHours + sundayHours,
+                            vaoLogTime: '08:00',
+                            raLogTime: '17:00',
+                            lateMinutes: status === 'DI_MUON' ? 15 : 0,
+                            earlyMinutes: status === 'VE_SOM' ? 20 : 0,
+                          }
+
+                          const key = `${STORAGE_KEYS.DAILY_WORK_STATUS_PREFIX}${dateStr}`
+                          await AsyncStorage.setItem(
+                            key,
+                            JSON.stringify(workStatus)
+                          )
+                          createdData.push({ key, workStatus })
+                        }
+
+                        console.log(
+                          '[DEBUG] Đã tạo dữ liệu mẫu:',
+                          createdData.length,
+                          'bản ghi'
+                        )
+
+                        // Tải lại dữ liệu
+                        setIsLoading(true)
+                        isLoadingRef.current = true
+                        workStatusCache.current = {}
+                        loadStatisticsCache.current = {}
+                        loadStatistics()
+
+                        Alert.alert(
+                          'Tạo dữ liệu mẫu',
+                          `Đã tạo ${createdData.length} bản ghi dữ liệu mẫu.`
+                        )
+                      },
+                    },
+                  ]
+                )
+              } catch (error) {
+                console.error('[DEBUG] Lỗi khi tạo dữ liệu mẫu:', error)
+                Alert.alert(
+                  'Debug Error',
+                  'Lỗi khi tạo dữ liệu mẫu. Xem console để biết chi tiết.'
+                )
+              }
+            }}
+          >
+            <Text style={styles.debugButtonText}>Tạo dữ liệu mẫu</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.debugButton, { backgroundColor: '#f44336' }]}
+            onPress={() => {
+              // Xóa cache và tải lại dữ liệu
+              setIsLoading(true)
+              isLoadingRef.current = true
+              workStatusCache.current = {}
+              loadStatisticsCache.current = {}
+
+              // Đặt lại các giá trị
+              setTimeRange('week')
+              setVisibleRecords(15)
+              setCurrentPage(1)
+
+              // Tải lại dữ liệu
+              setTimeout(() => {
+                loadStatistics()
+                Alert.alert('Debug', 'Đã xóa cache và tải lại dữ liệu.')
+              }, 100)
+            }}
+          >
+            <Text style={styles.debugButtonText}>Xóa cache & Tải lại</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.debugButton, { backgroundColor: '#9c27b0' }]}
+            onPress={() => {
+              // Hiển thị thông tin chi tiết về khoảng thời gian và dữ liệu thống kê
+              const { rangeStart, rangeEnd } = getDateRange(timeRange)
+
+              const debugInfo = {
+                timeRange,
+                dateRange: {
+                  start: formatDate(rangeStart),
+                  end: formatDate(rangeEnd),
+                },
+                stats: {
+                  totalRecords: stats.dailyData.length,
+                  totalWorkTime: formatDecimalHours(stats.totalWorkTime),
+                  overtime: formatDecimalHours(stats.overtime),
+                  statusCounts: stats.statusCounts,
+                },
+                cache: {
+                  workStatusCacheSize: Object.keys(workStatusCache.current)
+                    .length,
+                  loadStatisticsCacheSize: Object.keys(
+                    loadStatisticsCache.current
+                  ).length,
+                },
+                pagination: {
+                  visibleRecords,
+                  currentPage,
+                  totalPages: Math.ceil(
+                    stats.dailyData.length / visibleRecords
+                  ),
+                },
+              }
+
+              console.log('[DEBUG] Thông tin chi tiết:', debugInfo)
+
+              // Hiển thị thông tin cơ bản trong Alert
+              Alert.alert(
+                'Debug Info',
+                `Khoảng thời gian: ${debugInfo.dateRange.start} - ${debugInfo.dateRange.end}\n` +
+                  `Số bản ghi: ${debugInfo.stats.totalRecords}\n` +
+                  `Tổng giờ làm: ${debugInfo.stats.totalWorkTime}\n` +
+                  `Tổng OT: ${debugInfo.stats.overtime}\n\n` +
+                  'Xem console để biết thêm chi tiết.'
+              )
+            }}
+          >
+            <Text style={styles.debugButtonText}>Hiển thị thông tin</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.debugButton, { backgroundColor: '#009688' }]}
+            onPress={async () => {
+              try {
+                // Hiển thị dialog để nhập ngày cần kiểm tra
+                Alert.prompt(
+                  'Kiểm tra ngày',
+                  'Nhập ngày theo định dạng YYYY-MM-DD:',
+                  [
+                    {
+                      text: 'Hủy',
+                      style: 'cancel',
+                    },
+                    {
+                      text: 'OK',
+                      onPress: async (dateStr) => {
+                        if (!dateStr || !dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                          Alert.alert(
+                            'Lỗi',
+                            'Định dạng ngày không hợp lệ. Vui lòng sử dụng định dạng YYYY-MM-DD.'
+                          )
+                          return
+                        }
+
+                        // Kiểm tra dữ liệu trong AsyncStorage
+                        const key = `${STORAGE_KEYS.DAILY_WORK_STATUS_PREFIX}${dateStr}`
+                        const value = await AsyncStorage.getItem(key)
+
+                        if (value) {
+                          const data = JSON.parse(value)
+                          console.log(
+                            `[DEBUG] Dữ liệu cho ngày ${dateStr}:`,
+                            data
+                          )
+
+                          // Hiển thị thông tin trong Alert
+                          Alert.alert(
+                            `Dữ liệu cho ngày ${dateStr}`,
+                            `Ngày: ${data.date}\n` +
+                              `Trạng thái: ${data.status}\n` +
+                              `Giờ chuẩn: ${
+                                data.standardHoursScheduled || 0
+                              }\n` +
+                              `Giờ OT: ${data.otHoursScheduled || 0}\n` +
+                              `Giờ Chủ nhật: ${
+                                data.sundayHoursScheduled || 0
+                              }\n` +
+                              `Giờ đêm: ${data.nightHoursScheduled || 0}\n` +
+                              `Tổng giờ: ${data.totalHoursScheduled || 0}\n` +
+                              `Vào: ${data.vaoLogTime || '--:--'}\n` +
+                              `Ra: ${data.raLogTime || '--:--'}\n` +
+                              `Đi muộn: ${data.lateMinutes || 0} phút\n` +
+                              `Về sớm: ${data.earlyMinutes || 0} phút`
+                          )
+                        } else {
+                          Alert.alert(
+                            'Thông báo',
+                            `Không tìm thấy dữ liệu cho ngày ${dateStr}.`
+                          )
+                        }
+                      },
+                    },
+                  ],
+                  'plain-text'
+                )
+              } catch (error) {
+                console.error('[DEBUG] Lỗi khi kiểm tra ngày:', error)
+                Alert.alert(
+                  'Lỗi',
+                  'Đã xảy ra lỗi khi kiểm tra ngày. Xem console để biết chi tiết.'
+                )
+              }
+            }}
+          >
+            <Text style={styles.debugButtonText}>Kiểm tra ngày</Text>
+          </TouchableOpacity>
         </View>
       )}
 
@@ -2768,6 +3134,32 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 14,
+  },
+
+  // Styles cho các nút debug
+  debugContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    marginVertical: 10,
+    padding: 5,
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    borderRadius: 8,
+  },
+  debugButton: {
+    backgroundColor: '#2196f3',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 5,
+    margin: 5,
+    minWidth: 100,
+    alignItems: 'center',
+  },
+  debugButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 12,
+    textAlign: 'center',
   },
 })
 

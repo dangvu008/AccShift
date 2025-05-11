@@ -402,6 +402,9 @@ export const translations = {
 
     'Thời gian nhắc nhở': 'Thời gian nhắc nhở',
     'Tạo dữ liệu mẫu': 'Tạo dữ liệu mẫu',
+    'Work Notes': 'Ghi chú công việc',
+    'Hiển thị': 'Hiển thị',
+    'Làm mới dữ liệu': 'Làm mới dữ liệu',
 
     // Navigation
     Home: 'Trang chủ',
@@ -680,6 +683,9 @@ export const translations = {
 
     'Thời gian nhắc nhở': 'Reminder time',
     'Tạo dữ liệu mẫu': 'Generate Sample Data',
+    'Work Notes': 'Work Notes',
+    'Hiển thị': 'Display',
+    'Làm mới dữ liệu': 'Refresh Data',
     'Chọn ca làm việc': 'Select work shifts',
     'Nhắc nhở sẽ được đặt trước 5 phút giờ xuất phát (departureTime) của (các) ca đã chọn.':
       'Reminders will be set 5 minutes before the departure time of selected shift(s).',
