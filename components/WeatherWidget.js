@@ -118,7 +118,7 @@ const WeatherWidget = ({ onPress }) => {
       setLoading(false)
       setRefreshing(false)
     }
-  }, [t]) // Chỉ phụ thuộc vào t
+  }, [t, fetchWeatherData]) // Thêm fetchWeatherData vào dependencies
 
   // Di chuyển hàm fetchWeatherData ra ngoài useEffect để có thể tái sử dụng
   const fetchWeatherData = useCallback(
@@ -597,7 +597,7 @@ const WeatherWidget = ({ onPress }) => {
         setSmartAlert(null)
       }
     },
-    [t, checkForRain, setSmartAlert]
+    [t, checkForRain, setSmartAlert, generateSmartAlert]
   )
 
   // Hàm làm mới dữ liệu thời tiết
@@ -764,6 +764,7 @@ const WeatherWidget = ({ onPress }) => {
     workLocation,
     locationPermissionGranted,
     currentWeather, // Thêm currentWeather vào dependencies để khi không có dữ liệu sẽ luôn thử lại
+    fetchWeatherData, // Thêm fetchWeatherData vào dependencies
     // Loại bỏ generateSmartAlert khỏi dependencies để tránh vòng lặp render
   ])
 

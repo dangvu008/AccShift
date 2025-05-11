@@ -87,7 +87,7 @@ const StatisticsScreen = ({ navigation }) => {
       const newDateRange = calculateDateRange(newPeriod)
       loadAndProcessStatistics(newDateRange.startDate, newDateRange.endDate)
     },
-    [calculateDateRange]
+    [calculateDateRange, loadAndProcessStatistics]
   )
 
   // Xử lý khi người dùng muốn tính toán lại trạng thái làm việc
@@ -568,7 +568,14 @@ const StatisticsScreen = ({ navigation }) => {
         console.log('[DEBUG] Hoàn thành quá trình tải dữ liệu thống kê')
       }
     },
-    [formatDate, formatFullDate, formatTime, getDayOfWeek, getStatusDisplay]
+    [
+      formatDate,
+      formatFullDate,
+      formatTime,
+      getDayOfWeek,
+      getStatusDisplay,
+      statisticsData.length,
+    ]
   )
 
   // Tải dữ liệu khi component được mount

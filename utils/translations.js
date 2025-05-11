@@ -328,7 +328,6 @@ export const translations = {
     'Đang làm việc, nhấn để check-out': 'Đang làm việc, nhấn để check-out',
     'Đã check-out, sẵn sàng ký công': 'Đã check-out, sẵn sàng ký công',
     'Bắt đầu ca làm việc': 'Bắt đầu ca làm việc',
-    Punch: 'Ký Công',
     'Hoàn thành ca làm việc': 'Hoàn thành ca làm việc',
 
     // Alarm
@@ -358,7 +357,6 @@ export const translations = {
     // Attendance Stats
     'Loading stats...': 'Đang tải thống kê...',
     'Attendance Rate': 'Tỷ lệ chấm công',
-    'Work Days': 'Ngày làm việc',
     'Weekly Trend': 'Xu hướng tuần',
     W: 'T',
     Present: 'Có mặt',
@@ -410,7 +408,6 @@ export const translations = {
     'Nhắc nhở chấm công ra sau (phút)': 'Nhắc nhở chấm công ra sau (phút)',
 
     'Thời gian nhắc nhở': 'Thời gian nhắc nhở',
-    'Tạo dữ liệu mẫu': 'Tạo dữ liệu mẫu',
     'Work Notes': 'Ghi chú công việc',
     'Hiển thị': 'Hiển thị',
     'Làm mới dữ liệu': 'Làm mới dữ liệu',
@@ -447,12 +444,10 @@ export const translations = {
 
     // Developer Settings
     'Developer Settings': 'Cài đặt nhà phát triển',
-    'Tạo dữ liệu mẫu': 'Tạo dữ liệu mẫu',
     'Tạo dữ liệu mẫu ca làm việc': 'Tạo dữ liệu mẫu ca làm việc',
     'Xác nhận': 'Xác nhận',
     'Bạn có chắc chắn muốn tạo dữ liệu mẫu ca làm việc? Dữ liệu hiện tại sẽ bị ghi đè.':
       'Bạn có chắc chắn muốn tạo dữ liệu mẫu ca làm việc? Dữ liệu hiện tại sẽ bị ghi đè.',
-    Hủy: 'Hủy',
     'Đồng ý': 'Đồng ý',
     'Thành công': 'Thành công',
     'Đã tạo {{count}} ca làm việc mẫu.': 'Đã tạo {{count}} ca làm việc mẫu.',
@@ -715,7 +710,6 @@ export const translations = {
     'Nhắc theo ca': 'Remind by Shift',
 
     'Thời gian nhắc nhở': 'Reminder time',
-    'Tạo dữ liệu mẫu': 'Generate Sample Data',
     'Work Notes': 'Work Notes',
     'Hiển thị': 'Display',
     'Làm mới dữ liệu': 'Refresh Data',
@@ -742,7 +736,6 @@ export const translations = {
       'Are you sure you want to update this note?',
     'Bạn có chắc chắn muốn thêm ghi chú mới này?':
       'Are you sure you want to add this new note?',
-    Hủy: 'Cancel',
     Lưu: 'Save',
     'Xóa ghi chú': 'Delete Note',
     'Đang tải...': 'Loading...',
@@ -772,7 +765,6 @@ export const translations = {
     'Task Completed': 'Completed',
     'Ký Công': 'Sign Work',
     'Đã Ký Công': 'Work Signed',
-    Punch: 'Sign Work',
     'Reset Attendance': 'Reset Attendance',
     "Do you want to reset today's attendance status? All button press data for today will be deleted.":
       "Do you want to reset today's attendance status? All button press data for today will be deleted.",
@@ -789,7 +781,6 @@ export const translations = {
     'Đang làm việc, nhấn để check-out': 'Working, tap to check out',
     'Đã check-out, sẵn sàng ký công': 'Checked out, ready to sign work',
     'Bắt đầu ca làm việc': 'Start work shift',
-    Punch: 'Sign Work',
     'Hoàn thành ca làm việc': 'Complete work shift',
 
     // Alarm
@@ -819,7 +810,6 @@ export const translations = {
     // Attendance Stats
     'Loading stats...': 'Loading statistics...',
     'Attendance Rate': 'Attendance Rate',
-    'Work Days': 'Work Days',
     'Weekly Trend': 'Weekly Trend',
     W: 'W',
     Present: 'Present',
