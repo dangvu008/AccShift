@@ -86,13 +86,13 @@ const AddEditShiftScreen = ({ route, navigation }) => {
 
   // Days of week options
   const daysOfWeek = [
-    { key: 'T2', label: 'T2' },
-    { key: 'T3', label: 'T3' },
-    { key: 'T4', label: 'T4' },
-    { key: 'T5', label: 'T5' },
-    { key: 'T6', label: 'T6' },
-    { key: 'T7', label: 'T7' },
-    { key: 'CN', label: 'CN' },
+    { key: 'T2', label: t('T2') },
+    { key: 'T3', label: t('T3') },
+    { key: 'T4', label: t('T4') },
+    { key: 'T5', label: t('T5') },
+    { key: 'T6', label: t('T6') },
+    { key: 'T7', label: t('T7') },
+    { key: 'CN', label: t('CN') },
   ]
 
   // Helper function to convert string time to Date object
@@ -1142,7 +1142,7 @@ const AddEditShiftScreen = ({ route, navigation }) => {
           {/* Shift Name */}
           <View style={styles.formGroup}>
             <Text style={[styles.label, darkMode && styles.darkLabel]}>
-              {t('Tên ca làm việc')} <Text style={styles.requiredMark}>*</Text>
+              {t('Shift Name')} <Text style={styles.requiredMark}>*</Text>
             </Text>
             <TextInput
               style={[
@@ -1157,7 +1157,7 @@ const AddEditShiftScreen = ({ route, navigation }) => {
                 setIsFormDirty(true)
                 setHasInteracted(true) // Đánh dấu người dùng đã tương tác với form
               }}
-              placeholder={t('Nhập tên ca làm việc')}
+              placeholder={t('Enter shift name')}
               placeholderTextColor={darkMode ? '#666' : '#999'}
               maxLength={200}
             />
@@ -1169,7 +1169,7 @@ const AddEditShiftScreen = ({ route, navigation }) => {
           {/* Departure Time */}
           <View style={styles.formGroup}>
             <Text style={[styles.label, darkMode && styles.darkLabel]}>
-              {t('Giờ xuất phát')} <Text style={styles.requiredMark}>*</Text>
+              {t('Departure Time')} <Text style={styles.requiredMark}>*</Text>
             </Text>
             <TouchableOpacity
               style={[
@@ -1213,7 +1213,7 @@ const AddEditShiftScreen = ({ route, navigation }) => {
           {/* Start Time */}
           <View style={styles.formGroup}>
             <Text style={[styles.label, darkMode && styles.darkLabel]}>
-              {t('Giờ bắt đầu')} <Text style={styles.requiredMark}>*</Text>
+              {t('Start Time')} <Text style={styles.requiredMark}>*</Text>
             </Text>
             <TouchableOpacity
               style={[
@@ -1257,7 +1257,7 @@ const AddEditShiftScreen = ({ route, navigation }) => {
           {/* Office End Time */}
           <View style={styles.formGroup}>
             <Text style={[styles.label, darkMode && styles.darkLabel]}>
-              {t('Giờ kết thúc HC')} <Text style={styles.requiredMark}>*</Text>
+              {t('Office End Time')} <Text style={styles.requiredMark}>*</Text>
             </Text>
             <TouchableOpacity
               style={[
@@ -1301,7 +1301,7 @@ const AddEditShiftScreen = ({ route, navigation }) => {
           {/* End Time */}
           <View style={styles.formGroup}>
             <Text style={[styles.label, darkMode && styles.darkLabel]}>
-              {t('Giờ kết thúc ca')} <Text style={styles.requiredMark}>*</Text>
+              {t('Shift End Time')} <Text style={styles.requiredMark}>*</Text>
             </Text>
             <TouchableOpacity
               style={[
@@ -1349,12 +1349,12 @@ const AddEditShiftScreen = ({ route, navigation }) => {
               <Ionicons name="information-circle" size={20} color="#ff9800" />
               <View style={{ flex: 1 }}>
                 <Text style={styles.overnightText}>
-                  {t('Ca qua đêm - kết thúc vào ngày hôm sau')}
+                  {t('Overnight shift - ends the next day')}
                 </Text>
                 <Text
                   style={[styles.overnightText, { fontSize: 12, marginTop: 4 }]}
                 >
-                  {t('Các thời gian kết thúc sẽ được tính vào ngày hôm sau')}
+                  {t('End times will be counted on the next day')}
                 </Text>
               </View>
             </View>
@@ -1363,8 +1363,7 @@ const AddEditShiftScreen = ({ route, navigation }) => {
           {/* Days Applied */}
           <View style={styles.formGroup}>
             <Text style={[styles.label, darkMode && styles.darkLabel]}>
-              {t('Áp dụng cho các ngày')}{' '}
-              <Text style={styles.requiredMark}>*</Text>
+              {t('Apply for days')} <Text style={styles.requiredMark}>*</Text>
             </Text>
             <View style={styles.daysContainer}>
               {daysOfWeek.map((day) => (
@@ -1399,7 +1398,7 @@ const AddEditShiftScreen = ({ route, navigation }) => {
           {/* Remind Before Start */}
           <View style={styles.formGroup}>
             <Text style={[styles.label, darkMode && styles.darkLabel]}>
-              {t('Nhắc nhở trước chấm công vào (phút)')}
+              {t('Remind before check-in (minutes)')}
             </Text>
             <TouchableOpacity
               style={[
@@ -1475,7 +1474,7 @@ const AddEditShiftScreen = ({ route, navigation }) => {
           {/* Remind After End */}
           <View style={styles.formGroup}>
             <Text style={[styles.label, darkMode && styles.darkLabel]}>
-              {t('Nhắc nhở chấm công ra sau (phút)')}
+              {t('Remind after check-out (minutes)')}
             </Text>
             <TouchableOpacity
               style={[
@@ -1550,7 +1549,7 @@ const AddEditShiftScreen = ({ route, navigation }) => {
           {/* Break Time */}
           <View style={styles.formGroup}>
             <Text style={[styles.label, darkMode && styles.darkLabel]}>
-              {t('Thời gian nghỉ (phút)')}
+              {t('Break time (minutes)')}
             </Text>
             <TextInput
               style={[
@@ -1581,7 +1580,7 @@ const AddEditShiftScreen = ({ route, navigation }) => {
             ]}
           >
             <Text style={[styles.switchLabel, darkMode && styles.darkLabel]}>
-              {t('Yêu cầu ký công')}
+              {t('Request signature')}
             </Text>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Text
@@ -1592,7 +1591,7 @@ const AddEditShiftScreen = ({ route, navigation }) => {
                     : styles.switchStatusInactive,
                 ]}
               >
-                {showPunch ? t('Đang bật') : t('Đang tắt')}
+                {showPunch ? t('Enabled') : t('Disabled')}
               </Text>
               <Switch
                 value={showPunch}
@@ -1605,9 +1604,9 @@ const AddEditShiftScreen = ({ route, navigation }) => {
                   // Nếu bật công tắc "Ký công", hiển thị thông báo cho người dùng
                   if (value === true) {
                     Alert.alert(
-                      t('Thông báo'),
+                      t('Notification'),
                       t(
-                        'Khi bật "Yêu cầu ký công", nút ký công sẽ hiển thị trong màn hình chính.'
+                        'When "Request signature" is enabled, the signature button will be displayed on the main screen.'
                       ),
                       [{ text: t('OK') }]
                     )
@@ -1633,7 +1632,7 @@ const AddEditShiftScreen = ({ route, navigation }) => {
             ]}
           >
             <Text style={[styles.switchLabel, darkMode && styles.darkLabel]}>
-              {t('Áp dụng')}
+              {t('Apply')}
             </Text>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Text
@@ -1644,7 +1643,7 @@ const AddEditShiftScreen = ({ route, navigation }) => {
                     : styles.switchStatusInactive,
                 ]}
               >
-                {isActive ? t('Đang áp dụng') : t('Không áp dụng')}
+                {isActive ? t('Applied') : t('Not applied')}
               </Text>
               {isEditing ? (
                 // Khi đang sửa ca, không cho phép thay đổi trạng thái áp dụng
@@ -1665,17 +1664,17 @@ const AddEditShiftScreen = ({ route, navigation }) => {
                     // Nếu đang bật ca mới và đã có ca khác đang áp dụng
                     if (value && currentShift) {
                       Alert.alert(
-                        t('Xác nhận áp dụng ca mới'),
+                        t('Confirm applying new shift'),
                         t(
-                          'Hiện đã có ca khác đang được áp dụng. Nếu áp dụng ca này, ca hiện tại sẽ bị tắt. Bạn có chắc chắn muốn áp dụng ca này không?'
+                          'There is already another shift being applied. If you apply this shift, the current shift will be turned off. Are you sure you want to apply this shift?'
                         ),
                         [
                           {
-                            text: t('Hủy'),
+                            text: t('Cancel'),
                             style: 'cancel',
                           },
                           {
-                            text: t('Áp dụng'),
+                            text: t('Apply'),
                             onPress: () => {
                               console.log('Confirmed: setting isActive to true')
                               setIsActive(true)
@@ -1692,9 +1691,9 @@ const AddEditShiftScreen = ({ route, navigation }) => {
                       // Hiển thị thông báo khi bật công tắc "Áp dụng"
                       if (value === true) {
                         Alert.alert(
-                          t('Thông báo'),
+                          t('Notification'),
                           t(
-                            'Khi bật "Áp dụng", ca làm việc này sẽ được áp dụng cho tuần hiện tại, thay thế cho ca đang được áp dụng.'
+                            'When "Apply" is enabled, this work shift will be applied for the current week, replacing the currently applied shift.'
                           ),
                           [{ text: t('OK') }]
                         )
@@ -1725,7 +1724,7 @@ const AddEditShiftScreen = ({ route, navigation }) => {
                   darkMode && styles.darkResetButtonText,
                 ]}
               >
-                {t('Đặt lại')}
+                {t('Reset')}
               </Text>
             </TouchableOpacity>
 
@@ -1749,7 +1748,7 @@ const AddEditShiftScreen = ({ route, navigation }) => {
                   !isFormValid && { opacity: 0.7 },
                 ]}
               >
-                {isEditing ? t('Cập nhật') : t('Thêm mới')}
+                {isEditing ? t('Update') : t('Add new')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -1758,7 +1757,7 @@ const AddEditShiftScreen = ({ route, navigation }) => {
           {!isFormValid && (
             <View>
               <Text style={styles.formErrorText}>
-                {t('Vui lòng sửa các lỗi để tiếp tục')}
+                {t('Please fix the errors to continue')}
               </Text>
               {__DEV__ && (
                 <TouchableOpacity

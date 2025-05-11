@@ -30,6 +30,8 @@ const StatisticsScreen = ({ navigation }) => {
     workDays: 0,
   })
   const [error, setError] = useState(null)
+  // Biến để theo dõi xem đã tải dữ liệu lần đầu chưa
+  const [initialLoadDone, setInitialLoadDone] = useState(false)
 
   // Tham chiếu để theo dõi trạng thái đang tải
   const isLoadingRef = useRef(false)
@@ -357,22 +359,38 @@ const StatisticsScreen = ({ navigation }) => {
                 'VE_SOM',
                 'DI_MUON_VE_SOM',
                 'THIEU_LOG',
-              ].includes(status) &&
-              totalHours === 0
+              ].includes(status)
             ) {
-              // Nếu có trạng thái chấm công nhưng totalHours = 0, có thể là lỗi dữ liệu
-              // Cập nhật lại dayData với giá trị mặc định (8.0 giờ)
-              console.log(
-                `[DEBUG] Phát hiện ${status} nhưng giờ = 0 cho ngày ${dateStr}, đặt giá trị theo lịch trình`
-              )
+              // Nếu trạng thái là DU_CONG, đảm bảo luôn có giờ công
+              if (status === 'DU_CONG' && totalHours <= 0) {
+                // Nếu có trạng thái DU_CONG nhưng totalHours = 0, đây là lỗi dữ liệu
+                // Cập nhật lại dayData với giá trị mặc định (8.0 giờ)
+                console.log(
+                  `[DEBUG] Phát hiện ${status} nhưng giờ = ${totalHours} cho ngày ${dateStr}, đặt giá trị theo lịch trình`
+                )
 
-              // Sử dụng giá trị mặc định 8.0 giờ nếu không có thông tin ca làm việc
-              stdHours = 8.0
-              totalHours = 8.0
+                // Sử dụng giá trị mặc định 8.0 giờ nếu không có thông tin ca làm việc
+                stdHours = 8.0
+                totalHours = 8.0
 
-              // Cập nhật lại dayData
-              dayData.standardHours = stdHours
-              dayData.totalHours = totalHours
+                // Cập nhật lại dayData
+                dayData.standardHours = stdHours
+                dayData.totalHours = totalHours
+              }
+              // Xử lý các trạng thái khác có giờ = 0
+              else if (totalHours <= 0) {
+                console.log(
+                  `[DEBUG] Phát hiện ${status} nhưng giờ = ${totalHours} cho ngày ${dateStr}, đặt giá trị theo lịch trình`
+                )
+
+                // Sử dụng giá trị mặc định 8.0 giờ nếu không có thông tin ca làm việc
+                stdHours = 8.0
+                totalHours = 8.0
+
+                // Cập nhật lại dayData
+                dayData.standardHours = stdHours
+                dayData.totalHours = totalHours
+              }
             }
 
             // Cập nhật tổng giờ làm việc và giờ OT
@@ -381,7 +399,8 @@ const StatisticsScreen = ({ navigation }) => {
 
             // Kiểm tra xem ngày này có phải là ngày làm việc không
             // Một ngày được tính là ngày làm việc khi:
-            // Trạng thái KHÔNG phải là một trong các trạng thái nghỉ
+            // 1. Trạng thái KHÔNG phải là một trong các trạng thái nghỉ
+            // 2. Có giờ công > 0 hoặc trạng thái là DU_CONG
             const isRestDay = [
               'NGHI_PHEP',
               'NGHI_BENH',
@@ -390,14 +409,18 @@ const StatisticsScreen = ({ navigation }) => {
               'NGHI_THUONG',
             ].includes(status)
 
-            if (!isRestDay) {
+            // Kiểm tra xem ngày này có phải là ngày làm việc không
+            const isWorkDay =
+              !isRestDay && (totalHours > 0 || status === 'DU_CONG')
+
+            if (isWorkDay) {
               workDays++
               console.log(
                 `[DEBUG] Ngày ${dateStr} - ${status}: Tính là ngày làm việc. Std=${stdHours}, OT=${otHours}, CN=${sundayHours}, Đêm=${nightHours}, Total=${totalHours}`
               )
             } else {
               console.log(
-                `[DEBUG] Ngày ${dateStr} - ${status}: Không tính là ngày làm việc (ngày nghỉ).`
+                `[DEBUG] Ngày ${dateStr} - ${status}: Không tính là ngày làm việc (ngày nghỉ hoặc không có giờ công).`
               )
             }
           }
@@ -405,24 +428,51 @@ const StatisticsScreen = ({ navigation }) => {
 
         // Sắp xếp dữ liệu theo ngày
         processedData.sort((a, b) => {
-          const dateA = new Date(a.date.split('/').reverse().join('-'))
-          const dateB = new Date(b.date.split('/').reverse().join('-'))
+          // Chuyển đổi định dạng ngày DD/MM thành YYYY-MM-DD để so sánh chính xác
+          const partsA = a.date.split('/')
+          const partsB = b.date.split('/')
+
+          // Đảm bảo định dạng đúng cho việc so sánh
+          const dateA = new Date(`${partsA[2]}-${partsA[1]}-${partsA[0]}`)
+          const dateB = new Date(`${partsB[2]}-${partsB[1]}-${partsB[0]}`)
+
+          // So sánh và trả về kết quả
           return dateA - dateB
         })
+
+        // Tính lại tổng giờ làm việc từ dữ liệu đã xử lý
+        let recalculatedTotalWorkHours = 0
+        let recalculatedTotalOtHours = 0
+
+        // Duyệt qua tất cả các ngày đã xử lý để tính lại tổng giờ làm việc
+        for (const item of processedData) {
+          // Đảm bảo rằng các ngày có dấu tích xanh (DU_CONG) luôn được tính giờ làm việc > 0
+          const displayStandardHours =
+            item.status === '✅' && item.standardHours <= 0
+              ? 8.0
+              : item.standardHours
+          const displayTotalHours =
+            item.status === '✅' && item.totalHours <= 0 ? 8.0 : item.totalHours
+
+          recalculatedTotalWorkHours += displayTotalHours
+          recalculatedTotalOtHours += item.otHours
+        }
 
         // Cập nhật state
         setStatisticsData(processedData)
         setSummaryData({
-          totalWorkHours: parseFloat(totalWorkHours.toFixed(1)),
-          totalOtHours: parseFloat(totalOtHours.toFixed(1)),
+          totalWorkHours: parseFloat(recalculatedTotalWorkHours.toFixed(1)),
+          totalOtHours: parseFloat(recalculatedTotalOtHours.toFixed(1)),
           workDays,
         })
 
         console.log(`[DEBUG] Đã xử lý ${processedData.length} ngày dữ liệu`)
         console.log(
-          `[DEBUG] Tổng giờ làm: ${totalWorkHours.toFixed(
+          `[DEBUG] Tổng giờ làm: ${recalculatedTotalWorkHours.toFixed(
             1
-          )}, Tổng OT: ${totalOtHours.toFixed(1)}, Số ngày làm: ${workDays}`
+          )}, Tổng OT: ${recalculatedTotalOtHours.toFixed(
+            1
+          )}, Số ngày làm: ${workDays}`
         )
       } catch (error) {
         console.error('[DEBUG] Lỗi khi tải dữ liệu thống kê:', error)
@@ -436,6 +486,7 @@ const StatisticsScreen = ({ navigation }) => {
       } finally {
         setIsLoading(false)
         isLoadingRef.current = false
+        setInitialLoadDone(true)
         console.log('[DEBUG] Hoàn thành quá trình tải dữ liệu thống kê')
       }
     },
@@ -459,84 +510,108 @@ const StatisticsScreen = ({ navigation }) => {
   )
 
   // Render item cho FlatList
-  const renderItem = ({ item }) => (
-    <View style={[styles.tableRow, darkMode && styles.darkTableRow]}>
-      <Text
-        style={[styles.tableCell, styles.dateCell, darkMode && styles.darkText]}
-      >
-        {item.date}
-      </Text>
-      <Text
-        style={[styles.tableCell, styles.dayCell, darkMode && styles.darkText]}
-      >
-        {item.dayOfWeek}
-      </Text>
-      <Text
-        style={[styles.tableCell, styles.timeCell, darkMode && styles.darkText]}
-      >
-        {item.checkIn}
-      </Text>
-      <Text
-        style={[styles.tableCell, styles.timeCell, darkMode && styles.darkText]}
-      >
-        {item.checkOut}
-      </Text>
-      <Text
-        style={[
-          styles.tableCell,
-          styles.hoursCell,
-          darkMode && styles.darkText,
-        ]}
-      >
-        {item.standardHours.toFixed(1)}
-      </Text>
-      <Text
-        style={[
-          styles.tableCell,
-          styles.hoursCell,
-          darkMode && styles.darkText,
-        ]}
-      >
-        {item.otHours.toFixed(1)}
-      </Text>
-      <Text
-        style={[
-          styles.tableCell,
-          styles.hoursCell,
-          darkMode && styles.darkText,
-        ]}
-      >
-        {item.sundayHours.toFixed(1)}
-      </Text>
-      <Text
-        style={[
-          styles.tableCell,
-          styles.hoursCell,
-          darkMode && styles.darkText,
-        ]}
-      >
-        {item.nightHours.toFixed(1)}
-      </Text>
-      <Text
-        style={[
-          styles.tableCell,
-          styles.hoursCell,
-          darkMode && styles.darkText,
-        ]}
-      >
-        {item.totalHours.toFixed(1)}
-      </Text>
-      <Text
-        style={[
-          styles.tableCell,
-          styles.statusCell,
-          darkMode && styles.darkText,
-        ]}
-      >
-        {item.status}
-      </Text>
-    </View>
-  )
+  const renderItem = ({ item }) => {
+    // Đảm bảo rằng các ngày có dấu tích xanh (DU_CONG) luôn hiển thị giờ làm việc > 0
+    const displayStandardHours =
+      item.status === '✅' && item.standardHours <= 0 ? 8.0 : item.standardHours
+    const displayTotalHours =
+      item.status === '✅' && item.totalHours <= 0 ? 8.0 : item.totalHours
+
+    return (
+      <View style={[styles.tableRow, darkMode && styles.darkTableRow]}>
+        <Text
+          style={[
+            styles.tableCell,
+            styles.dateCell,
+            darkMode && styles.darkText,
+          ]}
+        >
+          {item.date}
+        </Text>
+        <Text
+          style={[
+            styles.tableCell,
+            styles.dayCell,
+            darkMode && styles.darkText,
+          ]}
+        >
+          {item.dayOfWeek}
+        </Text>
+        <Text
+          style={[
+            styles.tableCell,
+            styles.timeCell,
+            darkMode && styles.darkText,
+          ]}
+        >
+          {item.checkIn}
+        </Text>
+        <Text
+          style={[
+            styles.tableCell,
+            styles.timeCell,
+            darkMode && styles.darkText,
+          ]}
+        >
+          {item.checkOut}
+        </Text>
+        <Text
+          style={[
+            styles.tableCell,
+            styles.hoursCell,
+            darkMode && styles.darkText,
+          ]}
+        >
+          {displayStandardHours.toFixed(1)}
+        </Text>
+        <Text
+          style={[
+            styles.tableCell,
+            styles.hoursCell,
+            darkMode && styles.darkText,
+          ]}
+        >
+          {item.otHours.toFixed(1)}
+        </Text>
+        <Text
+          style={[
+            styles.tableCell,
+            styles.hoursCell,
+            darkMode && styles.darkText,
+          ]}
+        >
+          {item.sundayHours.toFixed(1)}
+        </Text>
+        <Text
+          style={[
+            styles.tableCell,
+            styles.hoursCell,
+            darkMode && styles.darkText,
+          ]}
+        >
+          {item.nightHours.toFixed(1)}
+        </Text>
+        <Text
+          style={[
+            styles.tableCell,
+            styles.hoursCell,
+            darkMode && styles.darkText,
+          ]}
+        >
+          {displayTotalHours.toFixed(1)}
+        </Text>
+        <Text
+          style={[
+            styles.tableCell,
+            styles.statusCell,
+            darkMode && styles.darkText,
+          ]}
+        >
+          {item.status}
+        </Text>
+      </View>
+    )
+  }
 
   return (
     <View style={[styles.container, darkMode && styles.darkContainer]}>
@@ -798,6 +873,17 @@ const StatisticsScreen = ({ navigation }) => {
               renderItem={renderItem}
               keyExtractor={(item, index) => `stat-${index}`}
               style={styles.tableBody}
+              initialScrollIndex={0} // Luôn bắt đầu từ đầu danh sách
+              getItemLayout={(data, index) => ({
+                length: 40, // Chiều cao ước tính của mỗi hàng
+                offset: 40 * index,
+                index,
+              })}
+              onScrollToIndexFailed={(info) => {
+                console.log('[DEBUG] Không thể cuộn đến index:', info.index)
+              }}
+              // Đảm bảo danh sách luôn hiển thị từ đầu khi chuyển tab
+              extraData={selectedPeriod}
             />
           </View>
         </>
