@@ -71,10 +71,41 @@ const WeeklyStatusGrid = () => {
 
   // Initialize week days and load statuses
   useEffect(() => {
-    generateWeekDays()
-    loadDailyStatuses()
-    loadAvailableShifts()
-  }, [generateWeekDays, loadDailyStatuses, loadAvailableShifts])
+    // Sử dụng biến cờ để theo dõi trạng thái mount của component
+    let isMounted = true
+
+    const initializeData = async () => {
+      if (!isMounted) return
+
+      try {
+        // Thực hiện các tác vụ khởi tạo tuần tự để tránh quá tải
+        generateWeekDays()
+
+        // Đợi một chút trước khi tải dữ liệu tiếp theo
+        await new Promise((resolve) => setTimeout(resolve, 100))
+
+        if (isMounted) {
+          await loadDailyStatuses()
+        }
+
+        // Đợi một chút trước khi tải dữ liệu tiếp theo
+        await new Promise((resolve) => setTimeout(resolve, 100))
+
+        if (isMounted) {
+          await loadAvailableShifts()
+        }
+      } catch (error) {
+        console.error('Lỗi khi khởi tạo dữ liệu:', error)
+      }
+    }
+
+    initializeData()
+
+    // Cleanup function
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   // Tải danh sách ca làm việc từ context hoặc AsyncStorage
   const loadAvailableShifts = useCallback(async () => {
@@ -225,35 +256,45 @@ const WeeklyStatusGrid = () => {
     }
   }, [attendanceLogs, updateStatusFromAttendanceLogs])
 
-  // Thêm useEffect để làm mới dữ liệu khi có thay đổi, nhưng với tần suất thấp hơn
+  // Làm mới dữ liệu khi có thay đổi, nhưng với tần suất thấp hơn
   useEffect(() => {
-    // Đăng ký sự kiện lắng nghe thay đổi trong AsyncStorage
-    const refreshListener = () => {
-      // Chỉ làm mới dữ liệu khi cần thiết
-      const now = new Date()
-      const lastRefreshKey = 'lastWeeklyStatusRefresh'
+    // Sử dụng biến cờ để theo dõi trạng thái mount của component
+    let isMounted = true
 
-      AsyncStorage.getItem(lastRefreshKey)
-        .then((lastRefreshTime) => {
-          const shouldRefresh =
-            !lastRefreshTime ||
-            now.getTime() - parseInt(lastRefreshTime) > 300000 // Chỉ làm mới sau 5 phút
+    // Chỉ làm mới dữ liệu khi cần thiết
+    const refreshListener = async () => {
+      if (!isMounted) return
 
-          if (shouldRefresh) {
-            refreshData()
-            AsyncStorage.setItem(lastRefreshKey, now.getTime().toString())
-          }
-        })
-        .catch((err) => {
-          console.error('Lỗi khi kiểm tra thời gian làm mới:', err)
-        })
+      try {
+        const now = new Date()
+        const lastRefreshKey = 'lastWeeklyStatusRefresh'
+
+        const lastRefreshTime = await AsyncStorage.getItem(lastRefreshKey)
+        const shouldRefresh =
+          !lastRefreshTime || now.getTime() - parseInt(lastRefreshTime) > 600000 // Tăng lên 10 phút
+
+        if (shouldRefresh && isMounted) {
+          // Đặt timeout để tránh làm mới ngay lập tức
+          setTimeout(() => {
+            if (isMounted) {
+              refreshData()
+              AsyncStorage.setItem(lastRefreshKey, now.getTime().toString())
+            }
+          }, 500)
+        }
+      } catch (err) {
+        console.error('Lỗi khi kiểm tra thời gian làm mới:', err)
+      }
     }
 
-    // Giả lập sự kiện lắng nghe với tần suất thấp hơn
-    const refreshInterval = setInterval(refreshListener, 300000) // Làm mới mỗi 5 phút
+    // Chỉ chạy một lần khi component mount
+    refreshListener()
+
+    // Không sử dụng interval để tránh gọi liên tục
+    // Thay vào đó, chỉ làm mới khi người dùng tương tác với component
 
     return () => {
-      clearInterval(refreshInterval) // Dọn dẹp khi component unmount
+      isMounted = false
     }
   }, [refreshData])
 
@@ -287,40 +328,51 @@ const WeeklyStatusGrid = () => {
     setWeekDays(days)
   }, [])
 
-  // Load daily work statuses from AsyncStorage
+  // Load daily work statuses from AsyncStorage - tối ưu hóa để tránh treo
   const loadDailyStatuses = useCallback(async () => {
     try {
-      const keys = await AsyncStorage.getAllKeys()
-      const statusKeys = keys.filter((key) =>
-        key.startsWith('dailyWorkStatus_')
-      )
+      // Chỉ lấy các key cần thiết cho tuần hiện tại thay vì tất cả
+      const today = new Date()
+      const startOfWeek = new Date(today)
+      const dayOfWeek = today.getDay() // 0 = Sunday, 1 = Monday, ...
+      const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
+      startOfWeek.setDate(today.getDate() + mondayOffset)
 
-      // Nếu không có thay đổi về số lượng key, không cần tải lại
-      if (
-        statusKeys.length === Object.keys(dailyStatuses).length &&
-        Object.keys(dailyStatuses).length > 0
-      ) {
-        return
+      // Tạo mảng các key cần tải cho tuần hiện tại
+      const keysToLoad = []
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(startOfWeek)
+        date.setDate(startOfWeek.getDate() + i)
+        const dateKey = formatDateKey(date)
+        keysToLoad.push(`dailyWorkStatus_${dateKey}`)
       }
 
-      const statusPairs = await AsyncStorage.multiGet(statusKeys)
+      // Tải dữ liệu cho các key đã xác định
+      const statusPairs = await AsyncStorage.multiGet(keysToLoad)
 
+      // Xử lý dữ liệu đã tải
       const statuses = {}
       statusPairs.forEach(([key, value]) => {
+        if (!value) return // Bỏ qua các key không có dữ liệu
+
         try {
           const dateStr = key.replace('dailyWorkStatus_', '')
           const parsedValue = JSON.parse(value)
           statuses[dateStr] = parsedValue
         } catch (parseError) {
-          console.error(`Error parsing status for key ${key}:`, parseError)
+          console.error(`Lỗi khi phân tích dữ liệu cho key ${key}:`, parseError)
         }
       })
 
-      setDailyStatuses(statuses)
+      // Cập nhật state với dữ liệu mới
+      setDailyStatuses((prevStatuses) => ({
+        ...prevStatuses,
+        ...statuses,
+      }))
     } catch (error) {
-      console.error('Error loading daily statuses:', error)
+      console.error('Lỗi khi tải trạng thái làm việc hàng ngày:', error)
     }
-  }, [dailyStatuses])
+  }, [])
 
   // Hàm đã được khai báo ở trên
 
@@ -663,80 +715,88 @@ const WeeklyStatusGrid = () => {
       // Đóng modal ngay lập tức để cải thiện UX
       setStatusModalVisible(false)
 
-      try {
-        // Sử dụng workStatusCalculator để cập nhật trạng thái
-        const {
-          updateWorkStatusManually,
-        } = require('../utils/workStatusCalculator')
+      // Sử dụng setTimeout để tránh xử lý quá nhiều tác vụ cùng lúc
+      setTimeout(async () => {
+        try {
+          // Sử dụng workStatusCalculator để cập nhật trạng thái
+          const {
+            updateWorkStatusManually,
+          } = require('../utils/workStatusCalculator')
 
-        // Tạo dữ liệu bổ sung cho cập nhật
-        const additionalData = {
-          shiftId: updatedStatus.shiftId,
-          shiftName: updatedStatus.shiftName,
-          vaoLogTime: updatedStatus.vaoLogTime,
-          raLogTime: updatedStatus.raLogTime,
-        }
+          // Tạo dữ liệu bổ sung cho cập nhật
+          const additionalData = {
+            shiftId: updatedStatus.shiftId,
+            shiftName: updatedStatus.shiftName,
+            vaoLogTime: updatedStatus.vaoLogTime,
+            raLogTime: updatedStatus.raLogTime,
+          }
 
-        // Nếu là trạng thái DU_CONG và có ca làm việc, tính toán giờ công
-        if (newStatus === WORK_STATUS.DU_CONG && shiftToUse) {
-          // Không cần tính toán giờ công ở đây vì đã tính toán ở trên
-          // và đã lưu vào updatedStatus
-          // Chỉ cần thêm các giá trị đã tính toán vào additionalData
-          Object.assign(additionalData, {
-            standardHoursScheduled: updatedStatus.standardHoursScheduled,
-            otHoursScheduled: updatedStatus.otHoursScheduled,
-            sundayHoursScheduled: updatedStatus.sundayHoursScheduled,
-            nightHoursScheduled: updatedStatus.nightHoursScheduled,
-            totalHoursScheduled: updatedStatus.totalHoursScheduled,
-            isOvernight: updatedStatus.isOvernight,
-            scheduledStartTime: updatedStatus.scheduledStartTime,
-            scheduledOfficeEndTime: updatedStatus.scheduledOfficeEndTime,
-            scheduledEndTime: updatedStatus.scheduledEndTime,
-          })
-        }
+          // Nếu là trạng thái DU_CONG và có ca làm việc, tính toán giờ công
+          if (newStatus === WORK_STATUS.DU_CONG && shiftToUse) {
+            // Chỉ cần thêm các giá trị đã tính toán vào additionalData
+            Object.assign(additionalData, {
+              standardHoursScheduled: updatedStatus.standardHoursScheduled,
+              otHoursScheduled: updatedStatus.otHoursScheduled,
+              sundayHoursScheduled: updatedStatus.sundayHoursScheduled,
+              nightHoursScheduled: updatedStatus.nightHoursScheduled,
+              totalHoursScheduled: updatedStatus.totalHoursScheduled,
+              isOvernight: updatedStatus.isOvernight,
+              scheduledStartTime: updatedStatus.scheduledStartTime,
+              scheduledOfficeEndTime: updatedStatus.scheduledOfficeEndTime,
+              scheduledEndTime: updatedStatus.scheduledEndTime,
+            })
+          }
 
-        // Cập nhật trạng thái sử dụng hàm từ workStatusCalculator
-        const result = await updateWorkStatusManually(
-          dateKey,
-          newStatus,
-          additionalData
-        )
+          // Cập nhật trạng thái sử dụng hàm từ workStatusCalculator
+          const result = await updateWorkStatusManually(
+            dateKey,
+            newStatus,
+            additionalData
+          )
 
-        if (result) {
-          // Cập nhật trạng thái local sau khi lưu thành công
-          setDailyStatuses((prevStatuses) => ({
-            ...prevStatuses,
-            [dateKey]: result,
-          }))
+          if (result) {
+            // Cập nhật trạng thái local sau khi lưu thành công
+            setDailyStatuses((prevStatuses) => ({
+              ...prevStatuses,
+              [dateKey]: result,
+            }))
 
-          // Thông báo cho các thành phần khác về sự thay đổi trạng thái
-          if (typeof notifyWorkStatusUpdate === 'function') {
-            console.log(
-              '[DEBUG] Gọi hàm thông báo cập nhật trạng thái làm việc'
+            // Thông báo cho các thành phần khác về sự thay đổi trạng thái
+            if (typeof notifyWorkStatusUpdate === 'function') {
+              // Đặt timeout để tránh gọi quá nhanh
+              setTimeout(() => {
+                notifyWorkStatusUpdate()
+              }, 300)
+            }
+          }
+        } catch (updateError) {
+          console.error('Lỗi khi cập nhật trạng thái làm việc:', updateError)
+
+          // Nếu có lỗi khi sử dụng workStatusCalculator, sử dụng cách cũ
+          try {
+            await AsyncStorage.setItem(
+              `dailyWorkStatus_${dateKey}`,
+              JSON.stringify(updatedStatus)
             )
-            notifyWorkStatusUpdate()
+
+            // Cập nhật trạng thái local
+            setDailyStatuses((prevStatuses) => ({
+              ...prevStatuses,
+              [dateKey]: updatedStatus,
+            }))
+
+            // Thông báo cho các thành phần khác
+            if (typeof notifyWorkStatusUpdate === 'function') {
+              // Đặt timeout để tránh gọi quá nhanh
+              setTimeout(() => {
+                notifyWorkStatusUpdate()
+              }, 300)
+            }
+          } catch (storageError) {
+            console.error('Lỗi khi lưu vào AsyncStorage:', storageError)
           }
         }
-      } catch (updateError) {
-        console.error('Lỗi khi cập nhật trạng thái làm việc:', updateError)
-
-        // Nếu có lỗi khi sử dụng workStatusCalculator, sử dụng cách cũ
-        await AsyncStorage.setItem(
-          `dailyWorkStatus_${dateKey}`,
-          JSON.stringify(updatedStatus)
-        )
-
-        // Cập nhật trạng thái local
-        setDailyStatuses((prevStatuses) => ({
-          ...prevStatuses,
-          [dateKey]: updatedStatus,
-        }))
-
-        // Thông báo cho các thành phần khác
-        if (typeof notifyWorkStatusUpdate === 'function') {
-          notifyWorkStatusUpdate()
-        }
-      }
+      }, 300) // Đợi 300ms trước khi xử lý để tránh treo UI
 
       // Đánh dấu đã hoàn thành cập nhật
       setTimeout(() => {

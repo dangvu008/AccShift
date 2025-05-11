@@ -146,6 +146,20 @@ setInterval(() => {
 }, API_CONFIG.KEY_USAGE_RESET_INTERVAL)
 
 /**
+ * Lấy danh sách API keys
+ * @returns {Promise<Array>} Danh sách API keys
+ */
+export const getApiKeys = async () => {
+  try {
+    // Trả về danh sách API keys đã được lọc (chỉ bao gồm các key đang bật)
+    return API_KEYS.filter((keyObj) => keyObj.enabled)
+  } catch (error) {
+    console.error('Lỗi khi lấy danh sách API keys:', error)
+    return []
+  }
+}
+
+/**
  * Chọn API key phù hợp
  * @returns {string|null} API key hoặc null nếu không có key khả dụng
  */
@@ -402,8 +416,12 @@ export const fetchWeatherData = async (
     )
 
     // Kiểm tra môi trường để tối ưu hóa request
+    // Định nghĩa biến isWeb ở phạm vi toàn cục của hàm để có thể sử dụng trong các khối catch
     const isWeb = typeof document !== 'undefined'
     const isMobile = !isWeb
+
+    // Lưu biến isWeb vào biến toàn cục để sử dụng trong các hàm khác
+    global.isWeb = isWeb
 
     // Sử dụng URL trực tiếp không qua proxy
     let fetchUrl = url
@@ -435,10 +453,23 @@ export const fetchWeatherData = async (
 
     console.log('Gọi API với URL:', fetchUrl.replace(apiKey, '***'))
 
-    const response = await fetch(fetchUrl, fetchOptions).catch((error) => {
-      console.error('Lỗi fetch API thời tiết:', error)
-      throw error
-    })
+    // Thêm xử lý lỗi tốt hơn cho fetch
+    let response
+    try {
+      response = await fetch(fetchUrl, fetchOptions)
+    } catch (fetchError) {
+      console.error('Lỗi fetch API thời tiết:', fetchError)
+
+      // Nếu đang chạy trên Expo Snack hoặc môi trường web, thử dùng dữ liệu giả
+      if (global.isWeb || typeof document !== 'undefined') {
+        console.log('Đang chạy trên môi trường web, thử dùng dữ liệu giả...')
+        const mockData = createMockWeatherData(endpoint, params)
+        await saveToCache(cacheKey, mockData)
+        return mockData
+      }
+
+      throw fetchError
+    }
 
     clearTimeout(timeoutId) // Xóa timeout nếu request thành công
 
@@ -584,7 +615,7 @@ export const fetchWeatherData = async (
 
     // Kiểm tra lỗi CORS trên môi trường web
     const isCorsError =
-      isWeb &&
+      (global.isWeb || typeof document !== 'undefined') &&
       (error.message.includes('CORS') ||
         error.message.includes('cors') ||
         error.message.includes('Cross-Origin') ||
@@ -912,7 +943,24 @@ export const getCurrentWeather = async (
   lat = API_CONFIG.DEFAULT_LOCATION.lat,
   lon = API_CONFIG.DEFAULT_LOCATION.lon
 ) => {
-  return fetchWeatherData('weather', { lat, lon })
+  try {
+    // Kiểm tra nếu đang chạy trên Expo Snack
+    const isExpoSnack =
+      typeof document !== 'undefined' &&
+      (window.location?.hostname?.includes('snack.expo') ||
+        window.location?.hostname?.includes('expo.dev'))
+
+    // Nếu đang chạy trên Expo Snack, trả về dữ liệu giả ngay lập tức
+    if (isExpoSnack) {
+      console.log('Đang chạy trên Expo Snack, sử dụng dữ liệu giả...')
+      return createMockWeatherData('weather', { lat, lon })
+    }
+
+    return fetchWeatherData('weather', { lat, lon })
+  } catch (error) {
+    console.error('Lỗi khi lấy dữ liệu thời tiết hiện tại:', error)
+    return createMockWeatherData('weather', { lat, lon })
+  }
 }
 
 /**
@@ -925,7 +973,24 @@ export const getWeatherForecast = async (
   lat = API_CONFIG.DEFAULT_LOCATION.lat,
   lon = API_CONFIG.DEFAULT_LOCATION.lon
 ) => {
-  return fetchWeatherData('forecast', { lat, lon })
+  try {
+    // Kiểm tra nếu đang chạy trên Expo Snack
+    const isExpoSnack =
+      typeof document !== 'undefined' &&
+      (window.location?.hostname?.includes('snack.expo') ||
+        window.location?.hostname?.includes('expo.dev'))
+
+    // Nếu đang chạy trên Expo Snack, trả về dữ liệu giả ngay lập tức
+    if (isExpoSnack) {
+      console.log('Đang chạy trên Expo Snack, sử dụng dữ liệu dự báo giả...')
+      return createMockWeatherData('forecast', { lat, lon })
+    }
+
+    return fetchWeatherData('forecast', { lat, lon })
+  } catch (error) {
+    console.error('Lỗi khi lấy dữ liệu dự báo thời tiết:', error)
+    return createMockWeatherData('forecast', { lat, lon })
+  }
 }
 
 /**

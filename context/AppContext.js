@@ -106,269 +106,299 @@ export const AppProvider = ({ children }) => {
   useEffect(() => {
     let isMounted = true
 
-    const loadSettings = async () => {
-      try {
-        if (!isMounted) return
+    // Tách việc tải dữ liệu thành các hàm nhỏ hơn để tránh quá tải
+    const loadUserSettings = async () => {
+      if (!isMounted) return
 
+      try {
         // Tải cài đặt người dùng từ storage
         const userSettings = await storage.getUserSettings()
-        if (userSettings && isMounted) {
-          // Cài đặt ngôn ngữ
-          if (userSettings.language) setLanguage(userSettings.language)
+        if (!userSettings || !isMounted) return
 
-          // Cài đặt giao diện
-          if (userSettings.theme === 'dark' || userSettings.theme === 'light') {
-            setDarkMode(userSettings.theme === 'dark')
-          }
+        // Cài đặt cơ bản
+        if (userSettings.language) setLanguage(userSettings.language)
+        if (userSettings.theme === 'dark' || userSettings.theme === 'light') {
+          setDarkMode(userSettings.theme === 'dark')
+        }
 
-          // Cài đặt thông báo
-          if (userSettings.alarmSoundEnabled !== undefined) {
-            setNotificationSound(userSettings.alarmSoundEnabled)
-          }
+        // Cài đặt thông báo
+        if (userSettings.alarmSoundEnabled !== undefined) {
+          setNotificationSound(userSettings.alarmSoundEnabled)
+        }
+        if (userSettings.alarmVibrationEnabled !== undefined) {
+          setNotificationVibration(userSettings.alarmVibrationEnabled)
+        }
 
-          if (userSettings.alarmVibrationEnabled !== undefined) {
-            setNotificationVibration(userSettings.alarmVibrationEnabled)
-          }
+        // Cài đặt chế độ nút đi làm
+        if (userSettings.multiButtonMode !== undefined) {
+          setOnlyGoWorkMode(userSettings.multiButtonMode === 'simple')
+        }
 
-          // Cài đặt chế độ nút đi làm
-          if (userSettings.multiButtonMode !== undefined) {
-            setOnlyGoWorkMode(userSettings.multiButtonMode === 'simple')
-          }
+        // Cài đặt OT và làm đêm (chỉ cập nhật nếu có giá trị)
+        if (userSettings.otThresholdEnabled !== undefined)
+          setOtThresholdEnabled(userSettings.otThresholdEnabled)
+        if (userSettings.otThresholdHours !== undefined)
+          setOtThresholdHours(userSettings.otThresholdHours)
+        if (userSettings.otRateWeekdayTier2 !== undefined)
+          setOtRateWeekdayTier2(userSettings.otRateWeekdayTier2)
+        if (userSettings.otRateSaturdayTier2 !== undefined)
+          setOtRateSaturdayTier2(userSettings.otRateSaturdayTier2)
+        if (userSettings.otRateSundayTier2 !== undefined)
+          setOtRateSundayTier2(userSettings.otRateSundayTier2)
+        if (userSettings.otRateHolidayTier2 !== undefined)
+          setOtRateHolidayTier2(userSettings.otRateHolidayTier2)
 
-          // Cài đặt ngưỡng OT
-          if (userSettings.otThresholdEnabled !== undefined) {
-            setOtThresholdEnabled(userSettings.otThresholdEnabled)
-          }
+        // Cài đặt làm đêm
+        if (userSettings.nightWorkEnabled !== undefined)
+          setNightWorkEnabled(userSettings.nightWorkEnabled)
+        if (userSettings.nightWorkStartTime)
+          setNightWorkStartTime(userSettings.nightWorkStartTime)
+        if (userSettings.nightWorkEndTime)
+          setNightWorkEndTime(userSettings.nightWorkEndTime)
+        if (userSettings.nightWorkRate !== undefined)
+          setNightWorkRate(userSettings.nightWorkRate)
 
-          if (userSettings.otThresholdHours !== undefined) {
-            setOtThresholdHours(userSettings.otThresholdHours)
-          }
+        // Cài đặt tỷ lệ OT cơ bản
+        if (userSettings.otRateWeekday !== undefined)
+          setOtRateWeekday(userSettings.otRateWeekday)
+        if (userSettings.otRateSaturday !== undefined)
+          setOtRateSaturday(userSettings.otRateSaturday)
+        if (userSettings.otRateSunday !== undefined)
+          setOtRateSunday(userSettings.otRateSunday)
+        if (userSettings.otRateHoliday !== undefined)
+          setOtRateHoliday(userSettings.otRateHoliday)
 
-          if (userSettings.otRateWeekdayTier2 !== undefined) {
-            setOtRateWeekdayTier2(userSettings.otRateWeekdayTier2)
-          }
+        // Cài đặt quy tắc tính lương đêm
+        if (userSettings.nightOtCalculationRule)
+          setNightOtCalculationRule(userSettings.nightOtCalculationRule)
 
-          if (userSettings.otRateSaturdayTier2 !== undefined) {
-            setOtRateSaturdayTier2(userSettings.otRateSaturdayTier2)
-          }
+        // Cài đặt tỷ lệ cố định
+        if (userSettings.fixedRateStandardNight !== undefined)
+          setFixedRateStandardNight(userSettings.fixedRateStandardNight)
+        if (userSettings.fixedRateOtWeekdayNight !== undefined)
+          setFixedRateOtWeekdayNight(userSettings.fixedRateOtWeekdayNight)
+        if (userSettings.fixedRateOtSaturdayNight !== undefined)
+          setFixedRateOtSaturdayNight(userSettings.fixedRateOtSaturdayNight)
+        if (userSettings.fixedRateOtSundayNight !== undefined)
+          setFixedRateOtSundayNight(userSettings.fixedRateOtSundayNight)
+        if (userSettings.fixedRateOtHolidayNight !== undefined)
+          setFixedRateOtHolidayNight(userSettings.fixedRateOtHolidayNight)
+      } catch (error) {
+        console.error('Lỗi khi tải cài đặt người dùng:', error)
 
-          if (userSettings.otRateSundayTier2 !== undefined) {
-            setOtRateSundayTier2(userSettings.otRateSundayTier2)
-          }
+        // Tải từ AsyncStorage cũ nếu không thể tải từ storage mới
+        try {
+          if (!isMounted) return
 
-          if (userSettings.otRateHolidayTier2 !== undefined) {
-            setOtRateHolidayTier2(userSettings.otRateHolidayTier2)
-          }
-
-          // Cài đặt làm đêm
-          if (userSettings.nightWorkEnabled !== undefined) {
-            setNightWorkEnabled(userSettings.nightWorkEnabled)
-          }
-
-          if (userSettings.nightWorkStartTime) {
-            setNightWorkStartTime(userSettings.nightWorkStartTime)
-          }
-
-          if (userSettings.nightWorkEndTime) {
-            setNightWorkEndTime(userSettings.nightWorkEndTime)
-          }
-
-          if (userSettings.nightWorkRate !== undefined) {
-            setNightWorkRate(userSettings.nightWorkRate)
-          }
-
-          // Cài đặt tỷ lệ OT cơ bản
-          if (userSettings.otRateWeekday !== undefined) {
-            setOtRateWeekday(userSettings.otRateWeekday)
-          }
-
-          if (userSettings.otRateSaturday !== undefined) {
-            setOtRateSaturday(userSettings.otRateSaturday)
-          }
-
-          if (userSettings.otRateSunday !== undefined) {
-            setOtRateSunday(userSettings.otRateSunday)
-          }
-
-          if (userSettings.otRateHoliday !== undefined) {
-            setOtRateHoliday(userSettings.otRateHoliday)
-          }
-
-          // Cài đặt quy tắc tính lương đêm
-          if (userSettings.nightOtCalculationRule) {
-            setNightOtCalculationRule(userSettings.nightOtCalculationRule)
-          }
-
-          // Cài đặt tỷ lệ cố định
-          if (userSettings.fixedRateStandardNight !== undefined) {
-            setFixedRateStandardNight(userSettings.fixedRateStandardNight)
-          }
-
-          if (userSettings.fixedRateOtWeekdayNight !== undefined) {
-            setFixedRateOtWeekdayNight(userSettings.fixedRateOtWeekdayNight)
-          }
-
-          if (userSettings.fixedRateOtSaturdayNight !== undefined) {
-            setFixedRateOtSaturdayNight(userSettings.fixedRateOtSaturdayNight)
-          }
-
-          if (userSettings.fixedRateOtSundayNight !== undefined) {
-            setFixedRateOtSundayNight(userSettings.fixedRateOtSundayNight)
-          }
-
-          if (userSettings.fixedRateOtHolidayNight !== undefined) {
-            setFixedRateOtHolidayNight(userSettings.fixedRateOtHolidayNight)
-          }
-        } else {
-          // Tải từ AsyncStorage cũ nếu không có userSettings
           const storedLanguage = await AsyncStorage.getItem('language')
-          if (storedLanguage && isMounted) setLanguage(storedLanguage)
+          if (storedLanguage) setLanguage(storedLanguage)
 
           const storedDarkMode = await AsyncStorage.getItem('darkMode')
-          if (storedDarkMode && isMounted)
-            setDarkMode(storedDarkMode === 'true')
+          if (storedDarkMode) setDarkMode(storedDarkMode === 'true')
 
           const storedNotificationSound = await AsyncStorage.getItem(
             'notificationSound'
           )
-          if (storedNotificationSound && isMounted)
+          if (storedNotificationSound)
             setNotificationSound(storedNotificationSound === 'true')
 
           const storedNotificationVibration = await AsyncStorage.getItem(
             'notificationVibration'
           )
-          if (storedNotificationVibration && isMounted)
+          if (storedNotificationVibration)
             setNotificationVibration(storedNotificationVibration === 'true')
 
-          // Load Multi-Function Button settings
           const storedOnlyGoWorkMode = await AsyncStorage.getItem(
             'onlyGoWorkMode'
           )
-          if (storedOnlyGoWorkMode && isMounted)
+          if (storedOnlyGoWorkMode)
             setOnlyGoWorkMode(storedOnlyGoWorkMode === 'true')
+        } catch (legacyError) {
+          console.error('Lỗi khi tải cài đặt cũ:', legacyError)
         }
+      }
+    }
 
-        // Load shifts
+    const loadBasicData = async () => {
+      if (!isMounted) return
+
+      try {
+        // Tải ca làm việc
         const loadedShifts = await getShifts()
         if (isMounted) setShifts(loadedShifts)
 
-        // Load check-in history
+        // Tải lịch sử chấm công
         const history = await getCheckInHistory()
         if (isMounted) setCheckInHistory(history)
 
-        // Load notes
+        // Tải ghi chú
         const loadedNotes = await getNotes()
         if (isMounted) setNotes(loadedNotes)
+      } catch (error) {
+        console.error('Lỗi khi tải dữ liệu cơ bản:', error)
+      }
+    }
 
-        // Get current shift if any
+    const loadCurrentShift = async () => {
+      if (!isMounted) return
+
+      try {
+        // Lấy ca làm việc hiện tại
         const shift = await getCurrentShift()
-        if (isMounted) {
-          // Cập nhật currentShift mà không gây ra vòng lặp vô hạn
-          setCurrentShift(shift)
+        if (!isMounted) return
 
-          // Set showPunchButton based on current shift
-          if (shift && shift.showCheckInButtonWhileWorking) {
-            setShowPunchButton(true)
-          }
+        setCurrentShift(shift)
+
+        // Cập nhật trạng thái nút chấm công
+        if (shift && shift.showCheckInButtonWhileWorking) {
+          setShowPunchButton(true)
         }
 
-        // Check if currently working
+        // Kiểm tra trạng thái làm việc
         const workingStatus = await AsyncStorage.getItem('isWorking')
         if (workingStatus === 'true' && isMounted) {
           setIsWorking(true)
           const startTime = await AsyncStorage.getItem('workStartTime')
-          if (startTime && isMounted)
+          if (startTime && isMounted) {
             setWorkStartTime(new Date(Number.parseInt(startTime)))
-        }
-
-        try {
-          // Load weather data - Bọc trong try-catch riêng để không ảnh hưởng đến các phần khác
-          const weather = await getWeatherData()
-          if (isMounted) setWeatherData(weather)
-        } catch (weatherError) {
-          console.error('Error loading weather data:', weatherError)
-        }
-
-        try {
-          // Lấy cảnh báo thời tiết chưa đọc
-          const unreadAlerts = await weatherAlertService.getWeatherAlerts(true)
-          if (unreadAlerts && unreadAlerts.length > 0 && isMounted) {
-            setWeatherAlerts(unreadAlerts)
-          }
-        } catch (alertError) {
-          console.error('Error loading weather alerts:', alertError)
-        }
-
-        try {
-          // Lên lịch kiểm tra thời tiết cho ca hiện tại
-          if (shift && isMounted) {
-            await weatherAlertService.scheduleWeatherCheck(shift)
-          }
-        } catch (scheduleError) {
-          console.error('Error scheduling weather check:', scheduleError)
-        }
-
-        // Check notification permissions
-        const { status } = await Notifications.getPermissionsAsync()
-        if (isMounted) setAlarmPermissionGranted(status === 'granted')
-
-        try {
-          // Load saved locations
-          const savedHomeLocation = await locationUtils.getHomeLocation()
-          if (savedHomeLocation && isMounted) {
-            setHomeLocation(savedHomeLocation)
-          }
-
-          const savedWorkLocation = await locationUtils.getWorkLocation()
-          if (savedWorkLocation && isMounted) {
-            setWorkLocation(savedWorkLocation)
-          }
-
-          // Check location permission
-          const locationPermission =
-            await Location.getForegroundPermissionsAsync()
-          if (isMounted)
-            setLocationPermissionGranted(
-              locationPermission.status === 'granted'
-            )
-        } catch (locationError) {
-          console.error('Error loading location data:', locationError)
-        }
-
-        // Load today's attendance logs
-        const today = formatDate(new Date())
-        const storedLogs = await AsyncStorage.getItem(`attendanceLogs_${today}`)
-        if (storedLogs && isMounted) {
-          const logs = JSON.parse(storedLogs)
-          setAttendanceLogs(logs)
-
-          // Set button state based on the last log
-          if (logs.length > 0) {
-            const lastLog = logs[logs.length - 1]
-            switch (lastLog.type) {
-              case 'go_work':
-                setButtonState(BUTTON_STATES.WAITING_CHECK_IN)
-                break
-              case 'check_in':
-                setButtonState(BUTTON_STATES.WORKING)
-                break
-              case 'check_out':
-                setButtonState(BUTTON_STATES.READY_COMPLETE)
-                break
-              case 'complete':
-                setButtonState(BUTTON_STATES.COMPLETED)
-                break
-              default:
-                setButtonState(BUTTON_STATES.GO_WORK)
-            }
           }
         }
       } catch (error) {
-        console.error('Error loading settings:', error)
+        console.error('Lỗi khi tải ca làm việc hiện tại:', error)
       }
     }
 
-    loadSettings()
+    const loadWeatherData = async () => {
+      if (!isMounted) return
+
+      try {
+        // Tải dữ liệu thời tiết
+        const weather = await getWeatherData()
+        if (isMounted) setWeatherData(weather)
+
+        // Tải cảnh báo thời tiết
+        const unreadAlerts = await weatherAlertService.getWeatherAlerts(true)
+        if (unreadAlerts && unreadAlerts.length > 0 && isMounted) {
+          setWeatherAlerts(unreadAlerts)
+        }
+      } catch (error) {
+        console.error('Lỗi khi tải dữ liệu thời tiết:', error)
+      }
+    }
+
+    const loadLocationData = async () => {
+      if (!isMounted) return
+
+      try {
+        // Tải vị trí đã lưu
+        const savedHomeLocation = await locationUtils.getHomeLocation()
+        if (savedHomeLocation && isMounted) {
+          setHomeLocation(savedHomeLocation)
+        }
+
+        const savedWorkLocation = await locationUtils.getWorkLocation()
+        if (savedWorkLocation && isMounted) {
+          setWorkLocation(savedWorkLocation)
+        }
+
+        // Kiểm tra quyền vị trí
+        const locationPermission =
+          await Location.getForegroundPermissionsAsync()
+        if (isMounted) {
+          setLocationPermissionGranted(locationPermission.status === 'granted')
+        }
+      } catch (error) {
+        console.error('Lỗi khi tải dữ liệu vị trí:', error)
+      }
+    }
+
+    const loadAttendanceData = async () => {
+      if (!isMounted) return
+
+      try {
+        // Tải log chấm công hôm nay
+        const today = formatDate(new Date())
+        const storedLogs = await AsyncStorage.getItem(`attendanceLogs_${today}`)
+        if (!storedLogs || !isMounted) return
+
+        const logs = JSON.parse(storedLogs)
+        setAttendanceLogs(logs)
+
+        // Cập nhật trạng thái nút dựa trên log cuối cùng
+        if (logs.length > 0) {
+          const lastLog = logs[logs.length - 1]
+          switch (lastLog.type) {
+            case 'go_work':
+              setButtonState(BUTTON_STATES.WAITING_CHECK_IN)
+              break
+            case 'check_in':
+              setButtonState(BUTTON_STATES.WORKING)
+              break
+            case 'check_out':
+              setButtonState(BUTTON_STATES.READY_COMPLETE)
+              break
+            case 'complete':
+              setButtonState(BUTTON_STATES.COMPLETED)
+              break
+            default:
+              setButtonState(BUTTON_STATES.GO_WORK)
+          }
+        }
+      } catch (error) {
+        console.error('Lỗi khi tải dữ liệu chấm công:', error)
+      }
+    }
+
+    const checkPermissions = async () => {
+      if (!isMounted) return
+
+      try {
+        // Kiểm tra quyền thông báo
+        const { status } = await Notifications.getPermissionsAsync()
+        if (isMounted) setAlarmPermissionGranted(status === 'granted')
+      } catch (error) {
+        console.error('Lỗi khi kiểm tra quyền thông báo:', error)
+      }
+    }
+
+    // Tải dữ liệu theo thứ tự ưu tiên và với độ trễ để tránh treo
+    const loadAllData = async () => {
+      // Tải cài đặt người dùng trước tiên
+      await loadUserSettings()
+
+      // Tải dữ liệu cơ bản
+      setTimeout(async () => {
+        await loadBasicData()
+
+        // Tải ca làm việc hiện tại
+        setTimeout(async () => {
+          await loadCurrentShift()
+
+          // Tải dữ liệu chấm công
+          setTimeout(async () => {
+            await loadAttendanceData()
+
+            // Tải dữ liệu vị trí
+            setTimeout(async () => {
+              await loadLocationData()
+
+              // Kiểm tra quyền
+              setTimeout(async () => {
+                await checkPermissions()
+
+                // Tải dữ liệu thời tiết (ưu tiên thấp nhất)
+                setTimeout(async () => {
+                  await loadWeatherData()
+                }, 300)
+              }, 200)
+            }, 200)
+          }, 200)
+        }, 200)
+      }, 200)
+    }
+
+    // Bắt đầu tải dữ liệu
+    loadAllData()
 
     // Cleanup function
     return () => {

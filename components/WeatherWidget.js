@@ -49,8 +49,9 @@ const WeatherWidget = ({ onPress }) => {
   // State để kiểm soát hiển thị cảnh báo thông minh
   const [smartAlert, setSmartAlert] = useState(null)
 
-  // Sử dụng useRef để lưu trữ hàm rotateApiKeyAndRetry
+  // Sử dụng useRef để lưu trữ các hàm callback
   const rotateApiKeyAndRetryRef = useRef(null)
+  const fetchWeatherDataRef = useRef(null)
 
   // Khai báo rotateApiKeyAndRetry trước để có thể sử dụng trong fetchWeatherData
   const rotateApiKeyAndRetry = useCallback(async () => {
@@ -59,13 +60,9 @@ const WeatherWidget = ({ onPress }) => {
       apiKeyRotationCountRef.current += 1
 
       // Giới hạn số lần thay đổi API key để tránh vòng lặp vô hạn
-      if (apiKeyRotationCountRef.current > 5) {
-        // Giảm giới hạn từ 10 xuống 5 để giảm số lần gọi API
+      if (apiKeyRotationCountRef.current > 3) {
+        // Giảm từ 5 xuống 3
         console.log('Đã thử quá nhiều API key, dừng thử lại')
-        // Không hiển thị thông báo lỗi cho người dùng
-        // Không tự động thử lại để tiết kiệm API calls
-        console.log('Không tự động thử lại để tiết kiệm API calls')
-
         setLoading(false)
         setRefreshing(false)
         return
@@ -101,15 +98,12 @@ const WeatherWidget = ({ onPress }) => {
         await new Promise((resolve) => setTimeout(resolve, 200))
 
         // Thử lại với API key mới - sử dụng hàm fetchWeatherData thông qua tham chiếu
-        if (typeof fetchWeatherData === 'function') {
-          fetchWeatherData(true)
+        // Sử dụng tham chiếu từ ref thay vì trực tiếp
+        if (fetchWeatherDataRef.current) {
+          fetchWeatherDataRef.current(true)
         }
       } else {
         console.log('Không tìm thấy API key tiếp theo')
-        // Không hiển thị thông báo lỗi cho người dùng
-        // Không tự động thử lại để tiết kiệm API calls
-        console.log('Không tự động thử lại để tiết kiệm API calls')
-
         setLoading(false)
         setRefreshing(false)
       }
@@ -118,7 +112,7 @@ const WeatherWidget = ({ onPress }) => {
       setLoading(false)
       setRefreshing(false)
     }
-  }, [t, fetchWeatherData]) // Thêm fetchWeatherData vào dependencies
+  }, [t]) // Loại bỏ fetchWeatherData khỏi dependencies
 
   // Di chuyển hàm fetchWeatherData ra ngoài useEffect để có thể tái sử dụng
   const fetchWeatherData = useCallback(
@@ -135,8 +129,8 @@ const WeatherWidget = ({ onPress }) => {
 
           // Không hiển thị thông báo lỗi timeout cho người dùng
           // Thay vào đó, tự động thử lại với API key khác
-          if (typeof rotateApiKeyAndRetry === 'function') {
-            rotateApiKeyAndRetry()
+          if (rotateApiKeyAndRetryRef.current) {
+            rotateApiKeyAndRetryRef.current()
           }
         }
       }, 15000) // Giảm xuống 15 giây timeout để phản hồi nhanh hơn
@@ -452,8 +446,8 @@ const WeatherWidget = ({ onPress }) => {
             )
 
             // Thay đổi API key và thử lại ngay lập tức
-            if (typeof rotateApiKeyAndRetry === 'function') {
-              rotateApiKeyAndRetry()
+            if (rotateApiKeyAndRetryRef.current) {
+              rotateApiKeyAndRetryRef.current()
             }
           } else {
             // Lỗi khác, không tự động thử lại để tránh gọi API quá thường xuyên
@@ -597,7 +591,7 @@ const WeatherWidget = ({ onPress }) => {
         setSmartAlert(null)
       }
     },
-    [t, checkForRain, setSmartAlert, generateSmartAlert]
+    [t, checkForRain] // Loại bỏ setSmartAlert và generateSmartAlert khỏi dependencies
   )
 
   // Hàm làm mới dữ liệu thời tiết
@@ -772,7 +766,8 @@ const WeatherWidget = ({ onPress }) => {
   useEffect(() => {
     // Lưu tham chiếu của rotateApiKeyAndRetry để sử dụng trong các hàm khác
     rotateApiKeyAndRetryRef.current = rotateApiKeyAndRetry
-  }, [rotateApiKeyAndRetry])
+    fetchWeatherDataRef.current = fetchWeatherData
+  }, [rotateApiKeyAndRetry, fetchWeatherData])
 
   useEffect(() => {
     // Dọn dẹp timeout khi component unmount
@@ -790,53 +785,60 @@ const WeatherWidget = ({ onPress }) => {
     }
   }, [])
 
-  // Tự động tải lại dữ liệu thời tiết theo định kỳ
+  // Tự động tải lại dữ liệu thời tiết khi cần thiết
   useEffect(() => {
-    // Chỉ thiết lập interval khi có quyền vị trí và có vị trí
+    // Chỉ thực hiện khi có quyền vị trí và có vị trí
     if (locationPermissionGranted && (homeLocation || workLocation)) {
       console.log(
         'Không thiết lập tự động tải lại dữ liệu thời tiết để tiết kiệm API calls'
       )
 
       // Chỉ kiểm tra dữ liệu thời tiết khi không có dữ liệu
-      // Nếu không có dữ liệu thời tiết, thử tải lại một lần
-      if (!currentWeather) {
+      if (!currentWeather && !loading) {
         console.log('Không có dữ liệu thời tiết, thử tải lại một lần...')
-        // Reset bộ đếm API key
-        if (
-          apiKeyRotationCountRef &&
-          apiKeyRotationCountRef.current !== undefined
-        ) {
-          apiKeyRotationCountRef.current = 0
-        }
-        // Thử lại với API key đầu tiên
-        fetchWeatherData(true)
-      }
 
-      // Không cần dọn dẹp vì không có interval nào được thiết lập
-      return () => {
-        console.log(
-          'Không có interval tự động tải lại dữ liệu thời tiết để dọn dẹp'
-        )
+        // Đặt timeout để tránh gọi API ngay lập tức
+        const loadTimeout = setTimeout(() => {
+          // Reset bộ đếm API key
+          if (
+            apiKeyRotationCountRef &&
+            apiKeyRotationCountRef.current !== undefined
+          ) {
+            apiKeyRotationCountRef.current = 0
+          }
+
+          // Sử dụng tham chiếu để gọi fetchWeatherData
+          if (fetchWeatherDataRef.current) {
+            fetchWeatherDataRef.current(true)
+          }
+        }, 500)
+
+        return () => clearTimeout(loadTimeout)
       }
     }
   }, [
     locationPermissionGranted,
     homeLocation,
     workLocation,
-    fetchWeatherData,
     currentWeather,
+    loading,
   ])
 
+  // Chỉ fetch dữ liệu khi component được mount lần đầu hoặc khi vị trí thay đổi
   useEffect(() => {
-    // Chỉ fetch dữ liệu khi component được mount lần đầu
-    // hoặc khi các dependency thực sự thay đổi
-    if (isFirstMount.current) {
-      if (isFirstMount && isFirstMount.current !== undefined) {
+    // Sử dụng biến cờ để theo dõi trạng thái mount của component
+    let isMounted = true
+
+    const initializeWeatherData = async () => {
+      // Chỉ thực hiện khi component vẫn được mount
+      if (!isMounted) return
+
+      // Đánh dấu đã không còn là lần mount đầu tiên
+      if (isFirstMount.current) {
         isFirstMount.current = false
       }
 
-      // Đặt lại số lần thay đổi API key
+      // Reset số lần thay đổi API key
       if (
         apiKeyRotationCountRef &&
         apiKeyRotationCountRef.current !== undefined
@@ -844,37 +846,46 @@ const WeatherWidget = ({ onPress }) => {
         apiKeyRotationCountRef.current = 0
       }
 
-      // Kiểm tra quyền vị trí trước khi fetch dữ liệu
+      // Kiểm tra quyền vị trí
       if (!locationPermissionGranted) {
         console.log('Không có quyền vị trí, yêu cầu quyền...')
-        requestLocationPermission().then((granted) => {
-          if (granted) {
+        try {
+          const granted = await requestLocationPermission()
+          if (granted && isMounted) {
             console.log('Đã được cấp quyền vị trí, fetch dữ liệu thời tiết')
-            memoizedFetchWeatherData()
-          } else {
+            // Sử dụng timeout để tránh gọi API ngay lập tức
+            setTimeout(() => {
+              if (isMounted && !loading) {
+                memoizedFetchWeatherData()
+              }
+            }, 500)
+          } else if (isMounted) {
             console.log(
               'Quyền vị trí bị từ chối, không thể fetch dữ liệu thời tiết'
             )
             setLoading(false)
           }
-        })
-      } else {
-        console.log('Đã có quyền vị trí, fetch dữ liệu thời tiết')
-        memoizedFetchWeatherData()
+        } catch (error) {
+          console.error('Lỗi khi yêu cầu quyền vị trí:', error)
+          if (isMounted) setLoading(false)
+        }
+      } else if ((homeLocation || workLocation) && isMounted && !loading) {
+        console.log('Đã có quyền vị trí và vị trí, fetch dữ liệu thời tiết')
+        // Sử dụng timeout để tránh gọi API ngay lập tức
+        setTimeout(() => {
+          if (isMounted && !loading) {
+            memoizedFetchWeatherData()
+          }
+        }, 500)
       }
-    } else if ((homeLocation || workLocation) && locationPermissionGranted) {
-      // Chỉ fetch lại khi vị trí thay đổi và có quyền vị trí
-      console.log('Vị trí thay đổi, fetch lại dữ liệu thời tiết')
+    }
 
-      // Đặt lại số lần thay đổi API key
-      if (
-        apiKeyRotationCountRef &&
-        apiKeyRotationCountRef.current !== undefined
-      ) {
-        apiKeyRotationCountRef.current = 0
-      }
+    // Chỉ khởi tạo khi component mount lần đầu hoặc khi vị trí/quyền thay đổi
+    initializeWeatherData()
 
-      memoizedFetchWeatherData()
+    // Cleanup function
+    return () => {
+      isMounted = false
     }
   }, [
     homeLocation,
@@ -882,6 +893,7 @@ const WeatherWidget = ({ onPress }) => {
     locationPermissionGranted,
     memoizedFetchWeatherData,
     requestLocationPermission,
+    loading,
   ])
 
   if (loading) {
