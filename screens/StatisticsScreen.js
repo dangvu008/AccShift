@@ -173,6 +173,14 @@ const StatisticsScreen = ({ navigation }) => {
       return timeString.substring(0, 5)
     }
 
+    // Nếu là chuỗi thời gian có định dạng khác, đảm bảo chỉ trả về HH:MM
+    if (timeString.includes(':')) {
+      const parts = timeString.split(':')
+      if (parts.length >= 2) {
+        return `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}`
+      }
+    }
+
     return timeString
   }, [])
 
@@ -333,10 +341,39 @@ const StatisticsScreen = ({ navigation }) => {
           // Cập nhật dữ liệu tổng hợp
           if (statusEntry) {
             // Lấy giờ công từ bản ghi
-            const stdHours = statusEntry.standardHoursScheduled || 0
-            const otHours = statusEntry.otHoursScheduled || 0
-            const totalHours = statusEntry.totalHoursScheduled || 0
+            let stdHours = statusEntry.standardHoursScheduled || 0
+            let otHours = statusEntry.otHoursScheduled || 0
+            let sundayHours = statusEntry.sundayHoursScheduled || 0
+            let nightHours = statusEntry.nightHoursScheduled || 0
+            let totalHours = statusEntry.totalHoursScheduled || 0
             const status = statusEntry.status || ''
+
+            // Đảm bảo giờ công luôn phản ánh đúng lịch trình ca làm việc
+            // Áp dụng cho tất cả các trạng thái có chấm công (DU_CONG, DI_MUON, VE_SOM, DI_MUON_VE_SOM, THIEU_LOG)
+            if (
+              [
+                'DU_CONG',
+                'DI_MUON',
+                'VE_SOM',
+                'DI_MUON_VE_SOM',
+                'THIEU_LOG',
+              ].includes(status) &&
+              totalHours === 0
+            ) {
+              // Nếu có trạng thái chấm công nhưng totalHours = 0, có thể là lỗi dữ liệu
+              // Cập nhật lại dayData với giá trị mặc định (8.0 giờ)
+              console.log(
+                `[DEBUG] Phát hiện ${status} nhưng giờ = 0 cho ngày ${dateStr}, đặt giá trị theo lịch trình`
+              )
+
+              // Sử dụng giá trị mặc định 8.0 giờ nếu không có thông tin ca làm việc
+              stdHours = 8.0
+              totalHours = 8.0
+
+              // Cập nhật lại dayData
+              dayData.standardHours = stdHours
+              dayData.totalHours = totalHours
+            }
 
             // Cập nhật tổng giờ làm việc và giờ OT
             totalWorkHours += totalHours
@@ -344,8 +381,7 @@ const StatisticsScreen = ({ navigation }) => {
 
             // Kiểm tra xem ngày này có phải là ngày làm việc không
             // Một ngày được tính là ngày làm việc khi:
-            // 1. Có giờ công (totalHours > 0)
-            // 2. Trạng thái KHÔNG phải là một trong các trạng thái nghỉ
+            // Trạng thái KHÔNG phải là một trong các trạng thái nghỉ
             const isRestDay = [
               'NGHI_PHEP',
               'NGHI_BENH',
@@ -354,18 +390,14 @@ const StatisticsScreen = ({ navigation }) => {
               'NGHI_THUONG',
             ].includes(status)
 
-            if (totalHours > 0 && !isRestDay) {
+            if (!isRestDay) {
               workDays++
               console.log(
-                `[DEBUG] Ngày ${dateStr} - ${status}: Tính là ngày làm việc. Std=${stdHours}, OT=${otHours}, Total=${totalHours}`
+                `[DEBUG] Ngày ${dateStr} - ${status}: Tính là ngày làm việc. Std=${stdHours}, OT=${otHours}, CN=${sundayHours}, Đêm=${nightHours}, Total=${totalHours}`
               )
-            } else if (isRestDay) {
+            } else {
               console.log(
                 `[DEBUG] Ngày ${dateStr} - ${status}: Không tính là ngày làm việc (ngày nghỉ).`
-              )
-            } else if (totalHours <= 0) {
-              console.log(
-                `[DEBUG] Ngày ${dateStr} - ${status}: Không tính là ngày làm việc (không có giờ công).`
               )
             }
           }
@@ -466,6 +498,24 @@ const StatisticsScreen = ({ navigation }) => {
         ]}
       >
         {item.otHours.toFixed(1)}
+      </Text>
+      <Text
+        style={[
+          styles.tableCell,
+          styles.hoursCell,
+          darkMode && styles.darkText,
+        ]}
+      >
+        {item.sundayHours.toFixed(1)}
+      </Text>
+      <Text
+        style={[
+          styles.tableCell,
+          styles.hoursCell,
+          darkMode && styles.darkText,
+        ]}
+      >
+        {item.nightHours.toFixed(1)}
       </Text>
       <Text
         style={[
@@ -711,6 +761,24 @@ const StatisticsScreen = ({ navigation }) => {
                   darkMode && styles.darkHeaderText,
                 ]}
               >
+                {t('CN')}
+              </Text>
+              <Text
+                style={[
+                  styles.headerCell,
+                  styles.hoursCell,
+                  darkMode && styles.darkHeaderText,
+                ]}
+              >
+                {t('Đêm')}
+              </Text>
+              <Text
+                style={[
+                  styles.headerCell,
+                  styles.hoursCell,
+                  darkMode && styles.darkHeaderText,
+                ]}
+              >
                 {t('Total')}
               </Text>
               <Text
@@ -929,20 +997,20 @@ const styles = StyleSheet.create({
     color: '#ddd',
   },
   dateCell: {
-    width: '15%',
+    width: '12%',
   },
   dayCell: {
-    width: '10%',
+    width: '8%',
   },
   timeCell: {
-    width: '15%',
+    width: '12%',
   },
   hoursCell: {
-    width: '12%',
+    width: '9%',
     textAlign: 'center',
   },
   statusCell: {
-    width: '9%',
+    width: '8%',
     textAlign: 'center',
   },
 })
