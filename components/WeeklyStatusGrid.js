@@ -19,8 +19,8 @@ import { AppContext } from '../context/AppContext'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import DateTimePicker from '@react-native-community/datetimepicker'
 
-// Import WORK_STATUS từ appConfig
-import { WORK_STATUS } from '../config/appConfig'
+// Import từ appConfig
+import { WORK_STATUS, STORAGE_KEYS } from '../config/appConfig'
 
 // Tên viết tắt các ngày trong tuần
 const weekdayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']
@@ -79,24 +79,59 @@ const WeeklyStatusGrid = () => {
   // Tải danh sách ca làm việc từ context hoặc AsyncStorage
   const loadAvailableShifts = useCallback(async () => {
     try {
-      // Nếu đã có danh sách ca làm việc từ context, sử dụng nó
-      if (shifts && shifts.length > 0) {
-        setAvailableShifts(shifts)
-        return
-      }
+      // Tạo một mảng để lưu danh sách ca làm việc
+      let shiftsToUse = []
 
-      // Nếu không, tải từ AsyncStorage
-      const shiftsJson = await AsyncStorage.getItem('shift_list')
-      if (shiftsJson) {
-        const parsedShifts = JSON.parse(shiftsJson)
-        if (Array.isArray(parsedShifts) && parsedShifts.length > 0) {
-          setAvailableShifts(parsedShifts)
+      // Ưu tiên sử dụng danh sách từ context nếu có
+      if (shifts && shifts.length > 0) {
+        shiftsToUse = [...shifts]
+      } else {
+        // Nếu không có trong context, tải từ AsyncStorage
+        try {
+          const shiftsJson = await AsyncStorage.getItem(STORAGE_KEYS.SHIFT_LIST)
+          if (shiftsJson) {
+            const parsedShifts = JSON.parse(shiftsJson)
+            if (Array.isArray(parsedShifts) && parsedShifts.length > 0) {
+              shiftsToUse = parsedShifts
+            }
+          }
+        } catch (storageError) {
+          console.error(
+            'Lỗi khi tải ca làm việc từ AsyncStorage:',
+            storageError
+          )
         }
       }
+
+      // Nếu vẫn không có ca làm việc nào, tải từ database
+      if (shiftsToUse.length === 0) {
+        try {
+          const { getShifts } = require('../utils/database')
+          const dbShifts = await getShifts()
+          if (dbShifts && dbShifts.length > 0) {
+            shiftsToUse = dbShifts
+          }
+        } catch (dbError) {
+          console.error('Lỗi khi tải ca làm việc từ database:', dbError)
+        }
+      }
+
+      // Cập nhật state với danh sách ca làm việc đã tải
+      setAvailableShifts(shiftsToUse)
+
+      // Nếu có ca hiện tại, đặt nó làm ca được chọn mặc định
+      if (currentShift && !selectedShift) {
+        setSelectedShift(currentShift)
+      } else if (shiftsToUse.length > 0 && !selectedShift) {
+        // Nếu không có ca hiện tại nhưng có ca trong danh sách, chọn ca đầu tiên
+        setSelectedShift(shiftsToUse[0])
+      }
+
+      console.log(`Đã tải ${shiftsToUse.length} ca làm việc`)
     } catch (error) {
       console.error('Lỗi khi tải danh sách ca làm việc:', error)
     }
-  }, [shifts])
+  }, [shifts, currentShift, selectedShift])
 
   // Thêm hàm refresh để làm mới dữ liệu
   const refreshData = useCallback(() => {
@@ -395,7 +430,7 @@ const WeeklyStatusGrid = () => {
     return status.status || WORK_STATUS.CHUA_CAP_NHAT
   }
 
-  // Update status for a specific day
+  // Update status for a specific day - Cải thiện logic xử lý
   const updateDayStatus = async (day, newStatus) => {
     try {
       // Kiểm tra tính hợp lệ của thời gian nếu có nhập thủ công
@@ -407,7 +442,7 @@ const WeeklyStatusGrid = () => {
         )
         if (!isValid) {
           // Nếu thời gian không hợp lệ, không tiếp tục cập nhật
-          return
+          return false
         }
       }
 
@@ -426,8 +461,27 @@ const WeeklyStatusGrid = () => {
       // Sử dụng ca làm việc được chọn từ dropdown
       const shiftToUse = selectedShift || currentShift
 
+      // Kiểm tra xem có ca làm việc được chọn không
+      if (
+        !shiftToUse &&
+        (newStatus === WORK_STATUS.DU_CONG ||
+          newStatus === WORK_STATUS.DI_MUON ||
+          newStatus === WORK_STATUS.VE_SOM ||
+          newStatus === WORK_STATUS.DI_MUON_VE_SOM)
+      ) {
+        // Hiển thị thông báo lỗi nếu không có ca làm việc được chọn
+        console.error(
+          'Không thể cập nhật trạng thái: Không có ca làm việc được chọn'
+        )
+        setUpdatingStatus(false)
+        setUpdatingDay(null)
+        return false
+      }
+
+      // Tạo đối tượng trạng thái cập nhật
       const updatedStatus = {
         ...existingStatus,
+        date: dateKey,
         status: newStatus,
         updatedAt: now.toISOString(),
         isManuallyUpdated: true, // Đánh dấu là đã cập nhật thủ công
@@ -665,22 +719,68 @@ const WeeklyStatusGrid = () => {
       // Đóng modal ngay lập tức để cải thiện UX
       setStatusModalVisible(false)
 
-      // Lưu vào AsyncStorage (có thể mất thời gian)
-      await AsyncStorage.setItem(
-        `dailyWorkStatus_${dateKey}`,
-        JSON.stringify(updatedStatus)
-      )
+      try {
+        // Sử dụng workStatusCalculator để cập nhật trạng thái
+        const {
+          updateWorkStatusManually,
+        } = require('../utils/workStatusCalculator')
 
-      // Cập nhật trạng thái local sau khi lưu thành công
-      setDailyStatuses((prevStatuses) => ({
-        ...prevStatuses,
-        [dateKey]: updatedStatus,
-      }))
+        // Tạo dữ liệu bổ sung cho cập nhật
+        const additionalData = {
+          shiftId: updatedStatus.shiftId,
+          shiftName: updatedStatus.shiftName,
+          vaoLogTime: updatedStatus.vaoLogTime,
+          raLogTime: updatedStatus.raLogTime,
+        }
 
-      // Thông báo cho các thành phần khác về sự thay đổi trạng thái
-      if (typeof notifyWorkStatusUpdate === 'function') {
-        console.log('[DEBUG] Gọi hàm thông báo cập nhật trạng thái làm việc')
-        notifyWorkStatusUpdate()
+        // Nếu là trạng thái DU_CONG và có ca làm việc, tính toán giờ công
+        if (newStatus === WORK_STATUS.DU_CONG && shiftToUse) {
+          // Tính toán giờ công dựa trên ca làm việc
+          const workHours = calculateWorkHoursFromShift(shiftToUse)
+          Object.assign(additionalData, workHours)
+        }
+
+        // Cập nhật trạng thái sử dụng hàm từ workStatusCalculator
+        const result = await updateWorkStatusManually(
+          dateKey,
+          newStatus,
+          additionalData
+        )
+
+        if (result) {
+          // Cập nhật trạng thái local sau khi lưu thành công
+          setDailyStatuses((prevStatuses) => ({
+            ...prevStatuses,
+            [dateKey]: result,
+          }))
+
+          // Thông báo cho các thành phần khác về sự thay đổi trạng thái
+          if (typeof notifyWorkStatusUpdate === 'function') {
+            console.log(
+              '[DEBUG] Gọi hàm thông báo cập nhật trạng thái làm việc'
+            )
+            notifyWorkStatusUpdate()
+          }
+        }
+      } catch (updateError) {
+        console.error('Lỗi khi cập nhật trạng thái làm việc:', updateError)
+
+        // Nếu có lỗi khi sử dụng workStatusCalculator, sử dụng cách cũ
+        await AsyncStorage.setItem(
+          `dailyWorkStatus_${dateKey}`,
+          JSON.stringify(updatedStatus)
+        )
+
+        // Cập nhật trạng thái local
+        setDailyStatuses((prevStatuses) => ({
+          ...prevStatuses,
+          [dateKey]: updatedStatus,
+        }))
+
+        // Thông báo cho các thành phần khác
+        if (typeof notifyWorkStatusUpdate === 'function') {
+          notifyWorkStatusUpdate()
+        }
       }
 
       // Đánh dấu đã hoàn thành cập nhật
@@ -698,39 +798,85 @@ const WeeklyStatusGrid = () => {
     }
   }
 
-  // Get icon for status
+  // Get icon for status - Cải thiện với màu sắc nhất quán
   const getStatusIcon = (status) => {
+    // Sử dụng màu sắc từ theme để đảm bảo tính nhất quán
+    const colors = {
+      success: '#27ae60', // Xanh lá - thành công
+      warning: '#f39c12', // Cam - cảnh báo
+      error: '#e74c3c', // Đỏ - lỗi
+      info: '#3498db', // Xanh dương - thông tin
+      neutral: '#95a5a6', // Xám - trung tính
+      primary: '#8a56ff', // Tím - màu chính của ứng dụng
+    }
+
     switch (status) {
       case WORK_STATUS.THIEU_LOG:
-        return { name: 'warning-outline', color: '#e74c3c', type: 'ionicons' }
+        return {
+          name: 'warning-outline',
+          color: colors.error,
+          type: 'ionicons',
+        }
       case WORK_STATUS.DU_CONG:
-        return { name: 'checkmark-circle', color: '#27ae60', type: 'ionicons' }
+        return {
+          name: 'checkmark-circle',
+          color: colors.success,
+          type: 'ionicons',
+        }
       case WORK_STATUS.NGHI_PHEP:
         return {
           name: 'document-text-outline',
-          color: '#3498db',
+          color: colors.info,
           type: 'ionicons',
         }
       case WORK_STATUS.NGHI_BENH:
-        return { name: 'fitness-outline', color: '#9b59b6', type: 'ionicons' }
+        return { name: 'fitness-outline', color: colors.info, type: 'ionicons' }
       case WORK_STATUS.NGHI_LE:
-        return { name: 'flag-outline', color: '#f39c12', type: 'ionicons' }
+        return { name: 'flag-outline', color: colors.warning, type: 'ionicons' }
       case WORK_STATUS.NGHI_THUONG:
-        return { name: 'cafe-outline', color: '#27ae60', type: 'ionicons' }
+        return { name: 'cafe-outline', color: colors.success, type: 'ionicons' }
       case WORK_STATUS.VANG_MAT:
-        return { name: 'close-circle', color: '#e74c3c', type: 'ionicons' }
+        return { name: 'close-circle', color: colors.error, type: 'ionicons' }
       case WORK_STATUS.DI_MUON:
-        return { name: 'alarm-outline', color: '#f39c12', type: 'ionicons' }
+        return {
+          name: 'alarm-outline',
+          color: colors.warning,
+          type: 'ionicons',
+        }
       case WORK_STATUS.VE_SOM:
-        return { name: 'log-out-outline', color: '#f39c12', type: 'ionicons' }
+        return {
+          name: 'log-out-outline',
+          color: colors.warning,
+          type: 'ionicons',
+        }
       case WORK_STATUS.DI_MUON_VE_SOM:
-        return { name: 'timer-outline', color: '#f39c12', type: 'ionicons' }
+        return {
+          name: 'timer-outline',
+          color: colors.warning,
+          type: 'ionicons',
+        }
       case WORK_STATUS.NGAY_TUONG_LAI:
-        return { name: 'calendar-outline', color: '#95a5a6', type: 'ionicons' }
+        return {
+          name: 'calendar-outline',
+          color: colors.neutral,
+          type: 'ionicons',
+        }
+      case WORK_STATUS.CHUA_CAP_NHAT:
+        return {
+          name: 'ellipsis-horizontal-circle-outline',
+          color: colors.neutral,
+          type: 'ionicons',
+        }
+      case WORK_STATUS.QUEN_CHECK_OUT:
+        return {
+          name: 'alert-outline',
+          color: colors.warning,
+          type: 'ionicons',
+        }
       default:
         return {
           name: 'help-circle-outline',
-          color: '#95a5a6',
+          color: colors.neutral,
           type: 'ionicons',
         }
     }
@@ -917,6 +1063,71 @@ const WeeklyStatusGrid = () => {
     }
   }
 
+  // Hàm tính toán giờ công từ ca làm việc
+  const calculateWorkHoursFromShift = (shift) => {
+    if (!shift) return {}
+
+    try {
+      // Kiểm tra xem ca làm việc có phải là ca qua đêm không
+      const isOvernight = (startTime, endTime) => {
+        if (!startTime || !endTime) return false
+
+        const [startHour, startMinute] = startTime.split(':').map(Number)
+        const [endHour, endMinute] = endTime.split(':').map(Number)
+
+        return (
+          endHour < startHour ||
+          (endHour === startHour && endMinute < startMinute)
+        )
+      }
+
+      // Tính tổng thời gian làm việc (giờ)
+      const calculateTotalHours = (startTime, endTime, breakMinutes = 0) => {
+        if (!startTime || !endTime) return 0
+
+        const [startHour, startMinute] = startTime.split(':').map(Number)
+        const [endHour, endMinute] = endTime.split(':').map(Number)
+
+        let totalMinutes
+        if (isOvernight(startTime, endTime)) {
+          // Ca qua đêm: Thời gian từ startTime đến 24:00 + từ 00:00 đến endTime
+          totalMinutes =
+            (24 - startHour) * 60 - startMinute + endHour * 60 + endMinute
+        } else {
+          // Ca thông thường
+          totalMinutes = (endHour - startHour) * 60 + (endMinute - startMinute)
+        }
+
+        // Trừ thời gian nghỉ
+        totalMinutes -= breakMinutes
+
+        // Chuyển đổi sang giờ
+        return Math.max(0, totalMinutes / 60)
+      }
+
+      // Tính toán giờ công
+      const totalHours = calculateTotalHours(
+        shift.startTime,
+        shift.endTime,
+        shift.breakMinutes || 0
+      )
+
+      // Mặc định tất cả giờ là giờ tiêu chuẩn
+      const standardHours = totalHours
+
+      return {
+        standardHoursScheduled: standardHours,
+        otHoursScheduled: 0, // Mặc định không có giờ OT
+        sundayHoursScheduled: 0, // Mặc định không có giờ làm chủ nhật
+        nightHoursScheduled: 0, // Mặc định không có giờ làm đêm
+        totalHoursScheduled: totalHours,
+      }
+    } catch (error) {
+      console.error('Lỗi khi tính toán giờ công từ ca làm việc:', error)
+      return {}
+    }
+  }
+
   // Kiểm tra tính hợp lệ của thời gian check-in và check-out
   const validateTimes = (checkInTime, checkOutTime, shift = selectedShift) => {
     // Reset lỗi
@@ -1030,44 +1241,37 @@ const WeeklyStatusGrid = () => {
     return true
   }
 
-  // Render status icon for dropdown
+  // Render status icon for dropdown - Sử dụng lại cấu hình từ getStatusIcon
   const renderStatusIcon = (status) => {
-    switch (status) {
-      case WORK_STATUS.DU_CONG:
-        return <Ionicons name="checkmark-circle" size={24} color="#4caf50" />
-      case WORK_STATUS.DI_MUON:
-        return <Ionicons name="alert-circle" size={24} color="#ff9800" />
-      case WORK_STATUS.VE_SOM:
-        return <Ionicons name="alert-circle" size={24} color="#ff9800" />
-      case WORK_STATUS.DI_MUON_VE_SOM:
-        return <Ionicons name="alert-circle" size={24} color="#ff9800" />
-      case WORK_STATUS.THIEU_LOG:
-        return <Ionicons name="close-circle" size={24} color="#f44336" />
-      case WORK_STATUS.NGHI_PHEP:
-        return <Ionicons name="document-text" size={24} color="#2196f3" />
-      case WORK_STATUS.NGHI_BENH:
-        return <Ionicons name="medkit" size={24} color="#e91e63" />
-      case WORK_STATUS.NGHI_LE:
-        return <Ionicons name="calendar" size={24} color="#9c27b0" />
-      case WORK_STATUS.NGHI_THUONG:
-        return <Ionicons name="home" size={24} color="#795548" />
-      case WORK_STATUS.VANG_MAT:
-        return <Ionicons name="help-circle" size={24} color="#607d8b" />
-      case WORK_STATUS.NGAY_TUONG_LAI:
-        return <Ionicons name="time" size={24} color="#9e9e9e" />
-      case WORK_STATUS.CHUA_CAP_NHAT:
-        return (
-          <Ionicons
-            name="ellipsis-horizontal-circle"
-            size={24}
-            color="#9e9e9e"
-          />
-        )
-      case WORK_STATUS.QUEN_CHECK_OUT:
-        return <Ionicons name="alert-circle" size={24} color="#ff9800" />
-      default:
-        return <Ionicons name="help-circle" size={24} color="#9e9e9e" />
+    // Lấy cấu hình icon từ hàm getStatusIcon
+    const iconConfig = getStatusIcon(status)
+    const size = 24
+
+    // Hiển thị icon dựa trên loại
+    if (iconConfig.type === 'ionicons') {
+      return (
+        <Ionicons name={iconConfig.name} size={size} color={iconConfig.color} />
+      )
+    } else if (iconConfig.type === 'material-community') {
+      return (
+        <MaterialCommunityIcons
+          name={iconConfig.name}
+          size={size}
+          color={iconConfig.color}
+        />
+      )
+    } else if (iconConfig.type === 'font-awesome') {
+      return (
+        <FontAwesome5
+          name={iconConfig.name}
+          size={size}
+          color={iconConfig.color}
+        />
+      )
     }
+
+    // Mặc định nếu không có loại phù hợp
+    return <Ionicons name="help-circle" size={size} color="#9e9e9e" />
   }
 
   // Render status icon in grid
@@ -1983,7 +2187,12 @@ const WeeklyStatusGrid = () => {
 
                 {/* Phần nhập thời gian check-in và check-out thủ công */}
                 {(!selectedDay.isFuture || selectedDay.isToday) && (
-                  <View style={styles.timeInputContainer}>
+                  <View
+                    style={[
+                      styles.timeInputContainer,
+                      darkMode && styles.darkTimeInputContainer,
+                    ]}
+                  >
                     <Text
                       style={[
                         styles.timeInputLabel,
@@ -2302,6 +2511,9 @@ const styles = StyleSheet.create({
     padding: 10,
     backgroundColor: '#f5f5f5',
     borderRadius: 8,
+  },
+  darkTimeInputContainer: {
+    backgroundColor: '#2a2a2a',
   },
   timeInputLabel: {
     fontSize: 16,
