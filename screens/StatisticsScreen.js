@@ -93,8 +93,11 @@ const StatisticsScreen = ({ navigation }) => {
       switch (range) {
         case 'week':
           // Start from beginning of current week (Monday)
+          rangeStart = new Date(now) // Tạo một bản sao mới để tránh tham chiếu
           rangeStart.setDate(now.getDate() - dayOfWeek + 1) // Monday
+
           // End at end of current week (Sunday)
+          rangeEnd = new Date(now) // Tạo một bản sao mới để tránh tham chiếu
           rangeEnd.setDate(now.getDate() + (7 - dayOfWeek)) // Sunday
           break
         case 'month':
@@ -291,10 +294,10 @@ const StatisticsScreen = ({ navigation }) => {
           `Batches thành công: ${successfulBatches}/${batches.length}, thất bại: ${failedBatches}/${batches.length}`
         )
 
-        // Sắp xếp dữ liệu theo ngày để đảm bảo thứ tự đúng (mới nhất trước)
+        // Sắp xếp dữ liệu theo ngày để đảm bảo thứ tự đúng (cũ nhất trước)
         filteredStatusData.sort((a, b) => {
           if (!a.date || !b.date) return 0
-          return b.date.localeCompare(a.date) // Sắp xếp giảm dần (mới nhất trước)
+          return a.date.localeCompare(b.date) // Sắp xếp tăng dần (cũ nhất trước)
         })
 
         const result = {
@@ -515,16 +518,18 @@ const StatisticsScreen = ({ navigation }) => {
             let sundayHours = parseFloat(status.sundayHoursScheduled) || 0
             let nightHours = parseFloat(status.nightHoursScheduled) || 0
 
-            // Nếu trạng thái là DU_CONG nhưng không có giá trị giờ làm, đặt giá trị mặc định
-            if (status.status === 'DU_CONG' && standardHours === 0) {
-              // Đặt giá trị mặc định cho ngày đủ công (8 giờ làm việc chuẩn)
-              standardHours = 8.0
+            // Nếu trạng thái là DU_CONG, đảm bảo luôn có giá trị giờ làm
+            if (status.status === 'DU_CONG') {
+              // Đặt giá trị mặc định cho ngày đủ công (8 giờ làm việc chuẩn) nếu không có giá trị
+              if (standardHours === 0 && otHours === 0 && sundayHours === 0) {
+                standardHours = 8.0
+              }
 
               // Cập nhật lại tổng giờ làm
               const totalHours = standardHours + otHours + sundayHours
 
               console.log(
-                `[DEBUG] Đặt giá trị mặc định cho ngày ${status.date} có trạng thái DU_CONG:`,
+                `[DEBUG] Đặt giá trị cho ngày ${status.date} có trạng thái DU_CONG:`,
                 {
                   standardHours,
                   otHours,
@@ -701,7 +706,7 @@ const StatisticsScreen = ({ navigation }) => {
           )
         }
 
-        // Sắp xếp dữ liệu theo ngày (mới nhất trước)
+        // Sắp xếp dữ liệu theo ngày (tăng dần - cũ nhất trước)
         stats.dailyData.sort((a, b) => {
           try {
             // Chuyển đổi định dạng ngày DD/MM/YYYY thành YYYY-MM-DD để so sánh
@@ -716,8 +721,8 @@ const StatisticsScreen = ({ navigation }) => {
             const dateStrA = `${partsA[2]}-${partsA[1]}-${partsA[0]}`
             const dateStrB = `${partsB[2]}-${partsB[1]}-${partsB[0]}`
 
-            // Sắp xếp giảm dần (mới nhất trước)
-            return dateStrB.localeCompare(dateStrA)
+            // Sắp xếp tăng dần (cũ nhất trước) để hiển thị theo thứ tự ngày trong tuần/tháng/năm
+            return dateStrA.localeCompare(dateStrB)
           } catch (sortError) {
             return 0
           }
@@ -891,10 +896,48 @@ const StatisticsScreen = ({ navigation }) => {
           return
         }
 
-        // Nếu không có dữ liệu, hiển thị thông báo nhưng không xóa dữ liệu cũ
+        // Nếu không có dữ liệu, tạo dữ liệu trống cho khoảng thời gian
         if (workStatuses.length === 0) {
+          console.log(
+            '[DEBUG] Không có dữ liệu thực tế, tạo dữ liệu trống cho khoảng thời gian'
+          )
+
+          // Tạo dữ liệu trống cho khoảng thời gian
+          const emptyStats = getDefaultStats()
+
+          // Thêm các ngày trong khoảng thời gian vào dữ liệu trống
+          const currentDate = new Date(rangeStart)
+          while (currentDate <= rangeEnd) {
+            const dateKey = formatDate(currentDate)
+            const displayDate = formatShortDate(currentDate, language)
+            const weekday = getWeekdayName(currentDate.getDay())
+
+            emptyStats.dailyData.push({
+              date: displayDate,
+              weekday: weekday,
+              checkIn: '--:--',
+              checkOut: '--:--',
+              standardHours: 0,
+              otHours: 0,
+              sundayHours: 0,
+              nightHours: 0,
+              totalHours: 0,
+              status: 'CHUA_CAP_NHAT',
+              lateMinutes: 0,
+              earlyMinutes: 0,
+            })
+
+            // Chuyển sang ngày tiếp theo
+            currentDate.setDate(currentDate.getDate() + 1)
+          }
+
+          // Lưu kết quả vào cache
+          loadStatisticsCache.current[cacheKey] = emptyStats
+
+          // Cập nhật state
           if (isMountedRef.current) {
-            setLoadError('Không có dữ liệu trong khoảng thời gian này')
+            setStats(emptyStats)
+            setLoadError(null)
             setIsLoading(false)
             isLoadingRef.current = false
           }
@@ -925,7 +968,7 @@ const StatisticsScreen = ({ navigation }) => {
           // Sắp xếp theo ngày trước khi cắt bớt
           workStatuses.sort((a, b) => {
             if (!a.date || !b.date) return 0
-            return b.date.localeCompare(a.date) // Sắp xếp giảm dần (mới nhất trước)
+            return a.date.localeCompare(b.date) // Sắp xếp tăng dần (cũ nhất trước)
           })
 
           workStatuses = workStatuses.slice(0, MAX_RECORDS)
@@ -1089,6 +1132,10 @@ const StatisticsScreen = ({ navigation }) => {
     console.log('StatisticsScreen được mount lần đầu, tải dữ liệu thống kê')
     isMountedRef.current = true
 
+    // Đánh dấu đang tải
+    setIsLoading(true)
+    isLoadingRef.current = true
+
     // Đảm bảo timeRange được đặt là 'week' khi màn hình được tải lần đầu
     setTimeRange('week')
     console.log('[DEBUG] Đã đặt timeRange ban đầu là "week"')
@@ -1102,7 +1149,15 @@ const StatisticsScreen = ({ navigation }) => {
       if (isMountedRef.current) {
         console.log('[DEBUG] Bắt đầu tải dữ liệu ban đầu sau khi mount')
         loadStatistics()
-        lastLoadTimeRef.current = Date.now()
+          .then(() => {
+            console.log('[DEBUG] Tải dữ liệu ban đầu thành công')
+          })
+          .catch((error) => {
+            console.error('[DEBUG] Lỗi khi tải dữ liệu ban đầu:', error)
+          })
+          .finally(() => {
+            lastLoadTimeRef.current = Date.now()
+          })
       }
     }, 500) // Tăng thời gian chờ lên 500ms để đảm bảo component đã render hoàn toàn
 
@@ -1379,15 +1434,24 @@ const StatisticsScreen = ({ navigation }) => {
           ]}
           onPress={() => {
             console.log('[DEBUG] Đã nhấn nút chuyển sang tab Tuần này')
+
+            // Đánh dấu đang tải
+            setIsLoading(true)
+            isLoadingRef.current = true
+
             // Đặt timeRange trước
             setTimeRange('week')
+
             // Xóa cache để đảm bảo dữ liệu mới được tải
             workStatusCache.current = {}
             loadStatisticsCache.current = {}
+
             // Đặt lại số lượng bản ghi hiển thị
             setVisibleRecords(15)
+
             // Đặt lại trang hiện tại
             setCurrentPage(1)
+
             // Tải dữ liệu mới trong background mà không chặn UI
             setTimeout(() => {
               console.log('[DEBUG] Đang tải dữ liệu cho tab Tuần này')
@@ -1414,15 +1478,24 @@ const StatisticsScreen = ({ navigation }) => {
           ]}
           onPress={() => {
             console.log('[DEBUG] Đã nhấn nút chuyển sang tab Tháng này')
+
+            // Đánh dấu đang tải
+            setIsLoading(true)
+            isLoadingRef.current = true
+
             // Đặt timeRange trước
             setTimeRange('month')
+
             // Xóa cache để đảm bảo dữ liệu mới được tải
             workStatusCache.current = {}
             loadStatisticsCache.current = {}
+
             // Đặt lại số lượng bản ghi hiển thị - tăng lên cho tab tháng
             setVisibleRecords(62)
+
             // Đặt lại trang hiện tại
             setCurrentPage(1)
+
             // Tải dữ liệu mới trong background mà không chặn UI
             setTimeout(() => {
               console.log('[DEBUG] Đang tải dữ liệu cho tab Tháng này')
@@ -1449,15 +1522,24 @@ const StatisticsScreen = ({ navigation }) => {
           ]}
           onPress={() => {
             console.log('[DEBUG] Đã nhấn nút chuyển sang tab Năm nay')
+
+            // Đánh dấu đang tải
+            setIsLoading(true)
+            isLoadingRef.current = true
+
             // Đặt timeRange trước
             setTimeRange('year')
+
             // Xóa cache để đảm bảo dữ liệu mới được tải
             workStatusCache.current = {}
             loadStatisticsCache.current = {}
+
             // Đặt lại số lượng bản ghi hiển thị - giới hạn số lượng ban đầu để tránh treo máy
             setVisibleRecords(30) // Chỉ hiển thị 30 bản ghi đầu tiên
+
             // Đặt lại trang hiện tại
             setCurrentPage(1)
+
             // Tải dữ liệu mới trong background mà không chặn UI
             setTimeout(() => {
               console.log('[DEBUG] Đang tải dữ liệu cho tab Năm nay')
