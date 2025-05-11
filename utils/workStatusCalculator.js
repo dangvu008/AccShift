@@ -339,167 +339,7 @@ export const calculateDailyWorkStatus = async (date, shift) => {
       return durationSeconds < quickPunchThresholdSeconds
     }
 
-    /**
-     * Tính toán thời gian làm việc theo lịch trình ca
-     *
-     * Hàm này tính toán giờ làm việc dựa trên lịch trình ca, không phụ thuộc vào
-     * thời gian check-in/check-out thực tế. Kết quả được sử dụng khi trạng thái
-     * là "Đủ công" để đảm bảo giờ công luôn phản ánh đúng lịch trình ca.
-     *
-     * @param {Object} shift Ca làm việc
-     * @param {Date} baseDate Ngày cơ sở để tính toán (ngày bắt đầu ca)
-     * @param {Object} userSettings Cài đặt người dùng
-     * @returns {Object} Thông tin thời gian làm việc theo lịch trình
-     */
-    const calculateScheduledWorkTime = (shift, baseDate, userSettings) => {
-      if (!shift || !baseDate) {
-        return {
-          standardHoursScheduled: 0,
-          otHoursScheduled: 0,
-          sundayHoursScheduled: 0,
-          nightHoursScheduled: 0,
-          totalHoursScheduled: 0,
-          isHolidayWork: false,
-        }
-      }
-
-      // Đảm bảo baseDate chỉ chứa thông tin ngày, không có giờ phút giây
-      const workdayDate = new Date(baseDate)
-      workdayDate.setHours(0, 0, 0, 0)
-
-      console.log(
-        `[DEBUG] calculateScheduledWorkTime: workdayDate=${workdayDate.toISOString()}, shift=${
-          shift.name
-        }`
-      )
-
-      // Xác định loại ngày (thường, thứ 7, chủ nhật, lễ)
-      const dayOfWeek = workdayDate.getDay() // 0: CN, 1-5: T2-T6, 6: T7
-      const isSunday = dayOfWeek === 0
-      const isHolidayWork = false // Chưa có logic xác định ngày lễ, cần bổ sung sau
-
-      // Kiểm tra xem ca làm việc có phải là ca qua đêm không
-      const isOvernight = isOvernightShift(shift.startTime, shift.endTime)
-      console.log(
-        `[DEBUG] calculateScheduledWorkTime: isOvernight=${isOvernight}`
-      )
-
-      // Xây dựng các timestamp chuẩn cho ngày làm việc
-      // 1. Timestamp đầy đủ cho thời gian bắt đầu ca (luôn dùng ngày gốc)
-      const scheduledStartTime = createFullTimestamp(
-        workdayDate,
-        shift.startTime,
-        false
-      )
-
-      // 2. Timestamp đầy đủ cho thời gian kết thúc giờ hành chính
-      // Nếu là ca qua đêm và officeEndTime < startTime, thì officeEndTime thuộc ngày tiếp theo
-      const isOfficeEndTimeNextDay =
-        isOvernight &&
-        new Date(`1970-01-01T${shift.officeEndTime}:00`).getHours() <
-          new Date(`1970-01-01T${shift.startTime}:00`).getHours()
-
-      const scheduledOfficeEndTime = createFullTimestamp(
-        workdayDate,
-        shift.officeEndTime,
-        isOfficeEndTimeNextDay
-      )
-
-      // 3. Timestamp đầy đủ cho thời gian kết thúc ca (bao gồm OT)
-      const scheduledEndTime = createFullTimestamp(
-        workdayDate,
-        shift.endTime || shift.officeEndTime,
-        isOvernight
-      )
-
-      console.log(
-        `[DEBUG] Timestamps: start=${scheduledStartTime.toISOString()}, officeEnd=${scheduledOfficeEndTime.toISOString()}, end=${scheduledEndTime.toISOString()}`
-      )
-
-      // Tạo khoảng thời gian đầy đủ cho giờ làm việc hành chính
-      const officeShiftInterval = {
-        start: scheduledStartTime,
-        end: scheduledOfficeEndTime,
-      }
-
-      // Tạo khoảng thời gian đầy đủ cho giờ OT (nếu có)
-      let otInterval = null
-      if (shift.endTime && shift.endTime !== shift.officeEndTime) {
-        otInterval = {
-          start: scheduledOfficeEndTime,
-          end: scheduledEndTime,
-        }
-      }
-
-      // Tính thời gian ca làm việc chuẩn (giờ)
-      // Công thức: (thời gian từ startTime đến officeEndTime) - thời gian nghỉ
-      const standardHoursScheduled = Math.max(
-        0,
-        durationInHours(officeShiftInterval) - (shift.breakMinutes || 0) / 60
-      )
-
-      // Tính thời gian OT theo lịch trình (giờ)
-      // Công thức: thời gian từ officeEndTime đến endTime
-      const otHoursScheduled = otInterval ? durationInHours(otInterval) : 0
-
-      // Tính tổng thời gian làm việc theo lịch trình (giờ)
-      const totalHoursScheduled = standardHoursScheduled + otHoursScheduled
-
-      // Tính giờ làm chủ nhật
-      let sundayHoursScheduled = 0
-      if (isSunday) {
-        // Nếu ngày bắt đầu ca là chủ nhật, tính toàn bộ giờ làm việc là giờ chủ nhật
-        sundayHoursScheduled = totalHoursScheduled
-      } else if (isOvernight) {
-        // Nếu ca qua đêm và ngày tiếp theo là chủ nhật, tính phần giờ làm việc vào chủ nhật
-        const nextDay = new Date(workdayDate)
-        nextDay.setDate(nextDay.getDate() + 1)
-        if (nextDay.getDay() === 0) {
-          // Tạo timestamp cho 00:00 của ngày tiếp theo (chủ nhật)
-          const sundayStart = new Date(nextDay)
-          sundayStart.setHours(0, 0, 0, 0)
-
-          // Tạo khoảng thời gian làm việc vào chủ nhật
-          const sundayWorkInterval = {
-            start: sundayStart,
-            end: scheduledEndTime,
-          }
-
-          // Tính giờ làm việc vào chủ nhật
-          sundayHoursScheduled = durationInHours(sundayWorkInterval)
-        }
-      }
-
-      // Tính giờ làm đêm
-      const nightStartTime = userSettings?.nightWorkStartTime || '22:00'
-      const nightEndTime = userSettings?.nightWorkEndTime || '05:00'
-
-      // Sử dụng hàm mới để tính giờ làm đêm
-      const nightHoursScheduled = calculateTotalNightHours(
-        workdayDate,
-        shift.startTime,
-        shift.endTime,
-        nightStartTime,
-        nightEndTime
-      )
-
-      console.log(
-        `[DEBUG] Giờ công theo lịch trình: standard=${standardHoursScheduled}, OT=${otHoursScheduled}, total=${totalHoursScheduled}`
-      )
-
-      return {
-        standardHoursScheduled: parseFloat(standardHoursScheduled.toFixed(1)),
-        otHoursScheduled: parseFloat(otHoursScheduled.toFixed(1)),
-        sundayHoursScheduled: parseFloat(sundayHoursScheduled.toFixed(1)),
-        nightHoursScheduled: parseFloat(nightHoursScheduled.toFixed(1)),
-        totalHoursScheduled: parseFloat(totalHoursScheduled.toFixed(1)),
-        isHolidayWork,
-        scheduledStartTime,
-        scheduledOfficeEndTime,
-        scheduledEndTime,
-        isOvernight, // Thêm thông tin về ca qua đêm
-      }
-    }
+    // Hàm tính toán thời gian làm việc theo lịch trình ca được di chuyển ra ngoài phạm vi của hàm calculateDailyWorkStatus
 
     // Hàm tính toán thời gian làm việc từ thời gian bắt đầu và kết thúc ca
     const calculateWorkTimeFromShift = (shift, baseDate) => {
@@ -1976,6 +1816,9 @@ export const calculateWorkStatusForDateRange = async (startDate, endDate) => {
     return []
   }
 }
+
+// Export hàm calculateScheduledWorkTime riêng lẻ
+export { calculateScheduledWorkTime }
 
 export default {
   calculateDailyWorkStatus,
