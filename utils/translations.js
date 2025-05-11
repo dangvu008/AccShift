@@ -902,5 +902,20 @@ export const translations = {
     Lỗi: 'Error',
     'Đã xảy ra lỗi khi tạo dữ liệu mẫu ca làm việc.':
       'An error occurred while creating sample work shifts.',
+
+    // Các khóa bị thiếu
+    'Check In:': 'Check In:',
+    'Chọn giờ': 'Select time',
+    'Check Out:': 'Check Out:',
+    'Lưu thay đổi': 'Save changes',
+    'Bạn có chắc chắn muốn lưu thay đổi này không?':
+      'Are you sure you want to save these changes?',
+    'Đủ công': 'Full Work',
+    'Total Hours': 'Total Hours',
+    'Cập nhật trạng thái': 'Update Status',
+    'Ca làm việc': 'Work Shift',
+    'Trạng thái': 'Status',
+    'Chọn trạng thái': 'Select Status',
+    'Thời gian check-in/out thủ công': 'Manual Check-in/out Time',
   },
 }

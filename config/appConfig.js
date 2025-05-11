@@ -46,11 +46,20 @@ export const API_CONFIG = {
     ONECALL: 'onecall',
   },
 
+  // Danh sách proxy URLs (để tránh lỗi khi gọi testWeatherConnection)
+  WEATHER_PROXY_URLS: [
+    'https://api.allorigins.win/get?url',
+    'https://api.codetabs.com/v1/proxy?quest',
+    'https://cors-anywhere.herokuapp.com',
+    'https://cors.sh',
+  ],
+
   // Cấu hình cho môi trường web (snack.expo.dev)
   WEB_CONFIG: {
-    USE_DIRECT_FETCH: true, // Luôn sử dụng fetch trực tiếp
-    ENABLE_MOCK_DATA: true, // Cho phép sử dụng dữ liệu giả khi không thể kết nối
+    USE_DIRECT_FETCH: false, // Không sử dụng fetch trực tiếp trên môi trường web
+    ENABLE_MOCK_DATA: true, // Luôn sử dụng dữ liệu giả khi chạy trên snack.expo.dev
     USE_PROXY: false, // Không sử dụng proxy
+    ALWAYS_USE_MOCK_ON_SNACK: true, // Luôn sử dụng dữ liệu giả khi chạy trên snack.expo.dev
   },
 }
 

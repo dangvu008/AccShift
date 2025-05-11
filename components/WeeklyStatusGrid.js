@@ -22,6 +22,9 @@ import DateTimePicker from '@react-native-community/datetimepicker'
 // Import từ appConfig
 import { WORK_STATUS, STORAGE_KEYS } from '../config/appConfig'
 
+// Import ManualUpdateModal
+import ManualUpdateModal from './ManualUpdateModal'
+
 // Tên viết tắt các ngày trong tuần
 const weekdayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']
 
@@ -42,6 +45,10 @@ const WeeklyStatusGrid = () => {
   const [statusModalVisible, setStatusModalVisible] = useState(false)
   const [updatingStatus, setUpdatingStatus] = useState(false)
   const [updatingDay, setUpdatingDay] = useState(null)
+
+  // State cho ManualUpdateModal
+  const [manualUpdateModalVisible, setManualUpdateModalVisible] =
+    useState(false)
 
   // State cho việc cập nhật thời gian check-in và check-out thủ công
   const [manualCheckInTime, setManualCheckInTime] = useState('')
@@ -168,6 +175,26 @@ const WeeklyStatusGrid = () => {
   const refreshData = useCallback(() => {
     loadDailyStatuses()
   }, [loadDailyStatuses])
+
+  // Xử lý khi trạng thái được cập nhật từ ManualUpdateModal
+  const handleStatusUpdated = useCallback(
+    (updatedStatus) => {
+      if (!updatedStatus) return
+
+      // Cập nhật trạng thái local
+      setDailyStatuses((prevStatuses) => ({
+        ...prevStatuses,
+        [updatedStatus.date]: updatedStatus,
+      }))
+
+      // Làm mới dữ liệu
+      refreshData()
+
+      // Đóng modal
+      setManualUpdateModalVisible(false)
+    },
+    [refreshData]
+  )
 
   // Cập nhật trạng thái từ attendanceLogs
   const updateStatusFromAttendanceLogs = useCallback(async () => {
@@ -995,104 +1022,11 @@ const WeeklyStatusGrid = () => {
       )}`
     )
 
-    // Cho phép cập nhật trạng thái cho tất cả các ngày
-    // Nhưng sẽ giới hạn các trạng thái có thể chọn trong modal dựa vào ngày
+    // Đặt ngày được chọn
     setSelectedDay(day)
 
-    // Reset các giá trị thời gian thủ công và lỗi
-    setTimeValidationError('')
-    setManualCheckInTime('')
-    setManualCheckOutTime('')
-
-    // Đóng tất cả các dropdown
-    setShowShiftDropdown(false)
-    setShowStatusDropdown(false)
-
-    // Lấy thông tin trạng thái hiện tại của ngày được chọn
-    const dateKey = formatDateKey(day.date)
-
-    // Tải lại dữ liệu trạng thái từ AsyncStorage để đảm bảo dữ liệu mới nhất
-    try {
-      const storage = require('../utils/storage').default
-      const freshStatus = await storage.getDailyWorkStatus(dateKey)
-      const currentStatus = freshStatus || dailyStatuses[dateKey] || {}
-
-      console.log(
-        `[DEBUG] Trạng thái hiện tại của ngày ${dateKey}:`,
-        currentStatus.status || 'CHUA_CAP_NHAT'
-      )
-
-      // Tìm và đặt ca làm việc hiện tại
-      let dayShift = null
-      if (currentStatus.shiftId) {
-        // Tải lại danh sách ca làm việc nếu cần
-        if (availableShifts.length === 0) {
-          await loadAvailableShifts()
-        }
-
-        dayShift = availableShifts.find(
-          (shift) => shift.id === currentStatus.shiftId
-        )
-        console.log(
-          `[DEBUG] Đã tìm thấy ca làm việc: ${
-            dayShift ? dayShift.name : 'Không có'
-          }`
-        )
-        setSelectedShift(dayShift || currentShift)
-      } else {
-        setSelectedShift(currentShift)
-        dayShift = currentShift
-        console.log(
-          `[DEBUG] Sử dụng ca làm việc hiện tại: ${
-            currentShift ? currentShift.name : 'Không có'
-          }`
-        )
-      }
-
-      // Đặt trạng thái làm việc hiện tại
-      setSelectedStatus(currentStatus.status || WORK_STATUS.CHUA_CAP_NHAT)
-
-      // Reset thời gian check-in và check-out trước khi tải dữ liệu mới
-      setManualCheckInTime('')
-      setManualCheckOutTime('')
-
-      // 1. Kiểm tra xem ngày đã có dữ liệu lịch sử chấm công chưa
-      const { checkInLog, checkOutLog } = await loadAttendanceLogsForDay(
-        day.date
-      )
-
-      // Nếu đã có dữ liệu lịch sử chấm công trong trạng thái hiện tại, ưu tiên sử dụng
-      if (currentStatus.vaoLogTime || currentStatus.raLogTime) {
-        console.log('[DEBUG] Sử dụng thời gian từ trạng thái hiện tại')
-        console.log(
-          `[DEBUG] Check-in: ${currentStatus.vaoLogTime || 'Không có'}`
-        )
-        console.log(
-          `[DEBUG] Check-out: ${currentStatus.raLogTime || 'Không có'}`
-        )
-
-        // Đảm bảo đặt cả hai giá trị, ngay cả khi một trong hai là null
-        setManualCheckInTime(currentStatus.vaoLogTime || '')
-        setManualCheckOutTime(currentStatus.raLogTime || '')
-      }
-      // Nếu có dữ liệu lịch sử chấm công từ logs, sử dụng
-      else if (checkInLog || checkOutLog) {
-        console.log('[DEBUG] Sử dụng thời gian từ lịch sử chấm công')
-        // Thời gian đã được set trong hàm loadAttendanceLogsForDay
-      }
-      // Nếu chưa có dữ liệu lịch sử, sử dụng thời gian mặc định từ ca làm việc
-      else if (dayShift) {
-        console.log('[DEBUG] Sử dụng thời gian mặc định từ ca làm việc')
-        setDefaultTimesFromShift(dayShift)
-      }
-
-      // Hiển thị modal cập nhật trạng thái
-      setStatusModalVisible(true)
-    } catch (error) {
-      console.error('Lỗi khi tải dữ liệu cho modal cập nhật trạng thái:', error)
-      // Vẫn hiển thị modal với dữ liệu có sẵn
-      setStatusModalVisible(true)
-    }
+    // Hiển thị modal cập nhật thủ công
+    setManualUpdateModalVisible(true)
   }
 
   // Xử lý khi người dùng muốn mở time picker
@@ -1938,7 +1872,7 @@ const WeeklyStatusGrid = () => {
                   style={styles.updateButton}
                   onPress={() => {
                     setDetailModalVisible(false)
-                    setStatusModalVisible(true)
+                    setManualUpdateModalVisible(true)
                   }}
                 >
                   <Text style={styles.updateButtonText}>
@@ -2944,6 +2878,14 @@ const WeeklyStatusGrid = () => {
             </View>
           </Modal>
         )}
+
+      {/* Manual Update Modal */}
+      <ManualUpdateModal
+        visible={manualUpdateModalVisible}
+        onClose={() => setManualUpdateModalVisible(false)}
+        selectedDay={selectedDay}
+        onStatusUpdated={handleStatusUpdated}
+      />
     </View>
   )
 }

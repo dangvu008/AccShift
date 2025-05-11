@@ -120,12 +120,50 @@ const WeatherWidget = ({ onPress }) => {
       // Sử dụng biến cờ để theo dõi trạng thái mount của component
       let isMounted = true
 
+      // Kiểm tra xem có đang chạy trên Expo Snack không
+      const isExpoSnack = global.isExpoSnack || false
+
+      // Nếu đang chạy trên Expo Snack, sử dụng dữ liệu giả
+      if (isExpoSnack) {
+        console.log(
+          'Đang chạy trên Expo Snack, sử dụng dữ liệu thời tiết giả...'
+        )
+
+        // Đợi một chút để giả lập thời gian tải
+        await new Promise((resolve) => setTimeout(resolve, 1000))
+
+        try {
+          // Lấy dữ liệu thời tiết giả
+          const mockWeather = await weatherService.getCurrentWeather()
+          const mockForecast = await weatherService.getHourlyForecast()
+
+          if (isMounted) {
+            setCurrentWeather(mockWeather)
+            setForecast(mockForecast.slice(0, 4))
+            setLoading(false)
+            setRefreshing(false)
+          }
+
+          return
+        } catch (error) {
+          console.error('Lỗi khi tạo dữ liệu thời tiết giả:', error)
+          if (isMounted) {
+            setLoading(false)
+            setRefreshing(false)
+          }
+          return
+        }
+      }
+
       // Đặt timeout để đảm bảo hàm không chạy quá lâu
       const fetchTimeout = setTimeout(() => {
         if (isMounted) {
           console.log('Timeout khi lấy dữ liệu thời tiết')
           setLoading(false)
           setRefreshing(false)
+          setErrorMessage(
+            t('Không thể kết nối đến máy chủ thời tiết. Vui lòng thử lại sau.')
+          )
 
           // Không hiển thị thông báo lỗi timeout cho người dùng
           // Thay vào đó, tự động thử lại với API key khác
@@ -425,12 +463,35 @@ const WeatherWidget = ({ onPress }) => {
         clearTimeout(fetchTimeout)
 
         if (isMounted) {
-          // Không hiển thị thông báo lỗi chi tiết nữa, chỉ ghi log
+          // Ghi log lỗi
           console.log(`Lỗi: ${error.message}`)
 
           // Hủy bỏ timeout hiện tại nếu có
           if (autoRetryTimeoutRef.current) {
             clearTimeout(autoRetryTimeoutRef.current)
+          }
+
+          // Hiển thị thông báo lỗi thân thiện với người dùng
+          if (error.message.includes('Không thể tải dữ liệu thời tiết')) {
+            setErrorMessage(
+              t('Không thể tải dữ liệu thời tiết. Vui lòng thử lại sau.')
+            )
+          } else if (
+            error.message.includes('network') ||
+            error.message.includes('timeout')
+          ) {
+            setErrorMessage(
+              t('Lỗi kết nối mạng. Vui lòng kiểm tra kết nối internet của bạn.')
+            )
+          } else if (
+            error.message.includes('API key') ||
+            error.message.includes('rate limit')
+          ) {
+            setErrorMessage(
+              t('Đã vượt quá giới hạn truy cập API. Vui lòng thử lại sau.')
+            )
+          } else {
+            setErrorMessage(t('Đã xảy ra lỗi. Vui lòng thử lại sau.'))
           }
 
           // Kiểm tra loại lỗi để quyết định cách xử lý
@@ -461,6 +522,34 @@ const WeatherWidget = ({ onPress }) => {
             // Không hiển thị trạng thái loading nữa
             setLoading(false)
             setRefreshing(false)
+
+            // Kiểm tra xem có đang chạy trên Expo Snack không
+            const isExpoSnack = global.isExpoSnack || false
+
+            // Nếu đang chạy trên Expo Snack, thử sử dụng dữ liệu giả
+            if (isExpoSnack) {
+              console.log(
+                'Đang chạy trên Expo Snack, thử sử dụng dữ liệu giả sau lỗi...'
+              )
+
+              // Đợi một chút trước khi thử lại
+              setTimeout(async () => {
+                try {
+                  const mockWeather = await weatherService.getCurrentWeather()
+                  const mockForecast = await weatherService.getHourlyForecast()
+
+                  if (isMounted) {
+                    setCurrentWeather(mockWeather)
+                    setForecast(mockForecast.slice(0, 4))
+                    setLoading(false)
+                    setRefreshing(false)
+                    setErrorMessage(null)
+                  }
+                } catch (mockError) {
+                  console.error('Lỗi khi tạo dữ liệu giả sau lỗi:', mockError)
+                }
+              }, 1000)
+            }
           }
         }
       }
@@ -609,6 +698,36 @@ const WeatherWidget = ({ onPress }) => {
     // Đặt trạng thái loading để hiển thị indicator
     setLoading(true)
 
+    // Kiểm tra xem có đang chạy trên Expo Snack không
+    const isExpoSnack = global.isExpoSnack || false
+
+    // Nếu đang chạy trên Expo Snack, sử dụng dữ liệu giả
+    if (isExpoSnack) {
+      console.log('Đang chạy trên Expo Snack, làm mới dữ liệu thời tiết giả...')
+
+      // Đợi một chút để giả lập thời gian tải
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+
+      try {
+        // Lấy dữ liệu thời tiết giả
+        const mockWeather = await weatherService.getCurrentWeather()
+        const mockForecast = await weatherService.getHourlyForecast()
+
+        setCurrentWeather(mockWeather)
+        setForecast(mockForecast.slice(0, 4))
+        setLoading(false)
+        setRefreshing(false)
+
+        return
+      } catch (error) {
+        console.error('Lỗi khi tạo dữ liệu thời tiết giả:', error)
+        setLoading(false)
+        setRefreshing(false)
+        setErrorMessage(t('Không thể tạo dữ liệu thời tiết giả'))
+        return
+      }
+    }
+
     // Reset bộ đếm API key khi người dùng chủ động làm mới
     if (
       apiKeyRotationCountRef &&
@@ -644,6 +763,7 @@ const WeatherWidget = ({ onPress }) => {
       if (!granted) {
         setRefreshing(false)
         setLoading(false)
+        setErrorMessage(t('Cần quyền truy cập vị trí để lấy dữ liệu thời tiết'))
         return
       }
     }
@@ -681,6 +801,11 @@ const WeatherWidget = ({ onPress }) => {
       console.log('Đã tải lại dữ liệu thời tiết thành công')
     } catch (error) {
       console.error('Lỗi khi làm mới dữ liệu thời tiết:', error)
+
+      // Hiển thị thông báo lỗi thân thiện với người dùng
+      setErrorMessage(
+        t('Không thể làm mới dữ liệu thời tiết. Vui lòng thử lại sau.')
+      )
 
       // Nếu có lỗi, thử tải lại dữ liệu một lần nữa sau 1 giây
       setTimeout(async () => {
@@ -940,6 +1065,9 @@ const WeatherWidget = ({ onPress }) => {
   }
 
   if (!currentWeather) {
+    // Kiểm tra xem có đang chạy trên Expo Snack không
+    const isExpoSnack = global.isExpoSnack || false
+
     return (
       <TouchableOpacity
         style={{
@@ -966,8 +1094,23 @@ const WeatherWidget = ({ onPress }) => {
               marginBottom: 8,
             }}
           >
-            {t('Đang tải dữ liệu thời tiết')}
+            {isExpoSnack
+              ? t('Đang chạy trên Expo Snack, sẽ sử dụng dữ liệu giả')
+              : t('Đang tải dữ liệu thời tiết')}
           </Text>
+
+          {errorMessage && (
+            <Text
+              style={{
+                fontSize: 14,
+                color: theme.subtextColor,
+                textAlign: 'center',
+                marginBottom: 12,
+              }}
+            >
+              {errorMessage}
+            </Text>
+          )}
 
           {/* Hiển thị nút làm mới */}
           <TouchableOpacity
@@ -1003,6 +1146,20 @@ const WeatherWidget = ({ onPress }) => {
               {refreshing ? t('Đang làm mới...') : t('Làm mới')}
             </Text>
           </TouchableOpacity>
+
+          {isExpoSnack && (
+            <Text
+              style={{
+                fontSize: 12,
+                color: theme.subtextColor,
+                textAlign: 'center',
+                marginTop: 12,
+                fontStyle: 'italic',
+              }}
+            >
+              {t('Trên Expo Snack, dữ liệu thời tiết sẽ được tạo tự động')}
+            </Text>
+          )}
         </View>
       </TouchableOpacity>
     )

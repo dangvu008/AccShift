@@ -416,12 +416,18 @@ export const fetchWeatherData = async (
     )
 
     // Kiểm tra môi trường để tối ưu hóa request
-    // Định nghĩa biến isWeb ở phạm vi toàn cục của hàm để có thể sử dụng trong các khối catch
-    const isWeb = typeof document !== 'undefined'
+    // Sử dụng biến toàn cục đã được thiết lập bởi hàm isRunningOnWeb
+    const isWeb = global.isWeb || false
+    const isExpoSnack = global.isExpoSnack || false
     const isMobile = !isWeb
 
-    // Lưu biến isWeb vào biến toàn cục để sử dụng trong các hàm khác
-    global.isWeb = isWeb
+    // Nếu đang chạy trên Expo Snack và cấu hình yêu cầu luôn sử dụng dữ liệu giả
+    if (isExpoSnack && API_CONFIG.WEB_CONFIG.ALWAYS_USE_MOCK_ON_SNACK) {
+      console.log(
+        'Đang chạy trên Expo Snack, bỏ qua API call và sử dụng dữ liệu giả...'
+      )
+      return createMockWeatherData(endpoint, params)
+    }
 
     // Sử dụng URL trực tiếp không qua proxy
     let fetchUrl = url
@@ -934,6 +940,36 @@ const createMockWeatherData = (endpoint, params) => {
 }
 
 /**
+ * Kiểm tra xem có đang chạy trên môi trường web (Expo Snack) hay không
+ * @returns {boolean} true nếu đang chạy trên môi trường web
+ */
+const isRunningOnWeb = () => {
+  try {
+    // Kiểm tra xem có đang chạy trên môi trường web không
+    const isWeb = typeof document !== 'undefined'
+
+    // Kiểm tra cụ thể cho Expo Snack
+    const isExpoSnack =
+      isWeb &&
+      (window.location?.hostname?.includes('snack.expo') ||
+        window.location?.hostname?.includes('expo.dev'))
+
+    // Lưu kết quả vào biến toàn cục để tái sử dụng
+    global.isWeb = isWeb
+    global.isExpoSnack = isExpoSnack
+
+    return isWeb || isExpoSnack
+  } catch (error) {
+    // Nếu có lỗi, giả định không phải môi trường web
+    console.log('Lỗi khi kiểm tra môi trường:', error)
+    return false
+  }
+}
+
+// Gọi hàm kiểm tra môi trường ngay khi import
+isRunningOnWeb()
+
+/**
  * Lấy dữ liệu thời tiết hiện tại
  * @param {number} lat Vĩ độ
  * @param {number} lon Kinh độ
@@ -944,15 +980,14 @@ export const getCurrentWeather = async (
   lon = API_CONFIG.DEFAULT_LOCATION.lon
 ) => {
   try {
-    // Kiểm tra nếu đang chạy trên Expo Snack
-    const isExpoSnack =
-      typeof document !== 'undefined' &&
-      (window.location?.hostname?.includes('snack.expo') ||
-        window.location?.hostname?.includes('expo.dev'))
-
-    // Nếu đang chạy trên Expo Snack, trả về dữ liệu giả ngay lập tức
-    if (isExpoSnack) {
-      console.log('Đang chạy trên Expo Snack, sử dụng dữ liệu giả...')
+    // Kiểm tra nếu đang chạy trên Expo Snack hoặc môi trường web
+    if (
+      global.isExpoSnack ||
+      (global.isWeb && API_CONFIG.WEB_CONFIG.ALWAYS_USE_MOCK_ON_SNACK)
+    ) {
+      console.log(
+        'Đang chạy trên môi trường web/Expo Snack, sử dụng dữ liệu giả...'
+      )
       return createMockWeatherData('weather', { lat, lon })
     }
 
@@ -974,15 +1009,14 @@ export const getWeatherForecast = async (
   lon = API_CONFIG.DEFAULT_LOCATION.lon
 ) => {
   try {
-    // Kiểm tra nếu đang chạy trên Expo Snack
-    const isExpoSnack =
-      typeof document !== 'undefined' &&
-      (window.location?.hostname?.includes('snack.expo') ||
-        window.location?.hostname?.includes('expo.dev'))
-
-    // Nếu đang chạy trên Expo Snack, trả về dữ liệu giả ngay lập tức
-    if (isExpoSnack) {
-      console.log('Đang chạy trên Expo Snack, sử dụng dữ liệu dự báo giả...')
+    // Kiểm tra nếu đang chạy trên Expo Snack hoặc môi trường web
+    if (
+      global.isExpoSnack ||
+      (global.isWeb && API_CONFIG.WEB_CONFIG.ALWAYS_USE_MOCK_ON_SNACK)
+    ) {
+      console.log(
+        'Đang chạy trên môi trường web/Expo Snack, sử dụng dữ liệu dự báo giả...'
+      )
       return createMockWeatherData('forecast', { lat, lon })
     }
 
@@ -1218,11 +1252,26 @@ export const getHourlyForecast = async (
   lon = API_CONFIG.DEFAULT_LOCATION.lon
 ) => {
   try {
+    // Kiểm tra nếu đang chạy trên Expo Snack hoặc môi trường web
+    if (
+      global.isExpoSnack ||
+      (global.isWeb && API_CONFIG.WEB_CONFIG.ALWAYS_USE_MOCK_ON_SNACK)
+    ) {
+      console.log(
+        'Đang chạy trên môi trường web/Expo Snack, sử dụng dữ liệu dự báo theo giờ giả...'
+      )
+      const mockData = createMockWeatherData('forecast', { lat, lon })
+      return mockData.list || []
+    }
+
     const forecastData = await fetchWeatherData('forecast', { lat, lon })
     return forecastData.list || [] // Trả về danh sách dự báo theo giờ hoặc mảng rỗng nếu không có dữ liệu
   } catch (error) {
-    console.error('Error in getHourlyForecast:', error)
-    return [] // Trả về mảng rỗng nếu có lỗi
+    console.error('Lỗi khi lấy dự báo theo giờ:', error)
+
+    // Tạo dữ liệu giả nếu có lỗi
+    const mockData = createMockWeatherData('forecast', { lat, lon })
+    return mockData.list || []
   }
 }
 
@@ -1237,6 +1286,42 @@ export const getWeatherAlerts = async (
   lon = API_CONFIG.DEFAULT_LOCATION.lon
 ) => {
   try {
+    // Kiểm tra nếu đang chạy trên Expo Snack hoặc môi trường web
+    if (
+      global.isExpoSnack ||
+      (global.isWeb && API_CONFIG.WEB_CONFIG.ALWAYS_USE_MOCK_ON_SNACK)
+    ) {
+      console.log(
+        'Đang chạy trên môi trường web/Expo Snack, sử dụng dữ liệu cảnh báo giả...'
+      )
+      // Tạo cảnh báo giả ngẫu nhiên
+      const mockAlerts = []
+
+      // 30% cơ hội có cảnh báo
+      if (Math.random() < 0.3) {
+        const alertTypes = [
+          {
+            event: 'Mưa nhẹ',
+            severity: 'moderate',
+            message:
+              'Dự báo có mưa nhẹ trong khu vực của bạn. Hãy mang theo ô khi ra ngoài.',
+          },
+          {
+            event: 'Nhiệt độ cao',
+            severity: 'moderate',
+            message:
+              'Nhiệt độ cao trong khu vực. Hãy uống đủ nước và tránh hoạt động ngoài trời.',
+          },
+        ]
+
+        mockAlerts.push(
+          alertTypes[Math.floor(Math.random() * alertTypes.length)]
+        )
+      }
+
+      return mockAlerts
+    }
+
     // OpenWeatherMap API miễn phí không hỗ trợ cảnh báo trực tiếp
     // Chúng ta sẽ kiểm tra điều kiện thời tiết và tạo cảnh báo nếu cần
     const currentWeather = await getCurrentWeather(lat, lon)
@@ -1343,6 +1428,62 @@ export const getDailyForecast = async (
   lon = API_CONFIG.DEFAULT_LOCATION.lon
 ) => {
   try {
+    // Kiểm tra nếu đang chạy trên Expo Snack hoặc môi trường web
+    if (
+      global.isExpoSnack ||
+      (global.isWeb && API_CONFIG.WEB_CONFIG.ALWAYS_USE_MOCK_ON_SNACK)
+    ) {
+      console.log(
+        'Đang chạy trên môi trường web/Expo Snack, sử dụng dữ liệu dự báo theo ngày giả...'
+      )
+
+      // Tạo dữ liệu dự báo theo ngày giả
+      const mockDailyForecast = []
+      const now = new Date()
+
+      // Tạo dự báo cho 5 ngày tiếp theo
+      for (let i = 0; i < 5; i++) {
+        const date = new Date(now)
+        date.setDate(date.getDate() + i)
+
+        // Tạo nhiệt độ ngẫu nhiên
+        const minTemp = Math.floor(Math.random() * 10) + 15 // 15-25°C
+        const maxTemp = minTemp + Math.floor(Math.random() * 10) // minTemp + (0-10)°C
+
+        // Chọn ngẫu nhiên một điều kiện thời tiết
+        const weatherConditions = [
+          {
+            id: 800,
+            main: 'Clear',
+            description: 'Trời quang đãng',
+            icon: '01d',
+          },
+          { id: 801, main: 'Clouds', description: 'Mây rải rác', icon: '02d' },
+          { id: 500, main: 'Rain', description: 'Mưa nhẹ', icon: '10d' },
+          { id: 803, main: 'Clouds', description: 'Nhiều mây', icon: '03d' },
+        ]
+
+        const weather =
+          weatherConditions[
+            Math.floor(Math.random() * weatherConditions.length)
+          ]
+
+        mockDailyForecast.push({
+          dt: Math.floor(date.getTime() / 1000),
+          temp: {
+            min: minTemp,
+            max: maxTemp,
+          },
+          weather: [weather],
+          humidity: Math.floor(Math.random() * 40) + 40, // 40-80%
+          pressure: 1013,
+          wind_speed: Math.floor(Math.random() * 9) + 1, // 1-10 m/s
+        })
+      }
+
+      return mockDailyForecast
+    }
+
     // OpenWeatherMap API miễn phí không có endpoint riêng cho dự báo theo ngày
     // Chúng ta sẽ chuyển đổi dự báo theo giờ thành dự báo theo ngày
     const hourlyForecast = await getHourlyForecast(lat, lon)
