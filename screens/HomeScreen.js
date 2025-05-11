@@ -133,7 +133,7 @@ const HomeScreen = ({ navigation, route }) => {
     <ScrollView
       style={{ flex: 1, backgroundColor: theme.backgroundColor, padding: 16 }}
     >
-      {/* 1. Thanh trên cùng (Ngày/giờ, nút Cài đặt) */}
+      {/* 1. Thanh trên cùng (Ngày/giờ, nút Thống kê) */}
       <View style={styles.header}>
         <View style={styles.dateTimeContainer}>
           <Text
@@ -147,7 +147,14 @@ const HomeScreen = ({ navigation, route }) => {
             {formattedDate}
           </Text>
         </View>
-        {/* Đã loại bỏ các nút thống kê và cài đặt */}
+        <View style={styles.headerButtons}>
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={() => navigation.navigate('Statistics')}
+          >
+            <Ionicons name="stats-chart" size={24} color={theme.primaryColor} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* 2. Khu vực Thời tiết Hiện tại & Dự báo Ngắn hạn */}
@@ -260,15 +267,27 @@ const HomeScreen = ({ navigation, route }) => {
           >
             {t('Weekly Status')}
           </Text>
-          <TouchableOpacity
-            onPress={() => navigation.navigate('AttendanceStats')}
-          >
-            <Ionicons
-              name="chevron-forward"
-              size={24}
-              color={theme.subtextColor}
-            />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row' }}>
+            <TouchableOpacity
+              style={{ marginRight: 10 }}
+              onPress={() => navigation.navigate('Statistics')}
+            >
+              <Ionicons
+                name="stats-chart"
+                size={24}
+                color={theme.subtextColor}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('AttendanceStats')}
+            >
+              <Ionicons
+                name="chevron-forward"
+                size={24}
+                color={theme.subtextColor}
+              />
+            </TouchableOpacity>
+          </View>
         </View>
         <WeeklyStatusGrid />
       </View>
