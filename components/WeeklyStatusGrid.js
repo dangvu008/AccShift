@@ -929,6 +929,12 @@ const WeeklyStatusGrid = () => {
 
   // Handle day long press - update status
   const handleDayLongPress = async (day) => {
+    console.log(
+      `[DEBUG] Mở modal cập nhật trạng thái cho ngày: ${formatDateKey(
+        day.date
+      )}`
+    )
+
     // Cho phép cập nhật trạng thái cho tất cả các ngày
     // Nhưng sẽ giới hạn các trạng thái có thể chọn trong modal dựa vào ngày
     setSelectedDay(day)
@@ -944,44 +950,83 @@ const WeeklyStatusGrid = () => {
 
     // Lấy thông tin trạng thái hiện tại của ngày được chọn
     const dateKey = formatDateKey(day.date)
-    const currentStatus = dailyStatuses[dateKey] || {}
 
-    // Tìm và đặt ca làm việc hiện tại
-    let dayShift = null
-    if (currentStatus.shiftId) {
-      dayShift = availableShifts.find(
-        (shift) => shift.id === currentStatus.shiftId
+    // Tải lại dữ liệu trạng thái từ AsyncStorage để đảm bảo dữ liệu mới nhất
+    try {
+      const storage = require('../utils/storage').default
+      const freshStatus = await storage.getDailyWorkStatus(dateKey)
+      const currentStatus = freshStatus || dailyStatuses[dateKey] || {}
+
+      console.log(
+        `[DEBUG] Trạng thái hiện tại của ngày ${dateKey}:`,
+        currentStatus.status || 'CHUA_CAP_NHAT'
       )
-      setSelectedShift(dayShift || currentShift)
-    } else {
-      setSelectedShift(currentShift)
-      dayShift = currentShift
-    }
 
-    // Đặt trạng thái làm việc hiện tại
-    setSelectedStatus(currentStatus.status || WORK_STATUS.CHUA_CAP_NHAT)
+      // Tìm và đặt ca làm việc hiện tại
+      let dayShift = null
+      if (currentStatus.shiftId) {
+        // Tải lại danh sách ca làm việc nếu cần
+        if (availableShifts.length === 0) {
+          await loadAvailableShifts()
+        }
 
-    // 1. Kiểm tra xem ngày đã có dữ liệu lịch sử chấm công chưa
-    const { checkInLog, checkOutLog } = await loadAttendanceLogsForDay(day.date)
+        dayShift = availableShifts.find(
+          (shift) => shift.id === currentStatus.shiftId
+        )
+        console.log(
+          `[DEBUG] Đã tìm thấy ca làm việc: ${
+            dayShift ? dayShift.name : 'Không có'
+          }`
+        )
+        setSelectedShift(dayShift || currentShift)
+      } else {
+        setSelectedShift(currentShift)
+        dayShift = currentShift
+        console.log(
+          `[DEBUG] Sử dụng ca làm việc hiện tại: ${
+            currentShift ? currentShift.name : 'Không có'
+          }`
+        )
+      }
 
-    // Nếu đã có dữ liệu lịch sử chấm công trong trạng thái hiện tại, ưu tiên sử dụng
-    if (currentStatus.vaoLogTime || currentStatus.raLogTime) {
-      console.log('[DEBUG] Sử dụng thời gian từ trạng thái hiện tại')
-      setManualCheckInTime(currentStatus.vaoLogTime || '')
-      setManualCheckOutTime(currentStatus.raLogTime || '')
-    }
-    // Nếu có dữ liệu lịch sử chấm công từ logs, sử dụng
-    else if (checkInLog || checkOutLog) {
-      console.log('[DEBUG] Sử dụng thời gian từ lịch sử chấm công')
-      // Thời gian đã được set trong hàm loadAttendanceLogsForDay
-    }
-    // Nếu chưa có dữ liệu lịch sử, sử dụng thời gian mặc định từ ca làm việc
-    else if (dayShift) {
-      console.log('[DEBUG] Sử dụng thời gian mặc định từ ca làm việc')
-      setDefaultTimesFromShift(dayShift)
-    }
+      // Đặt trạng thái làm việc hiện tại
+      setSelectedStatus(currentStatus.status || WORK_STATUS.CHUA_CAP_NHAT)
 
-    setStatusModalVisible(true)
+      // 1. Kiểm tra xem ngày đã có dữ liệu lịch sử chấm công chưa
+      const { checkInLog, checkOutLog } = await loadAttendanceLogsForDay(
+        day.date
+      )
+
+      // Nếu đã có dữ liệu lịch sử chấm công trong trạng thái hiện tại, ưu tiên sử dụng
+      if (currentStatus.vaoLogTime || currentStatus.raLogTime) {
+        console.log('[DEBUG] Sử dụng thời gian từ trạng thái hiện tại')
+        console.log(
+          `[DEBUG] Check-in: ${currentStatus.vaoLogTime || 'Không có'}`
+        )
+        console.log(
+          `[DEBUG] Check-out: ${currentStatus.raLogTime || 'Không có'}`
+        )
+        setManualCheckInTime(currentStatus.vaoLogTime || '')
+        setManualCheckOutTime(currentStatus.raLogTime || '')
+      }
+      // Nếu có dữ liệu lịch sử chấm công từ logs, sử dụng
+      else if (checkInLog || checkOutLog) {
+        console.log('[DEBUG] Sử dụng thời gian từ lịch sử chấm công')
+        // Thời gian đã được set trong hàm loadAttendanceLogsForDay
+      }
+      // Nếu chưa có dữ liệu lịch sử, sử dụng thời gian mặc định từ ca làm việc
+      else if (dayShift) {
+        console.log('[DEBUG] Sử dụng thời gian mặc định từ ca làm việc')
+        setDefaultTimesFromShift(dayShift)
+      }
+
+      // Hiển thị modal cập nhật trạng thái
+      setStatusModalVisible(true)
+    } catch (error) {
+      console.error('Lỗi khi tải dữ liệu cho modal cập nhật trạng thái:', error)
+      // Vẫn hiển thị modal với dữ liệu có sẵn
+      setStatusModalVisible(true)
+    }
   }
 
   // Xử lý khi người dùng muốn mở time picker
@@ -991,12 +1036,29 @@ const WeeklyStatusGrid = () => {
     // Tạo thời gian mặc định dựa trên giá trị hiện tại hoặc thời gian hiện tại
     let defaultTime = new Date()
 
-    if (type === 'checkIn' && manualCheckInTime) {
-      const [hours, minutes] = manualCheckInTime.split(':').map(Number)
-      defaultTime.setHours(hours, minutes, 0, 0)
-    } else if (type === 'checkOut' && manualCheckOutTime) {
-      const [hours, minutes] = manualCheckOutTime.split(':').map(Number)
-      defaultTime.setHours(hours, minutes, 0, 0)
+    try {
+      // Lấy giá trị thời gian hiện tại từ state
+      if (type === 'checkIn' && manualCheckInTime) {
+        const [hours, minutes] = manualCheckInTime.split(':').map(Number)
+        defaultTime.setHours(hours, minutes, 0, 0)
+        console.log(
+          `[DEBUG] Đặt thời gian mặc định cho check-in: ${hours}:${minutes}`
+        )
+      } else if (type === 'checkOut' && manualCheckOutTime) {
+        const [hours, minutes] = manualCheckOutTime.split(':').map(Number)
+        defaultTime.setHours(hours, minutes, 0, 0)
+        console.log(
+          `[DEBUG] Đặt thời gian mặc định cho check-out: ${hours}:${minutes}`
+        )
+      } else {
+        // Nếu không có giá trị, sử dụng thời gian hiện tại
+        console.log(
+          `[DEBUG] Sử dụng thời gian hiện tại: ${defaultTime.getHours()}:${defaultTime.getMinutes()}`
+        )
+      }
+    } catch (error) {
+      console.error('Lỗi khi đặt thời gian mặc định cho time picker:', error)
+      // Nếu có lỗi, vẫn sử dụng thời gian hiện tại
     }
 
     // Lưu thời gian mặc định vào state để sử dụng trong DateTimePicker
@@ -1006,113 +1068,133 @@ const WeeklyStatusGrid = () => {
 
   // Xử lý khi người dùng chọn thời gian
   const handleTimeChange = (event, selectedTime) => {
-    // Trên Android, event.type không tồn tại và selectedTime sẽ là null nếu người dùng hủy
+    console.log(
+      `[DEBUG] handleTimeChange được gọi với selectedTime:`,
+      selectedTime
+        ? `${selectedTime.getHours()}:${selectedTime.getMinutes()}`
+        : 'null'
+    )
+
+    // Nếu người dùng hủy (selectedTime là null), chỉ đóng time picker
+    if (!selectedTime) {
+      setTimePickerVisible(false)
+      return
+    }
+
+    // Định dạng thời gian đã chọn (chỉ giờ và phút)
+    const formattedTime = selectedTime.toLocaleTimeString('vi-VN', {
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+
+    console.log(`[DEBUG] Thời gian đã chọn (đã định dạng): ${formattedTime}`)
+    console.log(`[DEBUG] Đang chỉnh sửa: ${currentEditingTime}`)
+
+    // Cập nhật state tương ứng với loại thời gian đang chỉnh sửa
+    if (currentEditingTime === 'checkIn') {
+      setManualCheckInTime(formattedTime)
+      console.log(`[DEBUG] Đã cập nhật thời gian check-in: ${formattedTime}`)
+    } else if (currentEditingTime === 'checkOut') {
+      setManualCheckOutTime(formattedTime)
+      console.log(`[DEBUG] Đã cập nhật thời gian check-out: ${formattedTime}`)
+    }
+
+    // Xử lý theo nền tảng
     if (Platform.OS === 'android') {
+      // Trên Android, đóng time picker ngay sau khi chọn
       setTimePickerVisible(false)
 
-      // Chỉ cập nhật nếu selectedTime không phải là null (người dùng không hủy)
-      if (selectedTime) {
-        const formattedTime = selectedTime.toLocaleTimeString('vi-VN', {
-          hour: '2-digit',
-          minute: '2-digit',
-        })
-
-        if (currentEditingTime === 'checkIn') {
-          setManualCheckInTime(formattedTime)
-        } else if (currentEditingTime === 'checkOut') {
-          setManualCheckOutTime(formattedTime)
-        }
+      // Kiểm tra tính hợp lệ của thời gian
+      validateTimes(
+        currentEditingTime === 'checkIn' ? formattedTime : manualCheckInTime,
+        currentEditingTime === 'checkOut' ? formattedTime : manualCheckOutTime
+      )
+    } else if (Platform.OS === 'ios') {
+      // Trên iOS, chỉ đóng picker khi người dùng nhấn Done (event.type === 'set')
+      if (event && event.type === 'set') {
+        setTimePickerVisible(false)
 
         // Kiểm tra tính hợp lệ của thời gian
         validateTimes(
           currentEditingTime === 'checkIn' ? formattedTime : manualCheckInTime,
           currentEditingTime === 'checkOut' ? formattedTime : manualCheckOutTime
         )
-      }
-    }
-    // Trên iOS, chỉ ẩn picker khi người dùng nhấn Done và cập nhật giá trị
-    else if (Platform.OS === 'ios') {
-      if (event.type === 'set') {
-        setTimePickerVisible(false)
-
-        const formattedTime = selectedTime.toLocaleTimeString('vi-VN', {
-          hour: '2-digit',
-          minute: '2-digit',
-        })
-
-        if (currentEditingTime === 'checkIn') {
-          setManualCheckInTime(formattedTime)
-        } else if (currentEditingTime === 'checkOut') {
-          setManualCheckOutTime(formattedTime)
-        }
-
-        // Kiểm tra tính hợp lệ của thời gian
-        validateTimes(
-          currentEditingTime === 'checkIn' ? formattedTime : manualCheckInTime,
-          currentEditingTime === 'checkOut' ? formattedTime : manualCheckOutTime
-        )
-      } else if (event.type === 'dismissed') {
+      } else if (event && event.type === 'dismissed') {
         setTimePickerVisible(false)
       }
-    }
-    // Xử lý cho web hoặc các nền tảng khác
-    else {
+    } else {
+      // Xử lý cho web hoặc các nền tảng khác
       setTimePickerVisible(false)
 
-      if (selectedTime) {
-        const formattedTime = selectedTime.toLocaleTimeString('vi-VN', {
-          hour: '2-digit',
-          minute: '2-digit',
-        })
-
-        if (currentEditingTime === 'checkIn') {
-          setManualCheckInTime(formattedTime)
-        } else if (currentEditingTime === 'checkOut') {
-          setManualCheckOutTime(formattedTime)
-        }
-
-        // Kiểm tra tính hợp lệ của thời gian
-        validateTimes(
-          currentEditingTime === 'checkIn' ? formattedTime : manualCheckInTime,
-          currentEditingTime === 'checkOut' ? formattedTime : manualCheckOutTime
-        )
-      }
+      // Kiểm tra tính hợp lệ của thời gian
+      validateTimes(
+        currentEditingTime === 'checkIn' ? formattedTime : manualCheckInTime,
+        currentEditingTime === 'checkOut' ? formattedTime : manualCheckOutTime
+      )
     }
   }
 
   // Tải dữ liệu lịch sử chấm công cho ngày được chọn
   const loadAttendanceLogsForDay = async (date) => {
     try {
+      if (!date) {
+        console.error('Không thể tải dữ liệu: Ngày không hợp lệ')
+        return { checkInLog: null, checkOutLog: null }
+      }
+
       const dateKey = formatDateKey(date)
+      console.log(`[DEBUG] Đang tải dữ liệu chấm công cho ngày: ${dateKey}`)
+
+      // Tải dữ liệu từ AsyncStorage
       const storage = require('../utils/storage').default
       const logs = await storage.getAttendanceLogs(dateKey)
 
       console.log(
-        `[DEBUG] Đã tải ${logs.length} log chấm công cho ngày ${dateKey}`
+        `[DEBUG] Đã tải ${
+          logs ? logs.length : 0
+        } log chấm công cho ngày ${dateKey}`
       )
+
+      if (!logs || logs.length === 0) {
+        console.log(`[DEBUG] Không có dữ liệu chấm công cho ngày ${dateKey}`)
+        return { checkInLog: null, checkOutLog: null }
+      }
 
       // Tìm log check-in và check-out
       const checkInLog = logs.find((log) => log.type === 'check_in')
       const checkOutLog = logs.find((log) => log.type === 'check_out')
 
+      console.log(
+        `[DEBUG] Tìm thấy log check-in: ${checkInLog ? 'Có' : 'Không'}`
+      )
+      console.log(
+        `[DEBUG] Tìm thấy log check-out: ${checkOutLog ? 'Có' : 'Không'}`
+      )
+
       // Nếu có log check-in, lấy thời gian
-      if (checkInLog) {
+      if (checkInLog && checkInLog.timestamp) {
         const checkInTime = new Date(checkInLog.timestamp)
         const formattedCheckInTime = checkInTime.toLocaleTimeString('vi-VN', {
           hour: '2-digit',
           minute: '2-digit',
         })
+        console.log(`[DEBUG] Thời gian check-in: ${formattedCheckInTime}`)
         setManualCheckInTime(formattedCheckInTime)
+      } else {
+        console.log('[DEBUG] Không có thời gian check-in hợp lệ')
       }
 
       // Nếu có log check-out, lấy thời gian
-      if (checkOutLog) {
+      if (checkOutLog && checkOutLog.timestamp) {
         const checkOutTime = new Date(checkOutLog.timestamp)
         const formattedCheckOutTime = checkOutTime.toLocaleTimeString('vi-VN', {
           hour: '2-digit',
           minute: '2-digit',
         })
+        console.log(`[DEBUG] Thời gian check-out: ${formattedCheckOutTime}`)
         setManualCheckOutTime(formattedCheckOutTime)
+      } else {
+        console.log('[DEBUG] Không có thời gian check-out hợp lệ')
       }
 
       return { checkInLog, checkOutLog }
@@ -2478,15 +2560,39 @@ const WeeklyStatusGrid = () => {
             // Tạo thời gian mặc định dựa trên giá trị hiện tại hoặc thời gian hiện tại
             const defaultTime = new Date()
 
-            if (currentEditingTime === 'checkIn' && manualCheckInTime) {
-              const [hours, minutes] = manualCheckInTime.split(':').map(Number)
-              defaultTime.setHours(hours, minutes, 0, 0)
-            } else if (
-              currentEditingTime === 'checkOut' &&
-              manualCheckOutTime
-            ) {
-              const [hours, minutes] = manualCheckOutTime.split(':').map(Number)
-              defaultTime.setHours(hours, minutes, 0, 0)
+            try {
+              // Nếu đang chỉnh sửa check-in và đã có giá trị
+              if (currentEditingTime === 'checkIn' && manualCheckInTime) {
+                const [hours, minutes] = manualCheckInTime
+                  .split(':')
+                  .map(Number)
+                defaultTime.setHours(hours, minutes, 0, 0)
+                console.log(
+                  `[DEBUG] Android picker - Đặt thời gian mặc định cho check-in: ${hours}:${minutes}`
+                )
+              }
+              // Nếu đang chỉnh sửa check-out và đã có giá trị
+              else if (
+                currentEditingTime === 'checkOut' &&
+                manualCheckOutTime
+              ) {
+                const [hours, minutes] = manualCheckOutTime
+                  .split(':')
+                  .map(Number)
+                defaultTime.setHours(hours, minutes, 0, 0)
+                console.log(
+                  `[DEBUG] Android picker - Đặt thời gian mặc định cho check-out: ${hours}:${minutes}`
+                )
+              } else {
+                console.log(
+                  `[DEBUG] Android picker - Sử dụng thời gian hiện tại: ${defaultTime.getHours()}:${defaultTime.getMinutes()}`
+                )
+              }
+            } catch (error) {
+              console.error(
+                'Lỗi khi đặt thời gian mặc định cho Android picker:',
+                error
+              )
             }
 
             return defaultTime
@@ -2538,9 +2644,36 @@ const WeeklyStatusGrid = () => {
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => {
-                      // Tạo sự kiện giả lập cho iOS
-                      const now = new Date()
-                      handleTimeChange({ type: 'set' }, now)
+                      // Lấy thời gian hiện tại từ time picker
+                      const selectedTime = (() => {
+                        const time = new Date()
+
+                        // Nếu đang chỉnh sửa check-in và đã có giá trị
+                        if (
+                          currentEditingTime === 'checkIn' &&
+                          manualCheckInTime
+                        ) {
+                          const [hours, minutes] = manualCheckInTime
+                            .split(':')
+                            .map(Number)
+                          time.setHours(hours, minutes, 0, 0)
+                        }
+                        // Nếu đang chỉnh sửa check-out và đã có giá trị
+                        else if (
+                          currentEditingTime === 'checkOut' &&
+                          manualCheckOutTime
+                        ) {
+                          const [hours, minutes] = manualCheckOutTime
+                            .split(':')
+                            .map(Number)
+                          time.setHours(hours, minutes, 0, 0)
+                        }
+
+                        return time
+                      })()
+
+                      // Gọi hàm xử lý thời gian với sự kiện giả lập
+                      handleTimeChange({ type: 'set' }, selectedTime)
                     }}
                     style={styles.pickerButton}
                   >
@@ -2560,19 +2693,42 @@ const WeeklyStatusGrid = () => {
                     // Tạo thời gian mặc định dựa trên giá trị hiện tại hoặc thời gian hiện tại
                     const defaultTime = new Date()
 
-                    if (currentEditingTime === 'checkIn' && manualCheckInTime) {
-                      const [hours, minutes] = manualCheckInTime
-                        .split(':')
-                        .map(Number)
-                      defaultTime.setHours(hours, minutes, 0, 0)
-                    } else if (
-                      currentEditingTime === 'checkOut' &&
-                      manualCheckOutTime
-                    ) {
-                      const [hours, minutes] = manualCheckOutTime
-                        .split(':')
-                        .map(Number)
-                      defaultTime.setHours(hours, minutes, 0, 0)
+                    try {
+                      // Nếu đang chỉnh sửa check-in và đã có giá trị
+                      if (
+                        currentEditingTime === 'checkIn' &&
+                        manualCheckInTime
+                      ) {
+                        const [hours, minutes] = manualCheckInTime
+                          .split(':')
+                          .map(Number)
+                        defaultTime.setHours(hours, minutes, 0, 0)
+                        console.log(
+                          `[DEBUG] iOS picker - Đặt thời gian mặc định cho check-in: ${hours}:${minutes}`
+                        )
+                      }
+                      // Nếu đang chỉnh sửa check-out và đã có giá trị
+                      else if (
+                        currentEditingTime === 'checkOut' &&
+                        manualCheckOutTime
+                      ) {
+                        const [hours, minutes] = manualCheckOutTime
+                          .split(':')
+                          .map(Number)
+                        defaultTime.setHours(hours, minutes, 0, 0)
+                        console.log(
+                          `[DEBUG] iOS picker - Đặt thời gian mặc định cho check-out: ${hours}:${minutes}`
+                        )
+                      } else {
+                        console.log(
+                          `[DEBUG] iOS picker - Sử dụng thời gian hiện tại: ${defaultTime.getHours()}:${defaultTime.getMinutes()}`
+                        )
+                      }
+                    } catch (error) {
+                      console.error(
+                        'Lỗi khi đặt thời gian mặc định cho iOS picker:',
+                        error
+                      )
                     }
 
                     return defaultTime
@@ -2599,19 +2755,39 @@ const WeeklyStatusGrid = () => {
               // Tạo thời gian mặc định dựa trên giá trị hiện tại hoặc thời gian hiện tại
               const defaultTime = new Date()
 
-              if (currentEditingTime === 'checkIn' && manualCheckInTime) {
-                const [hours, minutes] = manualCheckInTime
-                  .split(':')
-                  .map(Number)
-                defaultTime.setHours(hours, minutes, 0, 0)
-              } else if (
-                currentEditingTime === 'checkOut' &&
-                manualCheckOutTime
-              ) {
-                const [hours, minutes] = manualCheckOutTime
-                  .split(':')
-                  .map(Number)
-                defaultTime.setHours(hours, minutes, 0, 0)
+              try {
+                // Nếu đang chỉnh sửa check-in và đã có giá trị
+                if (currentEditingTime === 'checkIn' && manualCheckInTime) {
+                  const [hours, minutes] = manualCheckInTime
+                    .split(':')
+                    .map(Number)
+                  defaultTime.setHours(hours, minutes, 0, 0)
+                  console.log(
+                    `[DEBUG] Web picker - Đặt thời gian mặc định cho check-in: ${hours}:${minutes}`
+                  )
+                }
+                // Nếu đang chỉnh sửa check-out và đã có giá trị
+                else if (
+                  currentEditingTime === 'checkOut' &&
+                  manualCheckOutTime
+                ) {
+                  const [hours, minutes] = manualCheckOutTime
+                    .split(':')
+                    .map(Number)
+                  defaultTime.setHours(hours, minutes, 0, 0)
+                  console.log(
+                    `[DEBUG] Web picker - Đặt thời gian mặc định cho check-out: ${hours}:${minutes}`
+                  )
+                } else {
+                  console.log(
+                    `[DEBUG] Web picker - Sử dụng thời gian hiện tại: ${defaultTime.getHours()}:${defaultTime.getMinutes()}`
+                  )
+                }
+              } catch (error) {
+                console.error(
+                  'Lỗi khi đặt thời gian mặc định cho Web picker:',
+                  error
+                )
               }
 
               return defaultTime
