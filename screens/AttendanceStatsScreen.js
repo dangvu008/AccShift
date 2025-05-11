@@ -383,25 +383,31 @@ const AttendanceStatsScreen = ({ navigation }) => {
   const getStatusName = (status) => {
     switch (status) {
       case WORK_STATUS.THIEU_LOG:
-        return t('Missing Log')
+        return t('Thiếu chấm công')
       case WORK_STATUS.DU_CONG:
-        return t('Complete Attendance')
+        return t('Đủ công')
       case WORK_STATUS.NGHI_PHEP:
-        return t('Leave')
+        return t('Nghỉ phép')
       case WORK_STATUS.NGHI_BENH:
-        return t('Sick Leave')
+        return t('Nghỉ bệnh')
       case WORK_STATUS.NGHI_LE:
-        return t('Holiday')
+        return t('Nghỉ lễ')
+      case WORK_STATUS.NGHI_THUONG:
+        return t('Ngày nghỉ thông thường')
       case WORK_STATUS.VANG_MAT:
-        return t('Absent')
+        return t('Vắng không lý do')
       case WORK_STATUS.DI_MUON:
-        return t('Late')
+        return t('Đi muộn')
       case WORK_STATUS.VE_SOM:
-        return t('Early Leave')
+        return t('Về sớm')
       case WORK_STATUS.DI_MUON_VE_SOM:
-        return t('Late & Early Leave')
+        return t('Đi muộn & về sớm')
+      case WORK_STATUS.NGAY_TUONG_LAI:
+        return t('Ngày tương lai')
+      case WORK_STATUS.QUEN_CHECK_OUT:
+        return t('Quên check-out')
       default:
-        return t('Not Updated')
+        return t('Chưa cập nhật')
     }
   }
 

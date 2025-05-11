@@ -574,7 +574,7 @@ export const calculateDailyWorkStatus = async (date, shift) => {
     let totalHoursScheduled = 0
     let isHolidayWork = false
 
-    // Định dạng thời gian cho vaoLogTime và raLogTime
+    // Định dạng thời gian cho vaoLogTime và raLogTime (chỉ hiển thị đến phút)
     const formatLogTime = (time) => {
       if (!time) return null
       return time.toLocaleTimeString('vi-VN', {

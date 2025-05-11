@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Modal,
   ScrollView,
+  Platform,
 } from 'react-native'
 import {
   Ionicons,
@@ -16,6 +17,7 @@ import {
 } from '@expo/vector-icons'
 import { AppContext } from '../context/AppContext'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import DateTimePicker from '@react-native-community/datetimepicker'
 
 // Import WORK_STATUS từ appConfig
 import { WORK_STATUS } from '../config/appConfig'
@@ -24,8 +26,14 @@ import { WORK_STATUS } from '../config/appConfig'
 const weekdayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']
 
 const WeeklyStatusGrid = () => {
-  const { t, darkMode, attendanceLogs, buttonState, currentShift } =
-    useContext(AppContext)
+  const {
+    t,
+    darkMode,
+    attendanceLogs,
+    buttonState,
+    currentShift,
+    notifyWorkStatusUpdate,
+  } = useContext(AppContext)
   const [weekDays, setWeekDays] = useState([])
   const [dailyStatuses, setDailyStatuses] = useState({})
   const [selectedDay, setSelectedDay] = useState(null)
@@ -33,6 +41,16 @@ const WeeklyStatusGrid = () => {
   const [statusModalVisible, setStatusModalVisible] = useState(false)
   const [updatingStatus, setUpdatingStatus] = useState(false)
   const [updatingDay, setUpdatingDay] = useState(null)
+
+  // State cho việc cập nhật thời gian check-in và check-out thủ công
+  const [manualCheckInTime, setManualCheckInTime] = useState('')
+  const [manualCheckOutTime, setManualCheckOutTime] = useState('')
+  const [showCheckInTimePicker, setShowCheckInTimePicker] = useState(false)
+  const [showCheckOutTimePicker, setShowCheckOutTimePicker] = useState(false)
+  const [timePickerMode, setTimePickerMode] = useState('time')
+  const [timePickerVisible, setTimePickerVisible] = useState(false)
+  const [currentEditingTime, setCurrentEditingTime] = useState(null) // 'checkIn' hoặc 'checkOut'
+  const [timeValidationError, setTimeValidationError] = useState('')
 
   // Format date to YYYY-MM-DD for storage key
   const formatDateKey = useCallback((date) => {
@@ -98,13 +116,12 @@ const WeeklyStatusGrid = () => {
       isManuallyUpdated: false, // Đánh dấu là cập nhật tự động
     }
 
-    // Lưu thời gian vào/ra
+    // Lưu thời gian vào/ra (chỉ hiển thị đến phút)
     if (checkInLog) {
       const checkInTime = new Date(checkInLog.timestamp)
       updatedStatus.vaoLogTime = checkInTime.toLocaleTimeString('vi-VN', {
         hour: '2-digit',
         minute: '2-digit',
-        second: '2-digit',
       })
     }
 
@@ -113,7 +130,6 @@ const WeeklyStatusGrid = () => {
       updatedStatus.raLogTime = checkOutTime.toLocaleTimeString('vi-VN', {
         hour: '2-digit',
         minute: '2-digit',
-        second: '2-digit',
       })
     }
 
@@ -350,6 +366,15 @@ const WeeklyStatusGrid = () => {
   // Update status for a specific day
   const updateDayStatus = async (day, newStatus) => {
     try {
+      // Kiểm tra tính hợp lệ của thời gian nếu có nhập thủ công
+      if (manualCheckInTime || manualCheckOutTime) {
+        const isValid = validateTimes(manualCheckInTime, manualCheckOutTime)
+        if (!isValid) {
+          // Nếu thời gian không hợp lệ, không tiếp tục cập nhật
+          return
+        }
+      }
+
       // Đánh dấu đang cập nhật và lưu ngày đang cập nhật
       setUpdatingStatus(true)
       setUpdatingDay(formatDateKey(day.date))
@@ -360,7 +385,6 @@ const WeeklyStatusGrid = () => {
       const timeString = now.toLocaleTimeString('vi-VN', {
         hour: '2-digit',
         minute: '2-digit',
-        second: '2-digit',
       })
 
       // Sử dụng currentShift từ props thay vì gọi useContext ở đây
@@ -382,13 +406,21 @@ const WeeklyStatusGrid = () => {
         newStatus === WORK_STATUS.VE_SOM ||
         newStatus === WORK_STATUS.DI_MUON_VE_SOM
       ) {
-        // Nếu chưa có thời gian vào, lưu thời gian hiện tại
-        if (!updatedStatus.vaoLogTime) {
+        // Sử dụng thời gian nhập thủ công nếu có
+        if (manualCheckInTime) {
+          updatedStatus.vaoLogTime = manualCheckInTime
+        }
+        // Nếu không có thời gian nhập thủ công và chưa có thời gian vào, lưu thời gian hiện tại
+        else if (!updatedStatus.vaoLogTime) {
           updatedStatus.vaoLogTime = timeString
         }
 
-        // Nếu đã có thời gian vào nhưng chưa có thời gian ra, lưu thời gian hiện tại
-        if (updatedStatus.vaoLogTime && !updatedStatus.raLogTime) {
+        // Sử dụng thời gian nhập thủ công nếu có
+        if (manualCheckOutTime) {
+          updatedStatus.raLogTime = manualCheckOutTime
+        }
+        // Nếu không có thời gian nhập thủ công, đã có thời gian vào nhưng chưa có thời gian ra, lưu thời gian hiện tại
+        else if (updatedStatus.vaoLogTime && !updatedStatus.raLogTime) {
           updatedStatus.raLogTime = timeString
         }
       }
@@ -606,6 +638,12 @@ const WeeklyStatusGrid = () => {
         [dateKey]: updatedStatus,
       }))
 
+      // Thông báo cho các thành phần khác về sự thay đổi trạng thái
+      if (typeof notifyWorkStatusUpdate === 'function') {
+        console.log('[DEBUG] Gọi hàm thông báo cập nhật trạng thái làm việc')
+        notifyWorkStatusUpdate()
+      }
+
       // Đánh dấu đã hoàn thành cập nhật
       setTimeout(() => {
         setUpdatingStatus(false)
@@ -684,6 +722,8 @@ const WeeklyStatusGrid = () => {
         return t('Đi muộn & về sớm')
       case WORK_STATUS.NGAY_TUONG_LAI:
         return t('Ngày tương lai')
+      case WORK_STATUS.QUEN_CHECK_OUT:
+        return t('Quên check-out')
       default:
         return t('Chưa cập nhật')
     }
@@ -714,6 +754,8 @@ const WeeklyStatusGrid = () => {
         return 'DV'
       case WORK_STATUS.NGAY_TUONG_LAI:
         return '--'
+      case WORK_STATUS.QUEN_CHECK_OUT:
+        return 'QC'
       default:
         return '?'
     }
@@ -730,7 +772,102 @@ const WeeklyStatusGrid = () => {
     // Cho phép cập nhật trạng thái cho tất cả các ngày
     // Nhưng sẽ giới hạn các trạng thái có thể chọn trong modal dựa vào ngày
     setSelectedDay(day)
+
+    // Reset các giá trị thời gian thủ công và lỗi
+    setTimeValidationError('')
+
+    // Lấy thông tin trạng thái hiện tại của ngày được chọn
+    const dateKey = formatDateKey(day.date)
+    const currentStatus = dailyStatuses[dateKey] || {}
+
+    // Đặt giá trị thời gian check-in và check-out từ trạng thái hiện tại (nếu có)
+    setManualCheckInTime(currentStatus.vaoLogTime || '')
+    setManualCheckOutTime(currentStatus.raLogTime || '')
+
     setStatusModalVisible(true)
+  }
+
+  // Xử lý khi người dùng muốn mở time picker
+  const handleOpenTimePicker = (type) => {
+    setCurrentEditingTime(type)
+    setTimePickerVisible(true)
+  }
+
+  // Xử lý khi người dùng chọn thời gian
+  const handleTimeChange = (event, selectedTime) => {
+    if (selectedTime) {
+      const formattedTime = selectedTime.toLocaleTimeString('vi-VN', {
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+
+      if (currentEditingTime === 'checkIn') {
+        setManualCheckInTime(formattedTime)
+      } else if (currentEditingTime === 'checkOut') {
+        setManualCheckOutTime(formattedTime)
+      }
+
+      // Kiểm tra tính hợp lệ của thời gian
+      validateTimes(
+        currentEditingTime === 'checkIn' ? formattedTime : manualCheckInTime,
+        currentEditingTime === 'checkOut' ? formattedTime : manualCheckOutTime
+      )
+    }
+
+    setTimePickerVisible(false)
+  }
+
+  // Kiểm tra tính hợp lệ của thời gian check-in và check-out
+  const validateTimes = (checkInTime, checkOutTime) => {
+    // Reset lỗi
+    setTimeValidationError('')
+
+    // Nếu một trong hai thời gian trống, không cần kiểm tra
+    if (!checkInTime || !checkOutTime) return true
+
+    // Chuyển đổi thời gian thành đối tượng Date để so sánh
+    const today = new Date()
+    const now = new Date()
+
+    // Tạo đối tượng Date cho thời gian check-in
+    const [checkInHours, checkInMinutes] = checkInTime.split(':').map(Number)
+    const checkInDate = new Date(today)
+    checkInDate.setHours(checkInHours, checkInMinutes, 0)
+
+    // Tạo đối tượng Date cho thời gian check-out
+    const [checkOutHours, checkOutMinutes] = checkOutTime.split(':').map(Number)
+    const checkOutDate = new Date(today)
+    checkOutDate.setHours(checkOutHours, checkOutMinutes, 0)
+
+    // Kiểm tra thời gian trong tương lai
+    if (selectedDay && selectedDay.isToday) {
+      if (checkInDate > now) {
+        setTimeValidationError('Thời gian check-in không thể trong tương lai')
+        return false
+      }
+
+      if (checkOutDate > now) {
+        setTimeValidationError('Thời gian check-out không thể trong tương lai')
+        return false
+      }
+    }
+
+    // Kiểm tra thời gian check-in phải trước thời gian check-out
+    // Xử lý trường hợp ca qua đêm
+    if (currentShift && currentShift.isOvernightShift) {
+      // Với ca qua đêm, check-out có thể nhỏ hơn check-in
+      return true
+    } else {
+      // Với ca thông thường, check-in phải trước check-out
+      if (checkInDate >= checkOutDate) {
+        setTimeValidationError(
+          'Thời gian check-in phải trước thời gian check-out'
+        )
+        return false
+      }
+    }
+
+    return true
   }
 
   // Render status icon
@@ -1148,6 +1285,90 @@ const WeeklyStatusGrid = () => {
                   </TouchableOpacity>
                 </View>
 
+                {/* Phần nhập thời gian check-in và check-out thủ công */}
+                {(!selectedDay.isFuture || selectedDay.isToday) && (
+                  <View style={styles.timeInputContainer}>
+                    <Text
+                      style={[
+                        styles.timeInputLabel,
+                        darkMode && styles.darkText,
+                      ]}
+                    >
+                      {t('Thời gian check-in/out thủ công')}
+                    </Text>
+
+                    <View style={styles.timeInputRow}>
+                      <Text
+                        style={[
+                          styles.timeInputText,
+                          darkMode && styles.darkText,
+                        ]}
+                      >
+                        {t('Check In:')}
+                      </Text>
+                      <TouchableOpacity
+                        style={[
+                          styles.timeInput,
+                          darkMode && styles.darkTimeInput,
+                        ]}
+                        onPress={() => handleOpenTimePicker('checkIn')}
+                      >
+                        <Text
+                          style={[
+                            styles.timeInputValue,
+                            darkMode && styles.darkText,
+                          ]}
+                        >
+                          {manualCheckInTime || t('Chọn giờ')}
+                        </Text>
+                        <Ionicons
+                          name="time-outline"
+                          size={20}
+                          color={darkMode ? '#fff' : '#333'}
+                        />
+                      </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.timeInputRow}>
+                      <Text
+                        style={[
+                          styles.timeInputText,
+                          darkMode && styles.darkText,
+                        ]}
+                      >
+                        {t('Check Out:')}
+                      </Text>
+                      <TouchableOpacity
+                        style={[
+                          styles.timeInput,
+                          darkMode && styles.darkTimeInput,
+                        ]}
+                        onPress={() => handleOpenTimePicker('checkOut')}
+                      >
+                        <Text
+                          style={[
+                            styles.timeInputValue,
+                            darkMode && styles.darkText,
+                          ]}
+                        >
+                          {manualCheckOutTime || t('Chọn giờ')}
+                        </Text>
+                        <Ionicons
+                          name="time-outline"
+                          size={20}
+                          color={darkMode ? '#fff' : '#333'}
+                        />
+                      </TouchableOpacity>
+                    </View>
+
+                    {timeValidationError ? (
+                      <Text style={styles.errorText}>
+                        {timeValidationError}
+                      </Text>
+                    ) : null}
+                  </View>
+                )}
+
                 <ScrollView style={styles.statusList}>
                   {/* Hiển thị tất cả các tùy chọn cho ngày hiện tại và quá khứ */}
                   {(!selectedDay.isFuture || selectedDay.isToday) && (
@@ -1397,6 +1618,17 @@ const WeeklyStatusGrid = () => {
           </View>
         </View>
       </Modal>
+
+      {/* Time Picker */}
+      {timePickerVisible && (
+        <DateTimePicker
+          value={new Date()}
+          mode="time"
+          is24Hour={true}
+          display="default"
+          onChange={handleTimeChange}
+        />
+      )}
     </View>
   )
 }
@@ -1560,6 +1792,53 @@ const styles = StyleSheet.create({
   statusOptionText: {
     fontSize: 16,
     color: '#333',
+  },
+  timeInputContainer: {
+    marginBottom: 16,
+    padding: 10,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+  },
+  timeInputLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#333',
+  },
+  timeInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  timeInputText: {
+    fontSize: 15,
+    color: '#333',
+    width: '30%',
+  },
+  timeInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 6,
+    padding: 8,
+    width: '65%',
+  },
+  darkTimeInput: {
+    backgroundColor: '#2a2a2a',
+    borderColor: '#444',
+  },
+  timeInputValue: {
+    fontSize: 15,
+    color: '#333',
+  },
+  errorText: {
+    color: '#e74c3c',
+    fontSize: 14,
+    marginTop: 5,
   },
 })
 

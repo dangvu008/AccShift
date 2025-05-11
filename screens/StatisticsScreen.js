@@ -19,7 +19,8 @@ import { STORAGE_KEYS } from '../config/appConfig'
 import { recalculateWorkStatusForDateRange } from '../utils/workStatusCalculator'
 
 const StatisticsScreen = ({ navigation }) => {
-  const { t, darkMode, language } = useContext(AppContext)
+  const { t, darkMode, language, lastWorkStatusUpdateTime } =
+    useContext(AppContext)
   const [selectedPeriod, setSelectedPeriod] = useState('week') // 'week', 'month', 'year'
   const [dateRange, setDateRange] = useState({ startDate: null, endDate: null })
   const [isLoading, setIsLoading] = useState(true)
@@ -32,6 +33,12 @@ const StatisticsScreen = ({ navigation }) => {
   const [error, setError] = useState(null)
   // Biến để theo dõi xem đã tải dữ liệu lần đầu chưa
   const [initialLoadDone, setInitialLoadDone] = useState(false)
+  // Biến để lưu index của ngày hiện tại trong danh sách
+  const [currentDayIndex, setCurrentDayIndex] = useState(0)
+  // Tham chiếu đến FlatList
+  const flatListRef = useRef(null)
+  // Biến để theo dõi việc đã cuộn đến ngày hiện tại chưa
+  const hasScrolledToCurrentDay = useRef(false)
 
   // Tham chiếu để theo dõi trạng thái đang tải
   const isLoadingRef = useRef(false)
@@ -75,6 +82,8 @@ const StatisticsScreen = ({ navigation }) => {
     (newPeriod) => {
       setSelectedPeriod(newPeriod)
       setIsLoading(true)
+      // Reset biến theo dõi việc cuộn khi chuyển tab
+      hasScrolledToCurrentDay.current = false
       const newDateRange = calculateDateRange(newPeriod)
       loadAndProcessStatistics(newDateRange.startDate, newDateRange.endDate)
     },
@@ -220,8 +229,18 @@ const StatisticsScreen = ({ navigation }) => {
         return '❌'
       case 'NGHI_PHEP':
         return '📝'
+      case 'NGHI_BENH':
+        return '🏥'
+      case 'NGHI_LE':
+        return '🎉'
+      case 'NGHI_THUONG':
+        return '🏠'
+      case 'VANG_MAT':
+        return '❓'
       case 'NGAY_TUONG_LAI':
         return '⏳'
+      case 'QUEN_CHECK_OUT':
+        return '⚠️'
       default:
         return '-'
     }
@@ -230,8 +249,11 @@ const StatisticsScreen = ({ navigation }) => {
   // Hàm chính để tải và xử lý dữ liệu thống kê
   const loadAndProcessStatistics = useCallback(
     async (startDate, endDate) => {
-      // Đánh dấu đang tải
-      setIsLoading(true)
+      // Đánh dấu đang tải, nhưng giữ lại dữ liệu cũ để người dùng vẫn có thể xem
+      // Chỉ hiển thị trạng thái đang tải nếu chưa có dữ liệu
+      if (statisticsData.length === 0) {
+        setIsLoading(true)
+      }
       isLoadingRef.current = true
       setError(null)
 
@@ -458,6 +480,62 @@ const StatisticsScreen = ({ navigation }) => {
           recalculatedTotalOtHours += item.otHours
         }
 
+        // Tìm index của ngày hiện tại trong danh sách đã sắp xếp
+        const today = new Date()
+        const todayStr = `${today.getDate().toString().padStart(2, '0')}/${(
+          today.getMonth() + 1
+        )
+          .toString()
+          .padStart(2, '0')}`
+
+        // Tìm index của ngày hiện tại hoặc ngày gần nhất
+        let currentIndex = 0
+        const todayIndex = processedData.findIndex(
+          (item) => item.date === todayStr
+        )
+
+        if (todayIndex !== -1) {
+          // Nếu tìm thấy ngày hiện tại
+          currentIndex = todayIndex
+          console.log(
+            `[DEBUG] Tìm thấy ngày hiện tại (${todayStr}) ở index: ${currentIndex}`
+          )
+        } else {
+          // Nếu không tìm thấy, tìm ngày gần nhất với ngày hiện tại
+          const todayDate = new Date(
+            today.getFullYear(),
+            today.getMonth(),
+            today.getDate()
+          )
+
+          // Chuyển đổi các ngày trong processedData thành đối tượng Date để so sánh
+          const dateDistances = processedData.map((item, index) => {
+            const parts = item.date.split('/')
+            // Giả định rằng năm hiện tại là năm của ngày
+            const itemDate = new Date(
+              today.getFullYear(),
+              parseInt(parts[1]) - 1,
+              parseInt(parts[0])
+            )
+            return {
+              index,
+              distance: Math.abs(itemDate.getTime() - todayDate.getTime()),
+            }
+          })
+
+          // Sắp xếp theo khoảng cách và lấy index của ngày gần nhất
+          dateDistances.sort((a, b) => a.distance - b.distance)
+          if (dateDistances.length > 0) {
+            currentIndex = dateDistances[0].index
+            console.log(
+              `[DEBUG] Không tìm thấy ngày hiện tại, sử dụng ngày gần nhất ở index: ${currentIndex}`
+            )
+          }
+        }
+
+        // Lưu index của ngày hiện tại
+        setCurrentDayIndex(currentIndex)
+
         // Cập nhật state
         setStatisticsData(processedData)
         setSummaryData({
@@ -508,6 +586,60 @@ const StatisticsScreen = ({ navigation }) => {
       }
     }, [calculateDateRange, loadAndProcessStatistics, selectedPeriod])
   )
+
+  // Lắng nghe sự thay đổi của lastWorkStatusUpdateTime và tự động làm mới dữ liệu
+  useEffect(() => {
+    if (lastWorkStatusUpdateTime && !isLoadingRef.current) {
+      console.log(
+        '[DEBUG] Phát hiện cập nhật trạng thái ngày làm việc, đang làm mới dữ liệu thống kê...'
+      )
+      const { startDate, endDate } = calculateDateRange(selectedPeriod)
+      loadAndProcessStatistics(startDate, endDate)
+    }
+  }, [
+    lastWorkStatusUpdateTime,
+    calculateDateRange,
+    loadAndProcessStatistics,
+    selectedPeriod,
+  ])
+
+  // Cuộn đến ngày hiện tại khi dữ liệu được tải xong và chỉ khi đang ở tab "This Month" hoặc "This Year"
+  useEffect(() => {
+    // Chỉ thực hiện khi:
+    // 1. Không đang tải dữ liệu
+    // 2. Đang ở tab "This Month" hoặc "This Year"
+    // 3. Chưa cuộn đến ngày hiện tại
+    // 4. Có dữ liệu để hiển thị
+    // 5. Có tham chiếu đến FlatList
+    if (
+      !isLoading &&
+      (selectedPeriod === 'month' || selectedPeriod === 'year') &&
+      !hasScrolledToCurrentDay.current &&
+      statisticsData.length > 0 &&
+      flatListRef.current
+    ) {
+      // Tính toán vị trí cuộn để đặt ngày hiện tại ở giữa màn hình
+      const scrollToIndex = Math.max(0, currentDayIndex)
+
+      console.log(`[DEBUG] Cuộn đến ngày hiện tại ở index: ${scrollToIndex}`)
+
+      // Sử dụng setTimeout để đảm bảo FlatList đã render xong
+      setTimeout(() => {
+        try {
+          flatListRef.current.scrollToIndex({
+            index: scrollToIndex,
+            animated: true,
+            viewPosition: 0.5, // 0.5 đặt item ở giữa màn hình
+          })
+          // Đánh dấu đã cuộn đến ngày hiện tại
+          hasScrolledToCurrentDay.current = true
+          console.log('[DEBUG] Đã cuộn đến ngày hiện tại')
+        } catch (error) {
+          console.error('[DEBUG] Lỗi khi cuộn đến ngày hiện tại:', error)
+        }
+      }, 300)
+    }
+  }, [isLoading, selectedPeriod, statisticsData, currentDayIndex])
 
   // Render item cho FlatList
   const renderItem = ({ item }) => {
@@ -869,11 +1001,11 @@ const StatisticsScreen = ({ navigation }) => {
 
             {/* Dữ liệu bảng */}
             <FlatList
+              ref={flatListRef}
               data={statisticsData}
               renderItem={renderItem}
               keyExtractor={(item, index) => `stat-${index}`}
               style={styles.tableBody}
-              initialScrollIndex={0} // Luôn bắt đầu từ đầu danh sách
               getItemLayout={(data, index) => ({
                 length: 40, // Chiều cao ước tính của mỗi hàng
                 offset: 40 * index,
@@ -881,9 +1013,36 @@ const StatisticsScreen = ({ navigation }) => {
               })}
               onScrollToIndexFailed={(info) => {
                 console.log('[DEBUG] Không thể cuộn đến index:', info.index)
+                // Xử lý khi không thể cuộn đến index
+                if (flatListRef.current) {
+                  // Thử cuộn đến đầu danh sách trước
+                  flatListRef.current.scrollToOffset({
+                    offset: 0,
+                    animated: true,
+                  })
+
+                  // Sau đó thử cuộn đến index gần nhất có thể
+                  setTimeout(() => {
+                    if (info.index > 0 && flatListRef.current) {
+                      // Thử cuộn đến index gần nhất
+                      const nearestIndex = Math.max(0, info.index - 5)
+                      flatListRef.current.scrollToIndex({
+                        index: nearestIndex,
+                        animated: true,
+                        viewPosition: 0.5,
+                      })
+                    }
+                  }, 200)
+                }
               }}
-              // Đảm bảo danh sách luôn hiển thị từ đầu khi chuyển tab
-              extraData={selectedPeriod}
+              // Đảm bảo danh sách được cập nhật khi chuyển tab
+              extraData={[selectedPeriod, currentDayIndex]}
+              // Tắt tính năng cuộn tự động khi có sự thay đổi
+              maintainVisibleContentPosition={{
+                minIndexForVisible: 0,
+              }}
+              // Hiệu ứng cuộn mượt mà
+              showsVerticalScrollIndicator={false}
             />
           </View>
         </>

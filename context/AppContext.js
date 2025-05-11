@@ -1948,6 +1948,18 @@ export const AppProvider = ({ children }) => {
     }
   }
 
+  // Biến để theo dõi thời gian cập nhật trạng thái làm việc gần nhất
+  const [lastWorkStatusUpdateTime, setLastWorkStatusUpdateTime] = useState(
+    Date.now()
+  )
+
+  // Hàm thông báo cập nhật trạng thái làm việc
+  const notifyWorkStatusUpdate = useCallback(() => {
+    console.log('[DEBUG] Thông báo cập nhật trạng thái làm việc')
+    // Cập nhật thời gian để kích hoạt useEffect trong các component khác
+    setLastWorkStatusUpdateTime(Date.now())
+  }, [])
+
   // Hàm kiểm tra và áp dụng xoay ca tự động
   const checkAndApplyShiftRotation = async () => {
     try {
@@ -2113,6 +2125,9 @@ export const AppProvider = ({ children }) => {
         attendanceLogs,
         onlyGoWorkMode,
         showPunchButton,
+        // Work Status Update
+        lastWorkStatusUpdateTime,
+        notifyWorkStatusUpdate,
         // Shift rotation
         checkAndApplyShiftRotation,
         updateMultipleSettings,
