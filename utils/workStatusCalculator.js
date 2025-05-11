@@ -1817,8 +1817,157 @@ export const calculateWorkStatusForDateRange = async (startDate, endDate) => {
   }
 }
 
-// Export hàm calculateScheduledWorkTime riêng lẻ
-export { calculateScheduledWorkTime }
+/**
+ * Tính toán thời gian làm việc theo lịch trình ca
+ * @param {Object} shift Ca làm việc
+ * @param {Date} baseDate Ngày cơ sở
+ * @param {Object} userSettings Cài đặt người dùng
+ * @returns {Object} Thông tin giờ công theo lịch trình
+ */
+export const calculateScheduledWorkTime = (shift, baseDate, userSettings) => {
+  if (!shift) {
+    return {
+      standardHoursScheduled: 0,
+      otHoursScheduled: 0,
+      sundayHoursScheduled: 0,
+      nightHoursScheduled: 0,
+      totalHoursScheduled: 0,
+      isHolidayWork: false,
+      isOvernight: false,
+    }
+  }
+
+  try {
+    // Kiểm tra xem ca làm việc có phải là ca qua đêm không
+    const isOvernight = isOvernightShift(shift.startTime, shift.endTime)
+
+    // Tạo timestamp đầy đủ cho thời gian bắt đầu ca
+    const scheduledStartTime = createFullTimestamp(
+      baseDate,
+      shift.startTime,
+      false
+    )
+
+    // Tạo timestamp đầy đủ cho thời gian kết thúc giờ hành chính
+    const scheduledOfficeEndTime = createFullTimestamp(
+      baseDate,
+      shift.officeEndTime,
+      isOvernight &&
+        new Date(`1970-01-01T${shift.officeEndTime}:00`).getHours() <
+          new Date(`1970-01-01T${shift.startTime}:00`).getHours()
+    )
+
+    // Tạo timestamp đầy đủ cho thời gian kết thúc ca (bao gồm OT)
+    const scheduledEndTime = shift.endTime
+      ? createFullTimestamp(baseDate, shift.endTime, isOvernight)
+      : scheduledOfficeEndTime
+
+    // Tính thời gian ca làm việc chuẩn (giờ)
+    const shiftDurationMs =
+      scheduledOfficeEndTime.getTime() - scheduledStartTime.getTime()
+    const shiftDurationHours = shiftDurationMs / (1000 * 60 * 60)
+
+    // Trừ thời gian nghỉ
+    const breakHours = (shift.breakMinutes || 0) / 60
+    const standardHoursScheduled = Math.max(0, shiftDurationHours - breakHours)
+
+    // Tính thời gian OT theo lịch trình (nếu có)
+    let otHoursScheduled = 0
+    if (shift.endTime && shift.endTime !== shift.officeEndTime) {
+      const otDurationMs =
+        scheduledEndTime.getTime() - scheduledOfficeEndTime.getTime()
+      otHoursScheduled = otDurationMs / (1000 * 60 * 60)
+    }
+
+    // Xác định loại ngày (thường, thứ 7, chủ nhật, lễ)
+    const dayOfWeek = baseDate.getDay() // 0: CN, 1-5: T2-T6, 6: T7
+    const isSunday = dayOfWeek === 0
+    const isHolidayWork = false // Chưa có logic xác định ngày lễ, cần bổ sung sau
+
+    // Tính giờ làm chủ nhật
+    let sundayHoursScheduled = 0
+    if (isSunday) {
+      // Nếu ngày hiện tại là chủ nhật, tất cả giờ làm đều tính là giờ chủ nhật
+      sundayHoursScheduled = standardHoursScheduled + otHoursScheduled
+    } else if (isOvernight) {
+      // Nếu ca qua đêm, kiểm tra xem ngày tiếp theo có phải chủ nhật không
+      const nextDay = new Date(baseDate)
+      nextDay.setDate(nextDay.getDate() + 1)
+
+      if (nextDay.getDay() === 0) {
+        // Tìm thời điểm nửa đêm (00:00) của ngày tiếp theo
+        const midnight = new Date(baseDate)
+        midnight.setDate(midnight.getDate() + 1)
+        midnight.setHours(0, 0, 0, 0)
+
+        // Tính phần giờ sau nửa đêm (thuộc chủ nhật)
+        if (scheduledEndTime > midnight) {
+          const sundayPortionMs =
+            scheduledEndTime.getTime() - midnight.getTime()
+          sundayHoursScheduled = sundayPortionMs / (1000 * 60 * 60)
+        }
+      }
+    }
+
+    // Tính giờ làm đêm
+    let nightHoursScheduled = 0
+    if (userSettings?.nightWorkEnabled) {
+      const nightStartTime = userSettings?.nightWorkStartTime || '22:00'
+      const nightEndTime = userSettings?.nightWorkEndTime || '05:00'
+
+      // Tạo các khoảng thời gian làm đêm cho ca làm việc
+      const nightIntervals = createNightIntervalsForShift(
+        baseDate,
+        shift.startTime,
+        shift.endTime || shift.officeEndTime,
+        nightStartTime,
+        nightEndTime
+      )
+
+      // Tạo khoảng thời gian đầy đủ cho ca làm việc
+      const shiftInterval = {
+        start: scheduledStartTime,
+        end: scheduledEndTime,
+      }
+
+      // Tính tổng giờ làm đêm
+      nightHoursScheduled = calculateTotalNightHours(
+        shiftInterval,
+        nightIntervals
+      )
+    }
+
+    // Tính tổng giờ làm việc theo lịch trình
+    const totalHoursScheduled = standardHoursScheduled + otHoursScheduled
+
+    return {
+      standardHoursScheduled,
+      otHoursScheduled,
+      sundayHoursScheduled,
+      nightHoursScheduled,
+      totalHoursScheduled,
+      isHolidayWork,
+      isOvernight,
+      scheduledStartTime,
+      scheduledOfficeEndTime,
+      scheduledEndTime,
+    }
+  } catch (error) {
+    console.error(
+      'Lỗi khi tính toán thời gian làm việc theo lịch trình:',
+      error
+    )
+    return {
+      standardHoursScheduled: 0,
+      otHoursScheduled: 0,
+      sundayHoursScheduled: 0,
+      nightHoursScheduled: 0,
+      totalHoursScheduled: 0,
+      isHolidayWork: false,
+      isOvernight: false,
+    }
+  }
+}
 
 export default {
   calculateDailyWorkStatus,
