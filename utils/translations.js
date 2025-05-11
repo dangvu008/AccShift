@@ -444,6 +444,21 @@ export const translations = {
     'Set up your location for weather information':
       'Thiết lập vị trí của bạn để xem thông tin thời tiết',
     'Unable to load weather data': 'Không thể tải dữ liệu thời tiết',
+
+    // Developer Settings
+    'Developer Settings': 'Cài đặt nhà phát triển',
+    'Tạo dữ liệu mẫu': 'Tạo dữ liệu mẫu',
+    'Tạo dữ liệu mẫu ca làm việc': 'Tạo dữ liệu mẫu ca làm việc',
+    'Xác nhận': 'Xác nhận',
+    'Bạn có chắc chắn muốn tạo dữ liệu mẫu ca làm việc? Dữ liệu hiện tại sẽ bị ghi đè.':
+      'Bạn có chắc chắn muốn tạo dữ liệu mẫu ca làm việc? Dữ liệu hiện tại sẽ bị ghi đè.',
+    Hủy: 'Hủy',
+    'Đồng ý': 'Đồng ý',
+    'Thành công': 'Thành công',
+    'Đã tạo {{count}} ca làm việc mẫu.': 'Đã tạo {{count}} ca làm việc mẫu.',
+    Lỗi: 'Lỗi',
+    'Đã xảy ra lỗi khi tạo dữ liệu mẫu ca làm việc.':
+      'Đã xảy ra lỗi khi tạo dữ liệu mẫu ca làm việc.',
   },
   en: {
     // General
@@ -881,5 +896,21 @@ export const translations = {
     'Set up your location for weather information':
       'Set up your location for weather information',
     'Unable to load weather data': 'Unable to load weather data',
+
+    // Developer Settings
+    'Developer Settings': 'Developer Settings',
+    'Tạo dữ liệu mẫu': 'Create Sample Data',
+    'Tạo dữ liệu mẫu ca làm việc': 'Create sample work shifts',
+    'Xác nhận': 'Confirmation',
+    'Bạn có chắc chắn muốn tạo dữ liệu mẫu ca làm việc? Dữ liệu hiện tại sẽ bị ghi đè.':
+      'Are you sure you want to create sample work shifts? Current data will be overwritten.',
+    Hủy: 'Cancel',
+    'Đồng ý': 'Confirm',
+    'Thành công': 'Success',
+    'Đã tạo {{count}} ca làm việc mẫu.':
+      'Created {{count}} sample work shifts.',
+    Lỗi: 'Error',
+    'Đã xảy ra lỗi khi tạo dữ liệu mẫu ca làm việc.':
+      'An error occurred while creating sample work shifts.',
   },
 }

@@ -542,18 +542,32 @@ const WeeklyStatusGrid = () => {
         if (manualCheckInTime) {
           updatedStatus.vaoLogTime = manualCheckInTime
         }
-        // Nếu không có thời gian nhập thủ công và chưa có thời gian vào, lưu thời gian hiện tại
+        // Nếu không có thời gian nhập thủ công và chưa có thời gian vào, sử dụng thời gian mặc định từ ca làm việc
         else if (!updatedStatus.vaoLogTime) {
-          updatedStatus.vaoLogTime = timeString
+          // Nếu có ca làm việc được chọn, sử dụng thời gian bắt đầu ca làm việc
+          if (shiftToUse) {
+            updatedStatus.vaoLogTime = shiftToUse.startTime
+          } else {
+            updatedStatus.vaoLogTime = timeString
+          }
         }
 
         // Sử dụng thời gian nhập thủ công nếu có
         if (manualCheckOutTime) {
           updatedStatus.raLogTime = manualCheckOutTime
         }
-        // Nếu không có thời gian nhập thủ công, đã có thời gian vào nhưng chưa có thời gian ra, lưu thời gian hiện tại
-        else if (updatedStatus.vaoLogTime && !updatedStatus.raLogTime) {
-          updatedStatus.raLogTime = timeString
+        // Nếu không có thời gian nhập thủ công và chưa có thời gian ra, sử dụng thời gian mặc định từ ca làm việc
+        else if (
+          !updatedStatus.raLogTime &&
+          newStatus !== WORK_STATUS.QUEN_CHECK_OUT
+        ) {
+          // Nếu có ca làm việc được chọn, sử dụng thời gian kết thúc ca làm việc
+          if (shiftToUse) {
+            updatedStatus.raLogTime =
+              shiftToUse.endTime || shiftToUse.officeEndTime
+          } else {
+            updatedStatus.raLogTime = timeString
+          }
         }
 
         // Kiểm tra lại tính hợp lệ của thời gian vào/ra
@@ -914,13 +928,15 @@ const WeeklyStatusGrid = () => {
   }
 
   // Handle day long press - update status
-  const handleDayLongPress = (day) => {
+  const handleDayLongPress = async (day) => {
     // Cho phép cập nhật trạng thái cho tất cả các ngày
     // Nhưng sẽ giới hạn các trạng thái có thể chọn trong modal dựa vào ngày
     setSelectedDay(day)
 
     // Reset các giá trị thời gian thủ công và lỗi
     setTimeValidationError('')
+    setManualCheckInTime('')
+    setManualCheckOutTime('')
 
     // Đóng tất cả các dropdown
     setShowShiftDropdown(false)
@@ -930,21 +946,39 @@ const WeeklyStatusGrid = () => {
     const dateKey = formatDateKey(day.date)
     const currentStatus = dailyStatuses[dateKey] || {}
 
-    // Đặt giá trị thời gian check-in và check-out từ trạng thái hiện tại (nếu có)
-    setManualCheckInTime(currentStatus.vaoLogTime || '')
-    setManualCheckOutTime(currentStatus.raLogTime || '')
-
-    // Đặt trạng thái làm việc hiện tại
-    setSelectedStatus(currentStatus.status || WORK_STATUS.CHUA_CAP_NHAT)
-
     // Tìm và đặt ca làm việc hiện tại
+    let dayShift = null
     if (currentStatus.shiftId) {
-      const dayShift = availableShifts.find(
+      dayShift = availableShifts.find(
         (shift) => shift.id === currentStatus.shiftId
       )
       setSelectedShift(dayShift || currentShift)
     } else {
       setSelectedShift(currentShift)
+      dayShift = currentShift
+    }
+
+    // Đặt trạng thái làm việc hiện tại
+    setSelectedStatus(currentStatus.status || WORK_STATUS.CHUA_CAP_NHAT)
+
+    // 1. Kiểm tra xem ngày đã có dữ liệu lịch sử chấm công chưa
+    const { checkInLog, checkOutLog } = await loadAttendanceLogsForDay(day.date)
+
+    // Nếu đã có dữ liệu lịch sử chấm công trong trạng thái hiện tại, ưu tiên sử dụng
+    if (currentStatus.vaoLogTime || currentStatus.raLogTime) {
+      console.log('[DEBUG] Sử dụng thời gian từ trạng thái hiện tại')
+      setManualCheckInTime(currentStatus.vaoLogTime || '')
+      setManualCheckOutTime(currentStatus.raLogTime || '')
+    }
+    // Nếu có dữ liệu lịch sử chấm công từ logs, sử dụng
+    else if (checkInLog || checkOutLog) {
+      console.log('[DEBUG] Sử dụng thời gian từ lịch sử chấm công')
+      // Thời gian đã được set trong hàm loadAttendanceLogsForDay
+    }
+    // Nếu chưa có dữ liệu lịch sử, sử dụng thời gian mặc định từ ca làm việc
+    else if (dayShift) {
+      console.log('[DEBUG] Sử dụng thời gian mặc định từ ca làm việc')
+      setDefaultTimesFromShift(dayShift)
     }
 
     setStatusModalVisible(true)
@@ -953,31 +987,150 @@ const WeeklyStatusGrid = () => {
   // Xử lý khi người dùng muốn mở time picker
   const handleOpenTimePicker = (type) => {
     setCurrentEditingTime(type)
+
+    // Tạo thời gian mặc định dựa trên giá trị hiện tại hoặc thời gian hiện tại
+    let defaultTime = new Date()
+
+    if (type === 'checkIn' && manualCheckInTime) {
+      const [hours, minutes] = manualCheckInTime.split(':').map(Number)
+      defaultTime.setHours(hours, minutes, 0, 0)
+    } else if (type === 'checkOut' && manualCheckOutTime) {
+      const [hours, minutes] = manualCheckOutTime.split(':').map(Number)
+      defaultTime.setHours(hours, minutes, 0, 0)
+    }
+
+    // Lưu thời gian mặc định vào state để sử dụng trong DateTimePicker
+    setTimePickerMode('time')
     setTimePickerVisible(true)
   }
 
   // Xử lý khi người dùng chọn thời gian
   const handleTimeChange = (event, selectedTime) => {
-    if (selectedTime) {
-      const formattedTime = selectedTime.toLocaleTimeString('vi-VN', {
-        hour: '2-digit',
-        minute: '2-digit',
-      })
+    // Trên Android, event.type không tồn tại và selectedTime sẽ là null nếu người dùng hủy
+    if (Platform.OS === 'android') {
+      setTimePickerVisible(false)
 
-      if (currentEditingTime === 'checkIn') {
-        setManualCheckInTime(formattedTime)
-      } else if (currentEditingTime === 'checkOut') {
-        setManualCheckOutTime(formattedTime)
+      // Chỉ cập nhật nếu selectedTime không phải là null (người dùng không hủy)
+      if (selectedTime) {
+        const formattedTime = selectedTime.toLocaleTimeString('vi-VN', {
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+
+        if (currentEditingTime === 'checkIn') {
+          setManualCheckInTime(formattedTime)
+        } else if (currentEditingTime === 'checkOut') {
+          setManualCheckOutTime(formattedTime)
+        }
+
+        // Kiểm tra tính hợp lệ của thời gian
+        validateTimes(
+          currentEditingTime === 'checkIn' ? formattedTime : manualCheckInTime,
+          currentEditingTime === 'checkOut' ? formattedTime : manualCheckOutTime
+        )
+      }
+    }
+    // Trên iOS, chỉ ẩn picker khi người dùng nhấn Done và cập nhật giá trị
+    else if (Platform.OS === 'ios') {
+      if (event.type === 'set') {
+        setTimePickerVisible(false)
+
+        const formattedTime = selectedTime.toLocaleTimeString('vi-VN', {
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+
+        if (currentEditingTime === 'checkIn') {
+          setManualCheckInTime(formattedTime)
+        } else if (currentEditingTime === 'checkOut') {
+          setManualCheckOutTime(formattedTime)
+        }
+
+        // Kiểm tra tính hợp lệ của thời gian
+        validateTimes(
+          currentEditingTime === 'checkIn' ? formattedTime : manualCheckInTime,
+          currentEditingTime === 'checkOut' ? formattedTime : manualCheckOutTime
+        )
+      } else if (event.type === 'dismissed') {
+        setTimePickerVisible(false)
+      }
+    }
+    // Xử lý cho web hoặc các nền tảng khác
+    else {
+      setTimePickerVisible(false)
+
+      if (selectedTime) {
+        const formattedTime = selectedTime.toLocaleTimeString('vi-VN', {
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+
+        if (currentEditingTime === 'checkIn') {
+          setManualCheckInTime(formattedTime)
+        } else if (currentEditingTime === 'checkOut') {
+          setManualCheckOutTime(formattedTime)
+        }
+
+        // Kiểm tra tính hợp lệ của thời gian
+        validateTimes(
+          currentEditingTime === 'checkIn' ? formattedTime : manualCheckInTime,
+          currentEditingTime === 'checkOut' ? formattedTime : manualCheckOutTime
+        )
+      }
+    }
+  }
+
+  // Tải dữ liệu lịch sử chấm công cho ngày được chọn
+  const loadAttendanceLogsForDay = async (date) => {
+    try {
+      const dateKey = formatDateKey(date)
+      const storage = require('../utils/storage').default
+      const logs = await storage.getAttendanceLogs(dateKey)
+
+      console.log(
+        `[DEBUG] Đã tải ${logs.length} log chấm công cho ngày ${dateKey}`
+      )
+
+      // Tìm log check-in và check-out
+      const checkInLog = logs.find((log) => log.type === 'check_in')
+      const checkOutLog = logs.find((log) => log.type === 'check_out')
+
+      // Nếu có log check-in, lấy thời gian
+      if (checkInLog) {
+        const checkInTime = new Date(checkInLog.timestamp)
+        const formattedCheckInTime = checkInTime.toLocaleTimeString('vi-VN', {
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+        setManualCheckInTime(formattedCheckInTime)
       }
 
-      // Kiểm tra tính hợp lệ của thời gian
-      validateTimes(
-        currentEditingTime === 'checkIn' ? formattedTime : manualCheckInTime,
-        currentEditingTime === 'checkOut' ? formattedTime : manualCheckOutTime
-      )
-    }
+      // Nếu có log check-out, lấy thời gian
+      if (checkOutLog) {
+        const checkOutTime = new Date(checkOutLog.timestamp)
+        const formattedCheckOutTime = checkOutTime.toLocaleTimeString('vi-VN', {
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+        setManualCheckOutTime(formattedCheckOutTime)
+      }
 
-    setTimePickerVisible(false)
+      return { checkInLog, checkOutLog }
+    } catch (error) {
+      console.error('Lỗi khi tải dữ liệu lịch sử chấm công:', error)
+      return { checkInLog: null, checkOutLog: null }
+    }
+  }
+
+  // Tự động điền thời gian mặc định từ ca làm việc
+  const setDefaultTimesFromShift = (shift) => {
+    if (!shift) return
+
+    // Thời gian check-in mặc định là thời gian bắt đầu ca
+    setManualCheckInTime(shift.startTime)
+
+    // Thời gian check-out mặc định là thời gian kết thúc ca
+    setManualCheckOutTime(shift.endTime || shift.officeEndTime)
   }
 
   // Xử lý khi người dùng chọn ca làm việc từ dropdown
@@ -2318,16 +2471,157 @@ const WeeklyStatusGrid = () => {
         </View>
       </Modal>
 
-      {/* Time Picker */}
-      {timePickerVisible && (
+      {/* Time Picker cho Android */}
+      {Platform.OS === 'android' && timePickerVisible && (
         <DateTimePicker
-          value={new Date()}
+          value={(() => {
+            // Tạo thời gian mặc định dựa trên giá trị hiện tại hoặc thời gian hiện tại
+            const defaultTime = new Date()
+
+            if (currentEditingTime === 'checkIn' && manualCheckInTime) {
+              const [hours, minutes] = manualCheckInTime.split(':').map(Number)
+              defaultTime.setHours(hours, minutes, 0, 0)
+            } else if (
+              currentEditingTime === 'checkOut' &&
+              manualCheckOutTime
+            ) {
+              const [hours, minutes] = manualCheckOutTime.split(':').map(Number)
+              defaultTime.setHours(hours, minutes, 0, 0)
+            }
+
+            return defaultTime
+          })()}
           mode="time"
           is24Hour={true}
           display="default"
           onChange={handleTimeChange}
+          themeVariant={darkMode ? 'dark' : 'light'}
         />
       )}
+
+      {/* Time Picker cho iOS */}
+      {Platform.OS === 'ios' && timePickerVisible && (
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={timePickerVisible}
+          onRequestClose={() => setTimePickerVisible(false)}
+        >
+          <View style={styles.modalContainer}>
+            <View
+              style={[
+                styles.modalContent,
+                darkMode && styles.darkModalContent,
+                { padding: 0 },
+              ]}
+            >
+              <View
+                style={{
+                  backgroundColor: darkMode ? '#1e1e1e' : '#fff',
+                  borderRadius: 12,
+                  overflow: 'hidden',
+                }}
+              >
+                <View style={styles.pickerHeader}>
+                  <TouchableOpacity
+                    onPress={() => setTimePickerVisible(false)}
+                    style={styles.pickerButton}
+                  >
+                    <Text
+                      style={[
+                        styles.pickerButtonText,
+                        darkMode && styles.darkText,
+                      ]}
+                    >
+                      {t('Hủy')}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => {
+                      // Tạo sự kiện giả lập cho iOS
+                      const now = new Date()
+                      handleTimeChange({ type: 'set' }, now)
+                    }}
+                    style={styles.pickerButton}
+                  >
+                    <Text
+                      style={[
+                        styles.pickerButtonText,
+                        styles.doneButton,
+                        darkMode && styles.darkText,
+                      ]}
+                    >
+                      {t('Xong')}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+                <DateTimePicker
+                  value={(() => {
+                    // Tạo thời gian mặc định dựa trên giá trị hiện tại hoặc thời gian hiện tại
+                    const defaultTime = new Date()
+
+                    if (currentEditingTime === 'checkIn' && manualCheckInTime) {
+                      const [hours, minutes] = manualCheckInTime
+                        .split(':')
+                        .map(Number)
+                      defaultTime.setHours(hours, minutes, 0, 0)
+                    } else if (
+                      currentEditingTime === 'checkOut' &&
+                      manualCheckOutTime
+                    ) {
+                      const [hours, minutes] = manualCheckOutTime
+                        .split(':')
+                        .map(Number)
+                      defaultTime.setHours(hours, minutes, 0, 0)
+                    }
+
+                    return defaultTime
+                  })()}
+                  mode="time"
+                  is24Hour={true}
+                  display="spinner"
+                  onChange={handleTimeChange}
+                  style={{ height: 200, width: '100%' }}
+                  themeVariant={darkMode ? 'dark' : 'light'}
+                />
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {/* Time Picker cho Web và các nền tảng khác */}
+      {Platform.OS !== 'android' &&
+        Platform.OS !== 'ios' &&
+        timePickerVisible && (
+          <DateTimePicker
+            value={(() => {
+              // Tạo thời gian mặc định dựa trên giá trị hiện tại hoặc thời gian hiện tại
+              const defaultTime = new Date()
+
+              if (currentEditingTime === 'checkIn' && manualCheckInTime) {
+                const [hours, minutes] = manualCheckInTime
+                  .split(':')
+                  .map(Number)
+                defaultTime.setHours(hours, minutes, 0, 0)
+              } else if (
+                currentEditingTime === 'checkOut' &&
+                manualCheckOutTime
+              ) {
+                const [hours, minutes] = manualCheckOutTime
+                  .split(':')
+                  .map(Number)
+                defaultTime.setHours(hours, minutes, 0, 0)
+              }
+
+              return defaultTime
+            })()}
+            mode="time"
+            is24Hour={true}
+            display="default"
+            onChange={handleTimeChange}
+          />
+        )}
     </View>
   )
 }
@@ -2690,6 +2984,27 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#fff',
+  },
+  // Styles cho iOS picker
+  pickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+  },
+  pickerButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  pickerButtonText: {
+    fontSize: 16,
+    color: '#8a56ff',
+  },
+  doneButton: {
+    fontWeight: 'bold',
   },
 })
 
