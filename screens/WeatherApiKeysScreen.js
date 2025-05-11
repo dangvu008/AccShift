@@ -14,7 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons'
 import { AppContext } from '../context/AppContext'
 import {
-  getApiKeys,
+  getMaskedApiKeys,
   addApiKey,
   removeApiKey,
   toggleApiKey,
@@ -37,7 +37,7 @@ const WeatherApiKeysScreen = ({ navigation }) => {
   }, [])
 
   const loadApiKeys = () => {
-    const keys = getApiKeys()
+    const keys = getMaskedApiKeys()
     setApiKeys(keys)
   }
 

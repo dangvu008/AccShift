@@ -73,7 +73,7 @@ const WeatherWidget = ({ onPress }) => {
       )
 
       // Lấy danh sách API key hiện tại
-      const apiKeys = await weatherService.getApiKeys()
+      const apiKeys = await weatherService.getApiKeys() // Sử dụng hàm getApiKeys ban đầu (trả về danh sách API keys đã được lọc)
 
       // Nếu không có API key nào, không thể thử lại
       if (!apiKeys || apiKeys.length === 0) {

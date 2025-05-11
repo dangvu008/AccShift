@@ -1127,10 +1127,10 @@ export const toggleApiKey = async (key, enabled) => {
 }
 
 /**
- * Lấy danh sách API key
- * @returns {Array} Danh sách API key
+ * Lấy danh sách API key đã được che giấu (masking)
+ * @returns {Array} Danh sách API key đã được che giấu
  */
-export const getApiKeys = () => {
+export const getMaskedApiKeys = () => {
   return API_KEYS.map((keyObj) => ({
     ...keyObj,
     key: maskString(keyObj.key, 3), // Ẩn key, chỉ hiển thị 3 ký tự đầu và cuối
@@ -1740,7 +1740,8 @@ export default {
   addApiKey,
   removeApiKey,
   toggleApiKey,
-  getApiKeys,
+  getApiKeys, // Sử dụng hàm getApiKeys ban đầu (trả về danh sách API keys đã được lọc)
+  getMaskedApiKeys, // Thêm hàm getMaskedApiKeys mới
   initWeatherService,
   validateApiKey,
   checkAndUseNewApiKey,
