@@ -33,5 +33,23 @@ if (!global.NativeModules.PlatformConstants) {
   };
 }
 
+// Mock TurboModuleRegistry if it doesn't exist
+if (!global.TurboModuleRegistry) {
+  global.TurboModuleRegistry = {
+    get: (name) => {
+      if (name === 'PlatformConstants') {
+        return global.NativeModules.PlatformConstants;
+      }
+      return null;
+    },
+    getEnforcing: (name) => {
+      if (name === 'PlatformConstants') {
+        return global.NativeModules.PlatformConstants;
+      }
+      throw new Error(`TurboModuleRegistry.getEnforcing(...): '${name}' could not be found. Verify that a module by this name is registered in the native binary.`);
+    }
+  };
+}
+
 // Export the mock module
 export default global.NativeModules.PlatformConstants;

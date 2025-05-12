@@ -1,4 +1,7 @@
 // Mock implementation for @react-native-picker/picker
+// Import platform constants mock to fix TurboModuleRegistry errors
+import '../platform-constants';
+
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
