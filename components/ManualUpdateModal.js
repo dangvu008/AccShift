@@ -11,6 +11,7 @@ import {
   ScrollView,
   Alert,
   KeyboardAvoidingView,
+  FlatList,
 } from 'react-native'
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
 import { AppContext } from '../context/AppContext'
@@ -21,6 +22,106 @@ import { WORK_STATUS } from '../config/appConfig'
 // Import storage và workStatusCalculator
 import storage from '../utils/storage'
 import { updateWorkStatusManually } from '../utils/workStatusCalculator'
+
+// Thành phần SelectDropdown thay thế cho Picker
+const SelectDropdown = ({
+  items,
+  selectedValue,
+  onValueChange,
+  placeholder,
+  darkMode,
+}) => {
+  // Sử dụng Picker thay vì custom dropdown để tránh lỗi
+  if (Platform.OS === 'ios' || Platform.OS === 'android') {
+    return (
+      <View style={[styles.dropdownContainer, darkMode && styles.darkDropdownContainer]}>
+        <Picker
+          selectedValue={selectedValue}
+          onValueChange={onValueChange}
+          style={[styles.picker, darkMode && styles.darkPicker]}
+          itemStyle={[styles.pickerItem, darkMode && styles.darkPickerItem]}
+        >
+          <Picker.Item label={placeholder || 'Chọn...'} value="" />
+          {items.map((item) => (
+            <Picker.Item key={item.value} label={item.label} value={item.value} />
+          ))}
+        </Picker>
+      </View>
+    )
+  }
+
+  // Fallback to custom dropdown for web or other platforms
+  const [visible, setVisible] = useState(false)
+
+  // Tìm item được chọn
+  const selectedItem = items.find((item) => item.value === selectedValue) || {
+    label: placeholder || 'Chọn...',
+  }
+
+  return (
+    <View style={styles.dropdownContainer}>
+      <TouchableOpacity
+        style={[styles.dropdownButton, darkMode && styles.darkDropdownButton]}
+        onPress={() => setVisible(true)}
+      >
+        <Text style={[styles.dropdownButtonText, darkMode && styles.darkText]}>
+          {selectedItem.label}
+        </Text>
+        <Ionicons
+          name="chevron-down"
+          size={20}
+          color={darkMode ? '#fff' : '#000'}
+        />
+      </TouchableOpacity>
+
+      <Modal
+        visible={visible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setVisible(false)}
+        >
+          <View
+            style={[
+              styles.dropdownListContainer,
+              darkMode && styles.darkDropdownListContainer,
+            ]}
+          >
+            <FlatList
+              data={items}
+              keyExtractor={(item) => item.value.toString()}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[
+                    styles.dropdownItem,
+                    selectedValue === item.value && styles.selectedItem,
+                  ]}
+                  onPress={() => {
+                    onValueChange(item.value)
+                    setVisible(false)
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.dropdownItemText,
+                      darkMode && styles.darkText,
+                    ]}
+                  >
+                    {item.label}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    </View>
+  )
+}
 
 const ManualUpdateModal = ({
   visible,
@@ -70,17 +171,17 @@ const ManualUpdateModal = ({
     setIsLoading(true)
     try {
       const dateKey = formatDateKey(selectedDay.date)
-      
+
       // Tải trạng thái làm việc
       const status = await storage.getDailyWorkStatus(dateKey)
       setDayStatus(status || {})
-      
+
       // Thiết lập giá trị mặc định
       if (status) {
         setSelectedStatus(status.status || WORK_STATUS.CHUA_CAP_NHAT)
         setSelectedShiftId(status.shiftId || '')
         setNotes(status.notes || '')
-        
+
         // Thiết lập thời gian check-in/check-out
         if (status.vaoLogTime) {
           setCheckInTime(status.vaoLogTime)
@@ -91,7 +192,7 @@ const ManualUpdateModal = ({
       } else {
         resetForm()
       }
-      
+
       // Tải danh sách ca làm việc
       await loadAvailableShifts()
     } catch (error) {
@@ -107,7 +208,7 @@ const ManualUpdateModal = ({
       // Lấy danh sách ca làm việc từ storage
       const allShifts = await storage.getShifts()
       setAvailableShifts(allShifts || [])
-      
+
       // Nếu chưa có ca được chọn và có ca làm việc
       if (!selectedShiftId && allShifts && allShifts.length > 0) {
         // Tìm ca làm việc đang áp dụng
@@ -136,14 +237,14 @@ const ManualUpdateModal = ({
   const handleOpenTimePicker = (type) => {
     // Đặt loại thời gian đang chỉnh sửa (checkIn hoặc checkOut)
     setCurrentEditingTime(type)
-    
+
     // Đặt chế độ picker là time
     setTimePickerMode('time')
-    
+
     // Thiết lập giá trị mặc định cho time picker
     const now = new Date()
     let timeValue = new Date()
-    
+
     if (type === 'checkIn' && checkInTime) {
       // Nếu đã có giá trị check-in, sử dụng giá trị đó
       const [hours, minutes] = checkInTime.split(':').map(Number)
@@ -156,9 +257,9 @@ const ManualUpdateModal = ({
       // Nếu chưa có giá trị, sử dụng thời gian hiện tại
       timeValue = now
     }
-    
+
     setTimePickerValue(timeValue)
-    
+
     // Hiển thị time picker
     setShowTimePicker(true)
   }
@@ -168,17 +269,17 @@ const ManualUpdateModal = ({
     if (Platform.OS === 'android') {
       setShowTimePicker(false)
     }
-    
+
     if (event.type === 'dismissed') {
       return
     }
-    
+
     if (selectedTime) {
       // Định dạng thời gian (HH:MM)
       const hours = selectedTime.getHours().toString().padStart(2, '0')
       const minutes = selectedTime.getMinutes().toString().padStart(2, '0')
       const formattedTime = `${hours}:${minutes}`
-      
+
       // Cập nhật state tương ứng
       if (currentEditingTime === 'checkIn') {
         setCheckInTime(formattedTime)
@@ -200,34 +301,41 @@ const ManualUpdateModal = ({
   // Xử lý khi người dùng lưu thay đổi
   const handleSaveChanges = async () => {
     if (!selectedDay) return
-    
+
     // Kiểm tra dữ liệu
-    if (selectedStatus === WORK_STATUS.DU_CONG && (!checkInTime || !checkOutTime)) {
+    if (
+      selectedStatus === WORK_STATUS.DU_CONG &&
+      (!checkInTime || !checkOutTime)
+    ) {
       Alert.alert(
         t('Lỗi'),
-        t('Bạn cần nhập đủ thời gian check-in và check-out khi chọn trạng thái Đủ công')
+        t(
+          'Bạn cần nhập đủ thời gian check-in và check-out khi chọn trạng thái Đủ công'
+        )
       )
       return
     }
-    
+
     // Kiểm tra thời gian check-out có sau check-in không
     if (checkInTime && checkOutTime) {
       const [inHours, inMinutes] = checkInTime.split(':').map(Number)
       const [outHours, outMinutes] = checkOutTime.split(':').map(Number)
-      
+
       // Tạo đối tượng Date để so sánh
       const inDate = new Date()
       inDate.setHours(inHours, inMinutes, 0, 0)
-      
+
       const outDate = new Date()
       outDate.setHours(outHours, outMinutes, 0, 0)
-      
+
       // Nếu check-out trước check-in (không phải ca qua đêm)
       if (outDate <= inDate) {
         // Hiển thị cảnh báo
         Alert.alert(
           t('Cảnh báo'),
-          t('Thời gian check-out phải sau thời gian check-in. Bạn có muốn tiếp tục?'),
+          t(
+            'Thời gian check-out phải sau thời gian check-in. Bạn có muốn tiếp tục?'
+          ),
           [
             {
               text: t('Hủy'),
@@ -242,7 +350,7 @@ const ManualUpdateModal = ({
         return
       }
     }
-    
+
     // Lưu trạng thái làm việc
     saveWorkStatus()
   }
@@ -250,11 +358,11 @@ const ManualUpdateModal = ({
   // Lưu trạng thái làm việc
   const saveWorkStatus = async () => {
     if (!selectedDay) return
-    
+
     setIsLoading(true)
     try {
       const dateKey = formatDateKey(selectedDay.date)
-      
+
       // Chuẩn bị dữ liệu bổ sung
       const additionalData = {
         shiftId: selectedShiftId,
@@ -262,25 +370,25 @@ const ManualUpdateModal = ({
         raLogTime: checkOutTime,
         notes: notes,
       }
-      
+
       // Cập nhật trạng thái làm việc
       const result = await updateWorkStatusManually(
         dateKey,
         selectedStatus,
         additionalData
       )
-      
+
       if (result) {
         // Thông báo cho các thành phần khác về sự thay đổi trạng thái
         if (typeof notifyWorkStatusUpdate === 'function') {
           notifyWorkStatusUpdate()
         }
-        
+
         // Gọi callback
         if (typeof onStatusUpdated === 'function') {
           onStatusUpdated(result)
         }
-        
+
         // Đóng modal
         onClose()
       }
@@ -303,21 +411,20 @@ const ManualUpdateModal = ({
       { value: WORK_STATUS.VANG_MAT, label: t('Vắng Mặt') },
       { value: WORK_STATUS.NGHI_THUONG, label: t('Ngày nghỉ thông thường') },
     ]
-    
-    return statuses.map((status) => (
-      <Picker.Item key={status.value} label={status.label} value={status.value} />
-    ))
+
+    return statuses
   }
 
   // Render danh sách ca làm việc
   const renderShiftOptions = () => {
     if (!availableShifts || availableShifts.length === 0) {
-      return <Picker.Item label={t('Không có ca làm việc')} value="" />
+      return [{ value: '', label: t('Không có ca làm việc') }]
     }
-    
-    return availableShifts.map((shift) => (
-      <Picker.Item key={shift.id} label={shift.name} value={shift.id} />
-    ))
+
+    return availableShifts.map((shift) => ({
+      value: shift.id,
+      label: shift.name,
+    }))
   }
 
   return (
@@ -336,14 +443,11 @@ const ManualUpdateModal = ({
             style={[styles.modalContent, darkMode && styles.darkModalContent]}
           >
             <View style={styles.modalHeader}>
-              <Text
-                style={[styles.modalTitle, darkMode && styles.darkText]}
-              >
-                {t('Cập nhật trạng thái')} - {selectedDay ? formatDateKey(selectedDay.date) : ''}
+              <Text style={[styles.modalTitle, darkMode && styles.darkText]}>
+                {t('Cập nhật trạng thái')} -{' '}
+                {selectedDay ? formatDateKey(selectedDay.date) : ''}
               </Text>
-              <TouchableOpacity
-                onPress={onClose}
-              >
+              <TouchableOpacity onPress={onClose}>
                 <Ionicons
                   name="close"
                   size={24}
@@ -351,58 +455,42 @@ const ManualUpdateModal = ({
                 />
               </TouchableOpacity>
             </View>
-            
+
             <ScrollView style={styles.modalBody}>
               {/* Ca làm việc */}
               <View style={styles.formGroup}>
                 <Text style={[styles.label, darkMode && styles.darkText]}>
                   {t('Ca làm việc')}
                 </Text>
-                <View
-                  style={[
-                    styles.pickerContainer,
-                    darkMode && styles.darkPickerContainer,
-                  ]}
-                >
-                  <Picker
-                    selectedValue={selectedShiftId}
-                    onValueChange={(itemValue) => setSelectedShiftId(itemValue)}
-                    style={[styles.picker, darkMode && styles.darkPicker]}
-                    dropdownIconColor={darkMode ? '#fff' : '#000'}
-                  >
-                    {renderShiftOptions()}
-                  </Picker>
-                </View>
+                <SelectDropdown
+                  items={renderShiftOptions()}
+                  selectedValue={selectedShiftId}
+                  onValueChange={(itemValue) => setSelectedShiftId(itemValue)}
+                  placeholder={t('Chọn ca làm việc')}
+                  darkMode={darkMode}
+                />
               </View>
-              
+
               {/* Trạng thái */}
               <View style={styles.formGroup}>
                 <Text style={[styles.label, darkMode && styles.darkText]}>
                   {t('Trạng thái')}
                 </Text>
-                <View
-                  style={[
-                    styles.pickerContainer,
-                    darkMode && styles.darkPickerContainer,
-                  ]}
-                >
-                  <Picker
-                    selectedValue={selectedStatus}
-                    onValueChange={(itemValue) => setSelectedStatus(itemValue)}
-                    style={[styles.picker, darkMode && styles.darkPicker]}
-                    dropdownIconColor={darkMode ? '#fff' : '#000'}
-                  >
-                    {renderStatusOptions()}
-                  </Picker>
-                </View>
+                <SelectDropdown
+                  items={renderStatusOptions()}
+                  selectedValue={selectedStatus}
+                  onValueChange={(itemValue) => setSelectedStatus(itemValue)}
+                  placeholder={t('Chọn trạng thái')}
+                  darkMode={darkMode}
+                />
               </View>
-              
+
               {/* Thời gian check-in/check-out */}
-              {(selectedStatus === WORK_STATUS.CHUA_CAP_NHAT || 
-                selectedStatus === WORK_STATUS.DU_CONG || 
-                selectedStatus === WORK_STATUS.THIEU_LOG || 
-                selectedStatus === WORK_STATUS.DI_MUON || 
-                selectedStatus === WORK_STATUS.VE_SOM || 
+              {(selectedStatus === WORK_STATUS.CHUA_CAP_NHAT ||
+                selectedStatus === WORK_STATUS.DU_CONG ||
+                selectedStatus === WORK_STATUS.THIEU_LOG ||
+                selectedStatus === WORK_STATUS.DI_MUON ||
+                selectedStatus === WORK_STATUS.VE_SOM ||
                 selectedStatus === WORK_STATUS.DI_MUON_VE_SOM) && (
                 <>
                   {/* Check-in time */}
@@ -441,7 +529,7 @@ const ManualUpdateModal = ({
                       )}
                     </View>
                   </View>
-                  
+
                   {/* Check-out time */}
                   <View style={styles.formGroup}>
                     <Text style={[styles.label, darkMode && styles.darkText]}>
@@ -481,15 +569,13 @@ const ManualUpdateModal = ({
                 </>
               )}
             </ScrollView>
-            
+
             <View style={styles.modalFooter}>
               <TouchableOpacity
                 style={[styles.button, styles.cancelButton]}
                 onPress={onClose}
               >
-                <Text
-                  style={[styles.buttonText, styles.cancelButtonText]}
-                >
+                <Text style={[styles.buttonText, styles.cancelButtonText]}>
                   {t('Hủy')}
                 </Text>
               </TouchableOpacity>
@@ -498,9 +584,7 @@ const ManualUpdateModal = ({
                 onPress={handleSaveChanges}
                 disabled={isLoading}
               >
-                <Text
-                  style={[styles.buttonText, styles.saveButtonText]}
-                >
+                <Text style={[styles.buttonText, styles.saveButtonText]}>
                   {isLoading ? t('Đang lưu...') : t('Lưu thay đổi')}
                 </Text>
               </TouchableOpacity>
@@ -508,7 +592,7 @@ const ManualUpdateModal = ({
           </View>
         </View>
       </KeyboardAvoidingView>
-      
+
       {/* Time Picker cho Android */}
       {Platform.OS === 'android' && showTimePicker && (
         <DateTimePicker
@@ -519,7 +603,7 @@ const ManualUpdateModal = ({
           onChange={handleTimeChange}
         />
       )}
-      
+
       {/* Time Picker cho iOS */}
       {Platform.OS === 'ios' && showTimePicker && (
         <Modal
@@ -622,20 +706,59 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 5,
   },
-  pickerContainer: {
+  dropdownContainer: {
+    marginBottom: 10,
+  },
+  dropdownButton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    height: 50,
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 5,
-    marginBottom: 10,
+    paddingHorizontal: 10,
   },
-  darkPickerContainer: {
+  darkDropdownButton: {
     borderColor: '#555',
   },
-  picker: {
-    height: 50,
+  dropdownButtonText: {
+    fontSize: 16,
   },
-  darkPicker: {
-    color: '#fff',
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  dropdownListContainer: {
+    width: '80%',
+    maxHeight: '50%',
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 10,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  darkDropdownListContainer: {
+    backgroundColor: '#333',
+  },
+  dropdownItem: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  selectedItem: {
+    backgroundColor: '#f0f0f0',
+  },
+  dropdownItemText: {
+    fontSize: 16,
   },
   timeInputContainer: {
     flexDirection: 'row',
@@ -721,6 +844,29 @@ const styles = StyleSheet.create({
   },
   iosPicker: {
     height: 200,
+  },
+  picker: {
+    width: '100%',
+    height: 50,
+    borderColor: '#ddd',
+    borderWidth: 1,
+    borderRadius: 5,
+    paddingHorizontal: 10,
+  },
+  darkPicker: {
+    borderColor: '#555',
+  },
+  pickerItem: {
+    fontSize: 16,
+  },
+  darkPickerItem: {
+    color: '#fff',
+  },
+  dropdownContainer: {
+    marginBottom: 10,
+  },
+  darkDropdownContainer: {
+    borderColor: '#555',
   },
 })
 
