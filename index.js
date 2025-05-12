@@ -1,3 +1,6 @@
+// Import platform constants mock to fix TurboModuleRegistry errors
+import './platform-constants'
+
 import { registerRootComponent } from 'expo'
 import App from './App'
 
