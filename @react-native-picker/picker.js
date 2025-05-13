@@ -3,7 +3,19 @@
 import '../platform-constants';
 
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+
+// Đảm bảo NativeModules.RNCPicker tồn tại
+if (!global.NativeModules) {
+  global.NativeModules = {};
+}
+
+if (!global.NativeModules.RNCPicker) {
+  global.NativeModules.RNCPicker = {
+    getDefaultDisplayMode: () => 'dialog',
+    setMode: () => {},
+  };
+}
 
 // Create a simple mock Picker component
 const Picker = ({ selectedValue, onValueChange, style, itemStyle, children, ...props }) => {
@@ -21,12 +33,27 @@ const Picker = ({ selectedValue, onValueChange, style, itemStyle, children, ...p
   // Find the selected item
   const selectedItem = items.find(item => item.value === selectedValue) || items[0];
 
+  // Handle selection
+  const handleSelect = (item) => {
+    if (onValueChange && item) {
+      onValueChange(item.value, items.indexOf(item));
+    }
+  };
+
   return (
-    <View style={[styles.container, style]}>
+    <TouchableOpacity
+      style={[styles.container, style]}
+      onPress={() => {
+        // Simulate selection of first item if none selected
+        if (!selectedItem && items.length > 0) {
+          handleSelect(items[0]);
+        }
+      }}
+    >
       <Text style={[styles.text, itemStyle]}>
         {selectedItem ? selectedItem.label : 'Select...'}
       </Text>
-    </View>
+    </TouchableOpacity>
   );
 };
 
@@ -47,5 +74,9 @@ const styles = StyleSheet.create({
     color: '#333',
   },
 });
+
+// Thêm các thuộc tính cần thiết
+Picker.MODE_DIALOG = 'dialog';
+Picker.MODE_DROPDOWN = 'dropdown';
 
 export { Picker };

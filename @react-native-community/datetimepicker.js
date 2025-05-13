@@ -5,6 +5,18 @@ import '../platform-constants';
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 
+// Đảm bảo NativeModules.RNDateTimePicker tồn tại
+if (!global.NativeModules) {
+  global.NativeModules = {};
+}
+
+if (!global.NativeModules.RNDateTimePicker) {
+  global.NativeModules.RNDateTimePicker = {
+    getDefaultDisplayMode: () => 'spinner',
+    setMode: () => {},
+  };
+}
+
 // Simple mock implementation of DateTimePicker
 const DateTimePicker = ({ value, mode, is24Hour, display, onChange }) => {
   // This is a very simple mock that just shows a button
@@ -21,10 +33,21 @@ const DateTimePicker = ({ value, mode, is24Hour, display, onChange }) => {
     }
   };
 
+  // Format date/time for display
+  const formatValue = () => {
+    if (!value) return mode === 'date' ? 'Select Date' : 'Select Time';
+
+    if (mode === 'date') {
+      return value.toLocaleDateString();
+    } else {
+      return value.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+  };
+
   return (
     <TouchableOpacity style={styles.container} onPress={handlePress}>
       <Text style={styles.text}>
-        {mode === 'date' ? 'Select Date' : 'Select Time'}
+        {formatValue()}
       </Text>
     </TouchableOpacity>
   );
@@ -43,5 +66,13 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 });
+
+// Thêm các hằng số cần thiết
+DateTimePicker.MODE_DATE = 'date';
+DateTimePicker.MODE_TIME = 'time';
+DateTimePicker.DISPLAY_DEFAULT = 'default';
+DateTimePicker.DISPLAY_SPINNER = 'spinner';
+DateTimePicker.DISPLAY_CLOCK = 'clock';
+DateTimePicker.DISPLAY_CALENDAR = 'calendar';
 
 export default DateTimePicker;

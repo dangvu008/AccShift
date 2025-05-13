@@ -6,6 +6,9 @@ import './platform-constants'
 // Import picker mock if needed
 import './@react-native-picker/picker'
 
+// Import datetimepicker mock if needed
+import './@react-native-community/datetimepicker'
+
 import { useEffect, useState, useContext } from 'react'
 import { StatusBar } from 'expo-status-bar'
 import {
