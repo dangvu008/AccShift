@@ -1,5 +1,8 @@
 // App.js - Main entry point for the AccShift application
 
+// Import TurboModuleRegistry mock first
+import './turbo-module-registry'
+
 // Import platform constants mock to fix TurboModuleRegistry errors
 import './platform-constants'
 
@@ -8,6 +11,12 @@ import './@react-native-picker/picker'
 
 // Import datetimepicker mock if needed
 import './@react-native-community/datetimepicker'
+
+// Import safe-area-context mock if needed
+import './react-native-safe-area-context'
+
+// Import reanimated mock if needed
+import './react-native-reanimated'
 
 import { useEffect, useState, useContext } from 'react'
 import { StatusBar } from 'expo-status-bar'

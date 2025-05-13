@@ -1,21 +1,11 @@
 // Mock implementation for @react-native-picker/picker
-// Import platform constants mock to fix TurboModuleRegistry errors
+// Import TurboModuleRegistry mock first
+import '../turbo-module-registry';
+// Then import platform constants mock
 import '../platform-constants';
 
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-
-// Đảm bảo NativeModules.RNCPicker tồn tại
-if (!global.NativeModules) {
-  global.NativeModules = {};
-}
-
-if (!global.NativeModules.RNCPicker) {
-  global.NativeModules.RNCPicker = {
-    getDefaultDisplayMode: () => 'dialog',
-    setMode: () => {},
-  };
-}
 
 // Create a simple mock Picker component
 const Picker = ({ selectedValue, onValueChange, style, itemStyle, children, ...props }) => {

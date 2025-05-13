@@ -1,21 +1,11 @@
 // Mock DateTimePicker component for Snack
-// Import platform constants mock to fix TurboModuleRegistry errors
+// Import TurboModuleRegistry mock first
+import '../turbo-module-registry';
+// Then import platform constants mock
 import '../platform-constants';
 
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-
-// Đảm bảo NativeModules.RNDateTimePicker tồn tại
-if (!global.NativeModules) {
-  global.NativeModules = {};
-}
-
-if (!global.NativeModules.RNDateTimePicker) {
-  global.NativeModules.RNDateTimePicker = {
-    getDefaultDisplayMode: () => 'spinner',
-    setMode: () => {},
-  };
-}
 
 // Simple mock implementation of DateTimePicker
 const DateTimePicker = ({ value, mode, is24Hour, display, onChange }) => {

@@ -1,6 +1,9 @@
 // Mock implementation for PlatformConstants
 // This file provides a mock for the PlatformConstants module that's missing
 
+// Import TurboModuleRegistry mock
+import './turbo-module-registry';
+
 // Đảm bảo global được định nghĩa
 if (typeof global === 'undefined') {
   global = window || {};
@@ -54,37 +57,6 @@ if (!global.UIManager) {
     measureLayoutRelativeToParent: () => {},
     setJSResponder: () => {},
     clearJSResponder: () => {},
-  };
-}
-
-// Mock TurboModuleRegistry if it doesn't exist
-if (!global.TurboModuleRegistry) {
-  global.TurboModuleRegistry = {
-    get: (name) => {
-      if (name === 'PlatformConstants') {
-        return global.NativeModules.PlatformConstants;
-      }
-      if (name === 'RNDateTimePicker') {
-        return {};
-      }
-      if (name === 'RNCPicker') {
-        return {};
-      }
-      return null;
-    },
-    getEnforcing: (name) => {
-      if (name === 'PlatformConstants') {
-        return global.NativeModules.PlatformConstants;
-      }
-      if (name === 'RNDateTimePicker') {
-        return {};
-      }
-      if (name === 'RNCPicker') {
-        return {};
-      }
-      console.warn(`TurboModuleRegistry.getEnforcing('${name}') - Trả về đối tượng rỗng để tránh lỗi`);
-      return {};
-    }
   };
 }
 
