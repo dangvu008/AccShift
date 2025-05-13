@@ -328,13 +328,16 @@ const ManualUpdateModal = ({
       const outDate = new Date()
       outDate.setHours(outHours, outMinutes, 0, 0)
 
-      // Nếu check-out trước check-in (không phải ca qua đêm)
-      if (outDate <= inDate) {
+      // Kiểm tra xem có phải ca qua đêm không
+      const isOvernightShift = outHours < inHours || (outHours === inHours && outMinutes < inMinutes)
+
+      // Nếu check-out trước check-in và không phải ca qua đêm
+      if (outDate <= inDate && !isOvernightShift) {
         // Hiển thị cảnh báo
         Alert.alert(
           t('Cảnh báo'),
           t(
-            'Thời gian check-out phải sau thời gian check-in. Bạn có muốn tiếp tục?'
+            'Thời gian check-out phải sau thời gian check-in. Bạn có muốn tiếp tục với ca qua đêm?'
           ),
           [
             {
@@ -363,12 +366,21 @@ const ManualUpdateModal = ({
     try {
       const dateKey = formatDateKey(selectedDay.date)
 
+      // Kiểm tra xem có phải ca qua đêm không
+      let isOvernightShift = false;
+      if (checkInTime && checkOutTime) {
+        const [inHours, inMinutes] = checkInTime.split(':').map(Number)
+        const [outHours, outMinutes] = checkOutTime.split(':').map(Number)
+        isOvernightShift = outHours < inHours || (outHours === inHours && outMinutes < inMinutes)
+      }
+
       // Chuẩn bị dữ liệu bổ sung
       const additionalData = {
         shiftId: selectedShiftId,
         vaoLogTime: checkInTime,
         raLogTime: checkOutTime,
         notes: notes,
+        isOvernight: isOvernightShift, // Thêm thông tin về ca qua đêm
       }
 
       // Cập nhật trạng thái làm việc
@@ -389,8 +401,17 @@ const ManualUpdateModal = ({
           onStatusUpdated(result)
         }
 
-        // Đóng modal
-        onClose()
+        // Hiển thị thông báo thành công
+        Alert.alert(
+          t('Thành công'),
+          t('Đã cập nhật trạng thái làm việc thành công'),
+          [
+            {
+              text: t('OK'),
+              onPress: () => onClose() // Đóng modal sau khi người dùng nhấn OK
+            }
+          ]
+        )
       }
     } catch (error) {
       console.error('Lỗi khi lưu trạng thái làm việc:', error)
@@ -404,12 +425,12 @@ const ManualUpdateModal = ({
   const renderStatusOptions = () => {
     const statuses = [
       { value: WORK_STATUS.CHUA_CAP_NHAT, label: t('Tính theo Giờ Chấm công') },
-      { value: WORK_STATUS.DU_CONG, label: t('Đủ công') },
-      { value: WORK_STATUS.NGHI_PHEP, label: t('Nghỉ Phép') },
-      { value: WORK_STATUS.NGHI_BENH, label: t('Nghỉ Bệnh') },
-      { value: WORK_STATUS.NGHI_LE, label: t('Nghỉ Lễ') },
-      { value: WORK_STATUS.VANG_MAT, label: t('Vắng Mặt') },
-      { value: WORK_STATUS.NGHI_THUONG, label: t('Ngày nghỉ thông thường') },
+      { value: WORK_STATUS.DU_CONG, label: t('Đủ công ✅') },
+      { value: WORK_STATUS.NGHI_PHEP, label: t('Nghỉ Phép 📝') },
+      { value: WORK_STATUS.NGHI_BENH, label: t('Nghỉ Bệnh 🏥') },
+      { value: WORK_STATUS.NGHI_LE, label: t('Nghỉ Lễ 🎉') },
+      { value: WORK_STATUS.VANG_MAT, label: t('Vắng Mặt ❓') },
+      { value: WORK_STATUS.NGHI_THUONG, label: t('Ngày nghỉ thông thường 🏠') },
     ]
 
     return statuses
@@ -423,7 +444,7 @@ const ManualUpdateModal = ({
 
     return availableShifts.map((shift) => ({
       value: shift.id,
-      label: shift.name,
+      label: `${shift.name} (${shift.startTime}-${shift.endTime})`,
     }))
   }
 
@@ -444,7 +465,7 @@ const ManualUpdateModal = ({
           >
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, darkMode && styles.darkText]}>
-                {t('Cập nhật trạng thái')} -{' '}
+                {t('Cập nhật trạng thái')} 📝{' '}
                 {selectedDay ? formatDateKey(selectedDay.date) : ''}
               </Text>
               <TouchableOpacity onPress={onClose}>
@@ -512,7 +533,7 @@ const ManualUpdateModal = ({
                             darkMode && styles.darkTimeInputText,
                           ]}
                         >
-                          {checkInTime || t('Chọn giờ')}
+                          {checkInTime ? `${checkInTime} ⏱️` : t('Chọn giờ')}
                         </Text>
                       </TouchableOpacity>
                       {checkInTime && (
@@ -549,7 +570,7 @@ const ManualUpdateModal = ({
                             darkMode && styles.darkTimeInputText,
                           ]}
                         >
-                          {checkOutTime || t('Chọn giờ')}
+                          {checkOutTime ? `${checkOutTime} ⏱️` : t('Chọn giờ')}
                         </Text>
                       </TouchableOpacity>
                       {checkOutTime && (
@@ -576,7 +597,7 @@ const ManualUpdateModal = ({
                 onPress={onClose}
               >
                 <Text style={[styles.buttonText, styles.cancelButtonText]}>
-                  {t('Hủy')}
+                  {t('Hủy bỏ')} ❌
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -585,7 +606,7 @@ const ManualUpdateModal = ({
                 disabled={isLoading}
               >
                 <Text style={[styles.buttonText, styles.saveButtonText]}>
-                  {isLoading ? t('Đang lưu...') : t('Lưu thay đổi')}
+                  {isLoading ? t('Đang lưu...') : t('Lưu thay đổi')} ✅
                 </Text>
               </TouchableOpacity>
             </View>
@@ -665,7 +686,7 @@ const styles = StyleSheet.create({
   modalContent: {
     width: '90%',
     maxHeight: '80%',
-    backgroundColor: '#fff',
+    backgroundColor: '#f5f5f5', // Màu nền đậm hơn cho chế độ sáng
     borderRadius: 10,
     padding: 20,
     shadowColor: '#000',
@@ -678,7 +699,7 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   darkModalContent: {
-    backgroundColor: '#333',
+    backgroundColor: '#222', // Màu nền đậm hơn cho chế độ tối
   },
   modalHeader: {
     flexDirection: 'row',
@@ -691,7 +712,7 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '900', // Font chữ đậm hơn cho tiêu đề
   },
   darkText: {
     color: '#fff',
@@ -705,6 +726,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 16,
     marginBottom: 5,
+    fontWeight: '600', // Font chữ đậm hơn cho label
   },
   dropdownContainer: {
     marginBottom: 10,
@@ -724,6 +746,7 @@ const styles = StyleSheet.create({
   },
   dropdownButtonText: {
     fontSize: 16,
+    fontWeight: '500', // Font chữ đậm hơn cho text trong dropdown
   },
   modalOverlay: {
     flex: 1,
@@ -759,6 +782,7 @@ const styles = StyleSheet.create({
   },
   dropdownItemText: {
     fontSize: 16,
+    fontWeight: '500', // Font chữ đậm hơn cho text trong dropdown item
   },
   timeInputContainer: {
     flexDirection: 'row',
@@ -778,6 +802,7 @@ const styles = StyleSheet.create({
   },
   timeInputText: {
     fontSize: 16,
+    fontWeight: '500', // Font chữ đậm hơn cho text trong time input
   },
   darkTimeInputText: {
     color: '#fff',
@@ -798,18 +823,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cancelButton: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f44336', // Màu đỏ cho nút hủy
     marginRight: 10,
   },
   saveButton: {
-    backgroundColor: '#8a56ff',
+    backgroundColor: '#4CAF50', // Màu xanh lá cây cho nút lưu
   },
   buttonText: {
     fontSize: 16,
     fontWeight: 'bold',
   },
   cancelButtonText: {
-    color: '#333',
+    color: '#fff', // Màu trắng cho chữ trên nút hủy
   },
   saveButtonText: {
     color: '#fff',
