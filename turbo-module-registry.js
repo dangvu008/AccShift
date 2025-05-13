@@ -52,11 +52,30 @@ if (!global.NativeModules.RNDateTimePicker) {
   };
 }
 
+// Đảm bảo UIManager được định nghĩa
+if (!global.UIManager) {
+  global.UIManager = {
+    getViewManagerConfig: () => ({}),
+    hasViewManagerConfig: () => false,
+    getConstantsForViewManager: () => ({}),
+    createView: () => {},
+    updateView: () => {},
+    dispatchViewManagerCommand: () => {},
+    measure: () => {},
+    measureInWindow: () => {},
+    viewIsDescendantOf: () => {},
+    measureLayout: () => {},
+    measureLayoutRelativeToParent: () => {},
+    setJSResponder: () => {},
+    clearJSResponder: () => {},
+  };
+}
+
 // Tạo mock cho TurboModuleRegistry
 const TurboModuleRegistry = {
   get: (name) => {
     console.log(`TurboModuleRegistry.get('${name}')`);
-    
+
     // Trả về các module đã được mock
     switch (name) {
       case 'PlatformConstants':
@@ -67,13 +86,13 @@ const TurboModuleRegistry = {
         return global.NativeModules.RNDateTimePicker;
       default:
         console.warn(`TurboModuleRegistry.get('${name}') - Module không được tìm thấy`);
-        return null;
+        return {};
     }
   },
-  
+
   getEnforcing: (name) => {
     console.log(`TurboModuleRegistry.getEnforcing('${name}')`);
-    
+
     // Trả về các module đã được mock
     switch (name) {
       case 'PlatformConstants':
@@ -92,6 +111,14 @@ const TurboModuleRegistry = {
 
 // Gán mock vào global
 global.TurboModuleRegistry = TurboModuleRegistry;
+
+// Đảm bảo __turboModuleProxy được định nghĩa
+if (!global.__turboModuleProxy) {
+  global.__turboModuleProxy = (name) => {
+    console.log(`__turboModuleProxy('${name}')`);
+    return TurboModuleRegistry.getEnforcing(name);
+  };
+}
 
 // Export mock
 export default TurboModuleRegistry;

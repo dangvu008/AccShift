@@ -6,6 +6,12 @@ import './turbo-module-registry'
 // Import platform constants mock to fix TurboModuleRegistry errors
 import './platform-constants'
 
+// Import PlatformConstants mock
+import './PlatformConstants'
+
+// Import TurboModuleProxy mock
+import './turbo-module-proxy'
+
 // Import picker mock if needed
 import './@react-native-picker/picker'
 
