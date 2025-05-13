@@ -13,6 +13,7 @@ import {
   KeyboardAvoidingView,
   FlatList,
 } from 'react-native'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
 import { AppContext } from '../context/AppContext'
 import DateTimePicker from '@react-native-community/datetimepicker'
@@ -164,6 +165,16 @@ const ManualUpdateModal = ({
     }
   }, [visible, selectedDay])
 
+  // Cập nhật khi ngôn ngữ hoặc chế độ tối/sáng thay đổi
+  useEffect(() => {
+    if (visible) {
+      console.log('[DEBUG] Ngôn ngữ hoặc chế độ tối/sáng thay đổi, cập nhật giao diện')
+      // Cập nhật lại các tùy chọn để đảm bảo ngôn ngữ được cập nhật
+      const statusOptions = renderStatusOptions()
+      const shiftOptions = renderShiftOptions()
+    }
+  }, [t, darkMode, visible])
+
   // Tải dữ liệu ngày
   const loadDayData = async () => {
     if (!selectedDay) return
@@ -207,20 +218,63 @@ const ManualUpdateModal = ({
     try {
       // Lấy danh sách ca làm việc từ storage
       const allShifts = await storage.getShifts()
-      setAvailableShifts(allShifts || [])
+
+      // Kiểm tra nếu có ca làm việc từ storage
+      if (allShifts && allShifts.length > 0) {
+        console.log(`[DEBUG] Đã tải ${allShifts.length} ca làm việc từ storage`)
+        setAvailableShifts(allShifts)
+      }
+      // Nếu không có ca làm việc từ storage, thử lấy từ context
+      else if (shifts && shifts.length > 0) {
+        console.log(`[DEBUG] Sử dụng ${shifts.length} ca làm việc từ context`)
+        setAvailableShifts(shifts)
+      }
+      // Nếu vẫn không có, thử lấy trực tiếp từ AsyncStorage
+      else {
+        try {
+          console.log('[DEBUG] Thử lấy ca làm việc trực tiếp từ AsyncStorage')
+          const shiftsJson = await AsyncStorage.getItem(STORAGE_KEYS.SHIFT_LIST)
+          if (shiftsJson) {
+            const parsedShifts = JSON.parse(shiftsJson)
+            if (Array.isArray(parsedShifts) && parsedShifts.length > 0) {
+              console.log(`[DEBUG] Đã tải ${parsedShifts.length} ca làm việc từ AsyncStorage`)
+              setAvailableShifts(parsedShifts)
+            }
+          }
+        } catch (asyncError) {
+          console.error('Lỗi khi tải ca làm việc từ AsyncStorage:', asyncError)
+        }
+      }
 
       // Nếu chưa có ca được chọn và có ca làm việc
-      if (!selectedShiftId && allShifts && allShifts.length > 0) {
+      const shiftsToUse = availableShifts.length > 0 ? availableShifts : (shifts || [])
+      if (!selectedShiftId && shiftsToUse.length > 0) {
         // Tìm ca làm việc đang áp dụng
         const activeShift = await storage.getActiveShift()
         if (activeShift) {
           setSelectedShiftId(activeShift.id)
-        } else if (allShifts.length > 0) {
-          setSelectedShiftId(allShifts[0].id)
+        } else if (shiftsToUse.length > 0) {
+          setSelectedShiftId(shiftsToUse[0].id)
         }
       }
     } catch (error) {
       console.error('Lỗi khi tải danh sách ca làm việc:', error)
+
+      // Tạo ca làm việc mặc định nếu không thể tải dữ liệu
+      if (availableShifts.length === 0) {
+        const defaultShifts = [
+          {
+            id: 'default_shift',
+            name: 'Ca mặc định',
+            startTime: '08:00',
+            endTime: '17:00',
+            breakMinutes: 60,
+          }
+        ]
+        console.log('[DEBUG] Sử dụng ca làm việc mặc định do không thể tải dữ liệu')
+        setAvailableShifts(defaultShifts)
+        setSelectedShiftId('default_shift')
+      }
     }
   }
 
@@ -423,6 +477,7 @@ const ManualUpdateModal = ({
 
   // Render danh sách trạng thái
   const renderStatusOptions = () => {
+    // Sử dụng t() để đảm bảo cập nhật khi ngôn ngữ thay đổi
     const statuses = [
       { value: WORK_STATUS.CHUA_CAP_NHAT, label: t('Tính theo Giờ Chấm công') },
       { value: WORK_STATUS.DU_CONG, label: t('Đủ công ✅') },
@@ -433,19 +488,25 @@ const ManualUpdateModal = ({
       { value: WORK_STATUS.NGHI_THUONG, label: t('Ngày nghỉ thông thường 🏠') },
     ]
 
+    console.log('[DEBUG] Đã cập nhật danh sách trạng thái với ngôn ngữ hiện tại')
     return statuses
   }
 
   // Render danh sách ca làm việc
   const renderShiftOptions = () => {
     if (!availableShifts || availableShifts.length === 0) {
+      // Sử dụng t() để đảm bảo cập nhật khi ngôn ngữ thay đổi
       return [{ value: '', label: t('Không có ca làm việc') }]
     }
 
-    return availableShifts.map((shift) => ({
+    // Tạo danh sách tùy chọn từ ca làm việc có sẵn
+    const options = availableShifts.map((shift) => ({
       value: shift.id,
       label: `${shift.name} (${shift.startTime}-${shift.endTime})`,
     }))
+
+    console.log(`[DEBUG] Đã cập nhật danh sách ${options.length} ca làm việc`)
+    return options
   }
 
   return (
@@ -681,12 +742,12 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)', // Tăng độ mờ của nền
   },
   modalContent: {
     width: '90%',
     maxHeight: '80%',
-    backgroundColor: '#f5f5f5', // Màu nền đậm hơn cho chế độ sáng
+    backgroundColor: '#e0e0e0', // Màu nền đậm hơn cho chế độ sáng
     borderRadius: 10,
     padding: 20,
     shadowColor: '#000',
@@ -694,12 +755,12 @@ const styles = StyleSheet.create({
       width: 0,
       height: 2,
     },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOpacity: 0.3, // Tăng độ đậm của bóng
+    shadowRadius: 4,
+    elevation: 6, // Tăng độ nổi
   },
   darkModalContent: {
-    backgroundColor: '#222', // Màu nền đậm hơn cho chế độ tối
+    backgroundColor: '#1a1a1a', // Màu nền đậm hơn cho chế độ tối
   },
   modalHeader: {
     flexDirection: 'row',
@@ -711,11 +772,11 @@ const styles = StyleSheet.create({
     borderBottomColor: '#eee',
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: 20, // Tăng kích thước font
     fontWeight: '900', // Font chữ đậm hơn cho tiêu đề
   },
   darkText: {
-    color: '#fff',
+    color: '#ffffff', // Màu trắng sáng hơn cho chế độ tối
   },
   modalBody: {
     maxHeight: '70%',
@@ -725,8 +786,9 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 16,
-    marginBottom: 5,
-    fontWeight: '600', // Font chữ đậm hơn cho label
+    marginBottom: 8, // Tăng khoảng cách
+    fontWeight: '700', // Font chữ đậm hơn cho label
+    letterSpacing: 0.3, // Tăng khoảng cách giữa các chữ
   },
   dropdownContainer: {
     marginBottom: 10,
@@ -737,16 +799,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     height: 50,
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 5,
-    paddingHorizontal: 10,
+    borderColor: '#bbb', // Màu viền đậm hơn
+    borderRadius: 8, // Bo góc nhiều hơn
+    paddingHorizontal: 12, // Padding lớn hơn
+    backgroundColor: '#f8f8f8', // Thêm màu nền nhẹ
   },
   darkDropdownButton: {
-    borderColor: '#555',
+    borderColor: '#666', // Màu viền đậm hơn cho chế độ tối
+    backgroundColor: '#2a2a2a', // Màu nền đậm hơn cho chế độ tối
   },
   dropdownButtonText: {
     fontSize: 16,
-    fontWeight: '500', // Font chữ đậm hơn cho text trong dropdown
+    fontWeight: '600', // Font chữ đậm hơn cho text trong dropdown
   },
   modalOverlay: {
     flex: 1,
@@ -818,26 +882,32 @@ const styles = StyleSheet.create({
   button: {
     flex: 1,
     height: 50,
-    borderRadius: 5,
+    borderRadius: 8, // Bo góc nhiều hơn
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 3, // Thêm đổ bóng cho nút
   },
   cancelButton: {
-    backgroundColor: '#f44336', // Màu đỏ cho nút hủy
+    backgroundColor: '#e53935', // Màu đỏ đậm hơn cho nút hủy
     marginRight: 10,
   },
   saveButton: {
-    backgroundColor: '#4CAF50', // Màu xanh lá cây cho nút lưu
+    backgroundColor: '#43a047', // Màu xanh lá cây đậm hơn cho nút lưu
   },
   buttonText: {
     fontSize: 16,
     fontWeight: 'bold',
+    letterSpacing: 0.5, // Tăng khoảng cách giữa các chữ
   },
   cancelButtonText: {
-    color: '#fff', // Màu trắng cho chữ trên nút hủy
+    color: '#ffffff', // Màu trắng cho chữ trên nút hủy
   },
   saveButtonText: {
-    color: '#fff',
+    color: '#ffffff',
   },
   pickerModalContent: {
     width: '100%',
