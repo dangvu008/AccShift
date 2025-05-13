@@ -44,6 +44,7 @@ const WeeklyStatusGrid = () => {
   const [statusModalVisible, setStatusModalVisible] = useState(false)
   const [updatingStatus, setUpdatingStatus] = useState(false)
   const [updatingDay, setUpdatingDay] = useState(null)
+  const [weekdayNames, setWeekdayNames] = useState([])
 
   // State cho ManualUpdateModal
   const [manualUpdateModalVisible, setManualUpdateModalVisible] =
@@ -126,6 +127,22 @@ const WeeklyStatusGrid = () => {
       isMounted = false
     }
   }, [generateWeekDays, loadDailyStatuses, loadAvailableShifts])
+
+  // Khởi tạo tên các ngày trong tuần khi component được tải
+  useEffect(() => {
+    // Sử dụng t() để đảm bảo đồng bộ ngôn ngữ
+    const dayNames = [
+      t('CN'),
+      t('T2'),
+      t('T3'),
+      t('T4'),
+      t('T5'),
+      t('T6'),
+      t('T7')
+    ]
+    setWeekdayNames(dayNames)
+    console.log('[DEBUG] Đã khởi tạo tên các ngày trong tuần');
+  }, [t])
 
   // Cập nhật lại ngày trong tuần khi ngôn ngữ thay đổi
   useEffect(() => {
@@ -422,7 +439,7 @@ const WeeklyStatusGrid = () => {
     monday.setDate(today.getDate() + mondayOffset)
 
     // Sử dụng t() để đảm bảo đồng bộ ngôn ngữ
-    const weekdayNames = [
+    const dayNames = [
       t('CN'),
       t('T2'),
       t('T3'),
@@ -431,6 +448,9 @@ const WeeklyStatusGrid = () => {
       t('T6'),
       t('T7')
     ]
+
+    // Cập nhật state weekdayNames
+    setWeekdayNames(dayNames)
 
     console.log('[DEBUG] Tạo mảng các ngày trong tuần với ngôn ngữ hiện tại');
 
@@ -445,7 +465,7 @@ const WeeklyStatusGrid = () => {
         date,
         dateKey,
         dayOfMonth: date.getDate(),
-        dayOfWeek: weekdayNames[dayIndex],
+        dayOfWeek: dayNames[dayIndex],
         isToday: date.toDateString() === today.toDateString(),
         isFuture: date > today,
       })
@@ -627,7 +647,7 @@ const WeeklyStatusGrid = () => {
       const dayOfWeek = day.date.getDay()
 
       // Chuyển đổi thành định dạng T2, T3, ..., CN
-      const dayCode = weekdayNames[dayOfWeek]
+      const dayCode = weekdayNames && weekdayNames.length > 0 ? weekdayNames[dayOfWeek] : ''
 
       // Kiểm tra xem ngày này có trong daysApplied của ca làm việc không
       return !currentShift.daysApplied.includes(dayCode)
@@ -665,7 +685,7 @@ const WeeklyStatusGrid = () => {
       if (previousDayStatus && previousDayStatus.shiftId === currentShift.id) {
         // Lấy thứ trong tuần của ngày hôm trước
         const previousDayOfWeek = previousDay.getDay()
-        const previousDayCode = weekdayNames[previousDayOfWeek]
+        const previousDayCode = weekdayNames && weekdayNames.length > 0 ? weekdayNames[previousDayOfWeek] : ''
 
         // Kiểm tra xem ngày hôm trước có trong daysApplied của ca làm việc không
         return currentShift.daysApplied.includes(previousDayCode)
@@ -1846,7 +1866,7 @@ const WeeklyStatusGrid = () => {
                   isToday && darkMode && styles.darkTodayText,
                 ]}
               >
-                {weekdayNames[new Date(day.date).getDay()]}
+                {weekdayNames && weekdayNames.length > 0 ? weekdayNames[new Date(day.date).getDay()] : day.dayOfWeek}
               </Text>
               <View style={styles.statusContainer}>
                 {renderStatusIconInGrid(status, true, day)}
