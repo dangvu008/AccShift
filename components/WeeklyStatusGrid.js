@@ -25,8 +25,7 @@ import { WORK_STATUS, STORAGE_KEYS } from '../config/appConfig'
 // Import ManualUpdateModal
 import ManualUpdateModal from './ManualUpdateModal'
 
-// Tên viết tắt các ngày trong tuần
-const weekdayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']
+// Tên viết tắt các ngày trong tuần sẽ được dịch trong component
 
 const WeeklyStatusGrid = () => {
   const {
@@ -70,6 +69,16 @@ const WeeklyStatusGrid = () => {
 
   // Format date to YYYY-MM-DD for storage key
   const formatDateKey = useCallback((date) => {
+    if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+      console.error('[ERROR] Invalid date passed to formatDateKey:', date);
+      // Trả về ngày hiện tại nếu date không hợp lệ
+      const today = new Date();
+      return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(
+        2,
+        '0'
+      )}-${String(today.getDate()).padStart(2, '0')}`;
+    }
+
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
       2,
       '0'
@@ -85,6 +94,8 @@ const WeeklyStatusGrid = () => {
       if (!isMounted) return
 
       try {
+        console.log('[DEBUG] Bắt đầu khởi tạo dữ liệu');
+
         // Thực hiện các tác vụ khởi tạo tuần tự để tránh quá tải
         generateWeekDays()
 
@@ -101,6 +112,8 @@ const WeeklyStatusGrid = () => {
         if (isMounted) {
           await loadAvailableShifts()
         }
+
+        console.log('[DEBUG] Hoàn thành khởi tạo dữ liệu');
       } catch (error) {
         console.error('Lỗi khi khởi tạo dữ liệu:', error)
       }
@@ -112,28 +125,43 @@ const WeeklyStatusGrid = () => {
     return () => {
       isMounted = false
     }
-  }, [])
+  }, [generateWeekDays, loadDailyStatuses, loadAvailableShifts])
+
+  // Cập nhật lại ngày trong tuần khi ngôn ngữ thay đổi
+  useEffect(() => {
+    console.log('[DEBUG] Ngôn ngữ thay đổi, cập nhật lại ngày trong tuần');
+    generateWeekDays();
+  }, [t, generateWeekDays])
 
   // Tải danh sách ca làm việc từ context hoặc AsyncStorage
   const loadAvailableShifts = useCallback(async () => {
     try {
       // Tạo một mảng để lưu danh sách ca làm việc
       let shiftsToUse = []
+      let loadError = null;
 
       // Ưu tiên sử dụng danh sách từ context nếu có
       if (shifts && shifts.length > 0) {
+        console.log('[DEBUG] Sử dụng danh sách ca làm việc từ context');
         shiftsToUse = [...shifts]
       } else {
         // Nếu không có trong context, tải từ AsyncStorage
         try {
+          console.log('[DEBUG] Tải danh sách ca làm việc từ AsyncStorage');
           const shiftsJson = await AsyncStorage.getItem(STORAGE_KEYS.SHIFT_LIST)
           if (shiftsJson) {
             const parsedShifts = JSON.parse(shiftsJson)
             if (Array.isArray(parsedShifts) && parsedShifts.length > 0) {
               shiftsToUse = parsedShifts
+              console.log(`[DEBUG] Đã tải ${parsedShifts.length} ca làm việc từ AsyncStorage`);
+            } else {
+              console.log('[DEBUG] Không có ca làm việc trong AsyncStorage hoặc dữ liệu không hợp lệ');
             }
+          } else {
+            console.log('[DEBUG] Không tìm thấy dữ liệu ca làm việc trong AsyncStorage');
           }
         } catch (storageError) {
+          loadError = storageError;
           console.error(
             'Lỗi khi tải ca làm việc từ AsyncStorage:',
             storageError
@@ -141,35 +169,92 @@ const WeeklyStatusGrid = () => {
         }
       }
 
+      // Nếu vẫn không có ca làm việc nào, tải từ storage manager
+      if (shiftsToUse.length === 0) {
+        try {
+          console.log('[DEBUG] Tải danh sách ca làm việc từ storage manager');
+          const storage = require('../utils/storage').default;
+          const storageShifts = await storage.getShifts();
+          if (storageShifts && storageShifts.length > 0) {
+            shiftsToUse = storageShifts;
+            console.log(`[DEBUG] Đã tải ${storageShifts.length} ca làm việc từ storage manager`);
+          } else {
+            console.log('[DEBUG] Không có ca làm việc trong storage manager');
+          }
+        } catch (storageError) {
+          loadError = storageError;
+          console.error('Lỗi khi tải ca làm việc từ storage manager:', storageError)
+        }
+      }
+
       // Nếu vẫn không có ca làm việc nào, tải từ database
       if (shiftsToUse.length === 0) {
         try {
+          console.log('[DEBUG] Tải danh sách ca làm việc từ database');
           const { getShifts } = require('../utils/database')
           const dbShifts = await getShifts()
           if (dbShifts && dbShifts.length > 0) {
             shiftsToUse = dbShifts
+            console.log(`[DEBUG] Đã tải ${dbShifts.length} ca làm việc từ database`);
+          } else {
+            console.log('[DEBUG] Không có ca làm việc trong database');
           }
         } catch (dbError) {
+          loadError = dbError;
           console.error('Lỗi khi tải ca làm việc từ database:', dbError)
         }
       }
 
       // Cập nhật state với danh sách ca làm việc đã tải
-      setAvailableShifts(shiftsToUse)
+      if (shiftsToUse.length > 0) {
+        setAvailableShifts(shiftsToUse)
+        console.log(`[DEBUG] Đã cập nhật state với ${shiftsToUse.length} ca làm việc`);
 
-      // Nếu có ca hiện tại, đặt nó làm ca được chọn mặc định
-      if (currentShift && !selectedShift) {
-        setSelectedShift(currentShift)
-      } else if (shiftsToUse.length > 0 && !selectedShift) {
-        // Nếu không có ca hiện tại nhưng có ca trong danh sách, chọn ca đầu tiên
-        setSelectedShift(shiftsToUse[0])
+        // Nếu có ca hiện tại, đặt nó làm ca được chọn mặc định
+        if (currentShift && !selectedShift) {
+          setSelectedShift(currentShift)
+          console.log(`[DEBUG] Đã chọn ca hiện tại: ${currentShift.name}`);
+        } else if (shiftsToUse.length > 0 && !selectedShift) {
+          // Nếu không có ca hiện tại nhưng có ca trong danh sách, chọn ca đầu tiên
+          setSelectedShift(shiftsToUse[0])
+          console.log(`[DEBUG] Đã chọn ca đầu tiên: ${shiftsToUse[0].name}`);
+        }
+      } else {
+        // Nếu không tải được ca làm việc nào, hiển thị thông báo lỗi
+        console.error('Không thể tải danh sách ca làm việc', loadError);
+
+        // Tạo ca làm việc mặc định nếu không tải được
+        const defaultShift = {
+          id: 'default_shift',
+          name: t('Ca Mặc Định'),
+          startTime: '08:00',
+          officeEndTime: '17:00',
+          endTime: '17:00',
+          breakMinutes: 60,
+        };
+
+        setAvailableShifts([defaultShift]);
+        setSelectedShift(defaultShift);
+        console.log('[DEBUG] Đã tạo ca làm việc mặc định do không tải được dữ liệu');
       }
-
-      console.log(`Đã tải ${shiftsToUse.length} ca làm việc`)
     } catch (error) {
       console.error('Lỗi khi tải danh sách ca làm việc:', error)
+
+      // Tạo ca làm việc mặc định nếu có lỗi
+      const defaultShift = {
+        id: 'default_shift',
+        name: t('Ca Mặc Định'),
+        startTime: '08:00',
+        officeEndTime: '17:00',
+        endTime: '17:00',
+        breakMinutes: 60,
+      };
+
+      setAvailableShifts([defaultShift]);
+      setSelectedShift(defaultShift);
+      console.log('[DEBUG] Đã tạo ca làm việc mặc định do có lỗi');
     }
-  }, [shifts, currentShift, selectedShift])
+  }, [shifts, currentShift, selectedShift, t])
 
   // Thêm hàm refresh để làm mới dữ liệu
   const refreshData = useCallback(() => {
@@ -336,15 +421,29 @@ const WeeklyStatusGrid = () => {
     const monday = new Date(today)
     monday.setDate(today.getDate() + mondayOffset)
 
-    // Sử dụng weekdayNames đã được định nghĩa ở trên
+    // Sử dụng t() để đảm bảo đồng bộ ngôn ngữ
+    const weekdayNames = [
+      t('CN'),
+      t('T2'),
+      t('T3'),
+      t('T4'),
+      t('T5'),
+      t('T6'),
+      t('T7')
+    ]
+
+    console.log('[DEBUG] Tạo mảng các ngày trong tuần với ngôn ngữ hiện tại');
 
     // Generate 7 days starting from Monday
     for (let i = 0; i < 7; i++) {
       const date = new Date(monday)
       date.setDate(monday.getDate() + i)
       const dayIndex = (1 + i) % 7 // Chuyển đổi từ thứ 2-CN sang index 1-0
+      const dateKey = formatDateKey(date)
+
       days.push({
         date,
+        dateKey,
         dayOfMonth: date.getDate(),
         dayOfWeek: weekdayNames[dayIndex],
         isToday: date.toDateString() === today.toDateString(),
@@ -352,12 +451,15 @@ const WeeklyStatusGrid = () => {
       })
     }
 
+    console.log(`[DEBUG] Đã tạo ${days.length} ngày trong tuần`);
     setWeekDays(days)
-  }, [])
+  }, [t, formatDateKey])
 
   // Load daily work statuses from AsyncStorage - tối ưu hóa để tránh treo
   const loadDailyStatuses = useCallback(async () => {
     try {
+      console.log('[DEBUG] Bắt đầu tải trạng thái làm việc hàng ngày');
+
       // Chỉ lấy các key cần thiết cho tuần hiện tại thay vì tất cả
       const today = new Date()
       const startOfWeek = new Date(today)
@@ -365,41 +467,149 @@ const WeeklyStatusGrid = () => {
       const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
       startOfWeek.setDate(today.getDate() + mondayOffset)
 
+      console.log(`[DEBUG] Tải trạng thái từ ngày: ${formatDateKey(startOfWeek)}`);
+
       // Tạo mảng các key cần tải cho tuần hiện tại
       const keysToLoad = []
+      const datesForDebug = [];
       for (let i = 0; i < 7; i++) {
         const date = new Date(startOfWeek)
         date.setDate(startOfWeek.getDate() + i)
         const dateKey = formatDateKey(date)
         keysToLoad.push(`dailyWorkStatus_${dateKey}`)
+        datesForDebug.push(dateKey);
       }
 
-      // Tải dữ liệu cho các key đã xác định
-      const statusPairs = await AsyncStorage.multiGet(keysToLoad)
+      console.log(`[DEBUG] Các ngày cần tải: ${datesForDebug.join(', ')}`);
 
-      // Xử lý dữ liệu đã tải
-      const statuses = {}
-      statusPairs.forEach(([key, value]) => {
-        if (!value) return // Bỏ qua các key không có dữ liệu
+      // Thử tải dữ liệu từ AsyncStorage
+      let statuses = {};
+      let loadError = null;
 
+      try {
+        // Tải dữ liệu cho các key đã xác định
+        console.log(`[DEBUG] Tải dữ liệu từ AsyncStorage với ${keysToLoad.length} keys`);
+        const statusPairs = await AsyncStorage.multiGet(keysToLoad)
+
+        // Đếm số lượng key có dữ liệu
+        const validDataCount = statusPairs.filter(([_, value]) => value).length;
+        console.log(`[DEBUG] Đã tải ${validDataCount}/${keysToLoad.length} trạng thái từ AsyncStorage`);
+
+        // Xử lý dữ liệu đã tải
+        statusPairs.forEach(([key, value]) => {
+          if (!value) return // Bỏ qua các key không có dữ liệu
+
+          try {
+            const dateStr = key.replace('dailyWorkStatus_', '')
+            const parsedValue = JSON.parse(value)
+            statuses[dateStr] = parsedValue
+          } catch (parseError) {
+            console.error(`Lỗi khi phân tích dữ liệu cho key ${key}:`, parseError)
+          }
+        })
+      } catch (asyncStorageError) {
+        loadError = asyncStorageError;
+        console.error('Lỗi khi tải dữ liệu từ AsyncStorage:', asyncStorageError);
+      }
+
+      // Nếu không tải được từ AsyncStorage, thử tải từ storage manager
+      if (Object.keys(statuses).length === 0 && loadError) {
         try {
-          const dateStr = key.replace('dailyWorkStatus_', '')
-          const parsedValue = JSON.parse(value)
-          statuses[dateStr] = parsedValue
-        } catch (parseError) {
-          console.error(`Lỗi khi phân tích dữ liệu cho key ${key}:`, parseError)
+          console.log('[DEBUG] Thử tải dữ liệu từ storage manager');
+          const storage = require('../utils/storage').default;
+
+          // Tải từng ngày một
+          for (let i = 0; i < datesForDebug.length; i++) {
+            const dateKey = datesForDebug[i];
+            try {
+              const status = await storage.getDailyWorkStatus(dateKey);
+              if (status) {
+                statuses[dateKey] = status;
+                console.log(`[DEBUG] Đã tải trạng thái cho ngày ${dateKey} từ storage manager`);
+              }
+            } catch (dateError) {
+              console.error(`Lỗi khi tải trạng thái cho ngày ${dateKey}:`, dateError);
+            }
+          }
+
+          console.log(`[DEBUG] Đã tải ${Object.keys(statuses).length}/${datesForDebug.length} trạng thái từ storage manager`);
+        } catch (storageError) {
+          console.error('Lỗi khi tải dữ liệu từ storage manager:', storageError);
         }
-      })
+      }
+
+      // Nếu vẫn không có dữ liệu, tạo trạng thái mặc định
+      if (Object.keys(statuses).length === 0) {
+        console.log('[DEBUG] Không tải được dữ liệu trạng thái, tạo trạng thái mặc định');
+
+        // Tạo trạng thái mặc định cho mỗi ngày
+        for (let i = 0; i < datesForDebug.length; i++) {
+          const dateKey = datesForDebug[i];
+          const date = new Date(dateKey);
+
+          // Kiểm tra xem ngày có phải là ngày trong tương lai không
+          const isInFuture = date > today;
+
+          // Tạo trạng thái mặc định
+          statuses[dateKey] = {
+            date: dateKey,
+            status: isInFuture ? WORK_STATUS.NGAY_TUONG_LAI : WORK_STATUS.CHUA_CAP_NHAT,
+            updatedAt: new Date().toISOString(),
+          };
+        }
+
+        console.log('[DEBUG] Đã tạo trạng thái mặc định cho tất cả các ngày');
+      }
 
       // Cập nhật state với dữ liệu mới
-      setDailyStatuses((prevStatuses) => ({
-        ...prevStatuses,
-        ...statuses,
-      }))
+      setDailyStatuses((prevStatuses) => {
+        const newStatuses = {
+          ...prevStatuses,
+          ...statuses,
+        };
+        console.log(`[DEBUG] Đã cập nhật state với ${Object.keys(newStatuses).length} trạng thái`);
+        return newStatuses;
+      });
+
+      // Lưu lại các trạng thái mặc định vào AsyncStorage nếu cần
+      Object.entries(statuses).forEach(async ([dateKey, status]) => {
+        if (status.isDefaultGenerated) {
+          try {
+            await AsyncStorage.setItem(
+              `dailyWorkStatus_${dateKey}`,
+              JSON.stringify(status)
+            );
+          } catch (saveError) {
+            console.error(`Lỗi khi lưu trạng thái mặc định cho ngày ${dateKey}:`, saveError);
+          }
+        }
+      });
+
+      console.log('[DEBUG] Hoàn thành tải trạng thái làm việc hàng ngày');
     } catch (error) {
-      console.error('Lỗi khi tải trạng thái làm việc hàng ngày:', error)
+      console.error('Lỗi khi tải trạng thái làm việc hàng ngày:', error);
+
+      // Trong trường hợp lỗi, vẫn cập nhật state với một trạng thái trống
+      // để tránh hiển thị màn hình trắng
+      setDailyStatuses((prevStatuses) => {
+        if (Object.keys(prevStatuses).length === 0) {
+          const today = new Date();
+          const dateKey = formatDateKey(today);
+          return {
+            [dateKey]: {
+              date: dateKey,
+              status: WORK_STATUS.CHUA_CAP_NHAT,
+              updatedAt: new Date().toISOString(),
+              isDefaultGenerated: true,
+              hasError: true,
+              errorMessage: error.message,
+            }
+          };
+        }
+        return prevStatuses;
+      });
     }
-  }, [])
+  }, [formatDateKey])
 
   // Hàm đã được khai báo ở trên
 
@@ -844,12 +1054,12 @@ const WeeklyStatusGrid = () => {
   const getStatusIcon = (status) => {
     // Sử dụng màu sắc từ theme để đảm bảo tính nhất quán
     const colors = {
-      success: '#27ae60', // Xanh lá - thành công
-      warning: '#f39c12', // Cam - cảnh báo
-      error: '#e74c3c', // Đỏ - lỗi
-      info: '#3498db', // Xanh dương - thông tin
-      neutral: '#95a5a6', // Xám - trung tính
-      primary: '#8a56ff', // Tím - màu chính của ứng dụng
+      success: darkMode ? '#2ecc71' : '#27ae60', // Xanh lá - thành công
+      warning: darkMode ? '#f1c40f' : '#f39c12', // Cam - cảnh báo
+      error: darkMode ? '#e74c3c' : '#e74c3c', // Đỏ - lỗi
+      info: darkMode ? '#3498db' : '#3498db', // Xanh dương - thông tin
+      neutral: darkMode ? '#7f8c8d' : '#95a5a6', // Xám - trung tính
+      primary: darkMode ? '#9b59b6' : '#8a56ff', // Tím - màu chính của ứng dụng
     }
 
     switch (status) {
@@ -2909,7 +3119,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   darkDayCell: {
-    backgroundColor: '#2a2a2a',
+    backgroundColor: '#1e1e1e', // Tối hơn để tăng độ tương phản
+    borderColor: '#333',
+    borderWidth: 1,
   },
   todayCell: {
     backgroundColor: '#e6f7ff',
@@ -2919,24 +3131,28 @@ const styles = StyleSheet.create({
   darkTodayCell: {
     backgroundColor: '#1a365d',
     borderColor: '#8a56ff',
+    borderWidth: 2, // Tăng độ dày viền để dễ nhìn hơn trong dark mode
   },
   dayOfMonth: {
-    fontSize: 14,
+    fontSize: 16, // Tăng kích thước font
     fontWeight: 'bold',
-    color: '#333',
+    color: '#222', // Màu đậm hơn
   },
   dayOfWeek: {
-    fontSize: 10,
-    color: '#666',
+    fontSize: 12, // Tăng kích thước font
+    color: '#444', // Màu đậm hơn
+    fontWeight: '500', // Thêm font weight để dễ đọc hơn
   },
   darkText: {
     color: '#fff',
   },
   todayText: {
     color: '#8a56ff',
+    fontWeight: 'bold',
   },
   darkTodayText: {
-    color: '#8a56ff',
+    color: '#a47aff', // Màu sáng hơn để dễ nhìn trong dark mode
+    fontWeight: 'bold',
   },
   statusContainer: {
     marginTop: 4,
@@ -2953,11 +3169,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   darkIconBackground: {
-    backgroundColor: 'rgba(50, 50, 50, 0.7)',
+    backgroundColor: 'rgba(50, 50, 50, 0.8)', // Tăng độ đậm để dễ nhìn hơn
     borderRadius: 12,
     padding: 2,
     alignItems: 'center',
     justifyContent: 'center',
+    borderColor: '#444',
+    borderWidth: 1, // Thêm viền để tăng độ tương phản
   },
   textIconBackground: {
     backgroundColor: 'rgba(255, 255, 255, 0.7)',
@@ -2967,11 +3185,13 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   darkTextIconBackground: {
-    backgroundColor: 'rgba(50, 50, 50, 0.7)',
+    backgroundColor: 'rgba(50, 50, 50, 0.8)', // Tăng độ đậm để dễ nhìn hơn
     borderRadius: 10,
     paddingHorizontal: 4,
     paddingVertical: 1,
     overflow: 'hidden',
+    borderColor: '#444',
+    borderWidth: 1, // Thêm viền để tăng độ tương phản
   },
 
   modalContainer: {
@@ -2989,6 +3209,8 @@ const styles = StyleSheet.create({
   },
   darkModalContent: {
     backgroundColor: '#1e1e1e',
+    borderColor: '#444',
+    borderWidth: 1, // Thêm viền để tăng độ tương phản
   },
   modalHeader: {
     flexDirection: 'row',
