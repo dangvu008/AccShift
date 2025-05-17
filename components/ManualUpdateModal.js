@@ -238,21 +238,24 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
     ]
 
     return (
-      <Picker
-        selectedValue={selectedStatus}
-        onValueChange={(value) => setSelectedStatus(value)}
-        style={[styles.picker, darkMode && styles.darkPicker]}
-        dropdownIconColor={darkMode ? COLORS.TEXT_DARK : COLORS.TEXT_LIGHT}
-      >
-        {statusOptions.map((option) => (
-          <Picker.Item
-            key={option.value}
-            label={option.label}
-            value={option.value}
-            style={[styles.pickerItem, darkMode && styles.darkPickerItem]}
-          />
-        ))}
-      </Picker>
+      <View style={[styles.pickerContainer, darkMode && styles.darkPickerContainer]}>
+        <Picker
+          selectedValue={selectedStatus}
+          onValueChange={(value) => setSelectedStatus(value)}
+          style={[styles.picker, darkMode && styles.darkPicker]}
+          dropdownIconColor={darkMode ? COLORS.TEXT_DARK : COLORS.TEXT_LIGHT}
+          mode="dropdown"
+        >
+          {statusOptions.map((option) => (
+            <Picker.Item
+              key={option.value}
+              label={option.label}
+              value={option.value}
+              style={[styles.pickerItem, darkMode && styles.darkPickerItem]}
+            />
+          ))}
+        </Picker>
+      </View>
     )
   }
 
@@ -269,144 +272,154 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
     }
 
     return (
-      <Picker
-        selectedValue={selectedShift?.id}
-        onValueChange={(value) => {
-          const shift = availableShifts.find((s) => s.id === value)
-          setSelectedShift(shift)
-        }}
-        style={[styles.picker, darkMode && styles.darkPicker]}
-        dropdownIconColor={darkMode ? COLORS.TEXT_DARK : COLORS.TEXT_LIGHT}
-      >
-        {availableShifts.map((shift) => (
-          <Picker.Item
-            key={shift.id}
-            label={shift.name}
-            value={shift.id}
-            style={[styles.pickerItem, darkMode && styles.darkPickerItem]}
-          />
-        ))}
-      </Picker>
+      <View style={[styles.pickerContainer, darkMode && styles.darkPickerContainer]}>
+        <Picker
+          selectedValue={selectedShift?.id}
+          onValueChange={(value) => {
+            const shift = availableShifts.find((s) => s.id === value)
+            setSelectedShift(shift)
+          }}
+          style={[styles.picker, darkMode && styles.darkPicker]}
+          dropdownIconColor={darkMode ? COLORS.TEXT_DARK : COLORS.TEXT_LIGHT}
+          mode="dropdown"
+        >
+          {availableShifts.map((shift) => (
+            <Picker.Item
+              key={shift.id}
+              label={shift.name}
+              value={shift.id}
+              style={[styles.pickerItem, darkMode && styles.darkPickerItem]}
+            />
+          ))}
+        </Picker>
+      </View>
     )
   }
+
+  const content = (
+    <ScrollView style={styles.scrollView}>
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={darkMode ? COLORS.PRIMARY_DARK : COLORS.PRIMARY} />
+          <Text style={[styles.loadingText, darkMode && styles.darkText]}>
+            {t('Đang tải dữ liệu...')}
+          </Text>
+        </View>
+      ) : (
+        <View style={styles.formContainer}>
+          {/* Trạng thái */}
+          <View style={styles.formGroup}>
+            <Text style={[styles.label, darkMode && styles.darkText]}>
+              {t('Trạng thái')}
+            </Text>
+            {renderStatusOptions()}
+          </View>
+
+          {/* Ca làm việc */}
+          <View style={styles.formGroup}>
+            <Text style={[styles.label, darkMode && styles.darkText]}>
+              {t('Ca làm việc')}
+            </Text>
+            {renderShiftOptions()}
+          </View>
+
+          {/* Thời gian check-in */}
+          <View style={styles.formGroup}>
+            <Text style={[styles.label, darkMode && styles.darkText]}>
+              {t('Thời gian vào')}
+            </Text>
+            <TouchableOpacity
+              style={[styles.timeInput, darkMode && styles.darkTimeInput]}
+              onPress={() => setShowCheckInPicker(true)}
+            >
+              <Text style={[styles.timeText, darkMode && styles.darkText]}>
+                {checkInTimeString}
+              </Text>
+              <MaterialCommunityIcons
+                name="clock-outline"
+                size={24}
+                color={darkMode ? COLORS.TEXT_DARK : COLORS.TEXT_LIGHT}
+              />
+            </TouchableOpacity>
+            {showCheckInPicker && (
+              <DateTimePicker
+                value={checkInTime}
+                mode="time"
+                is24Hour={true}
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={handleCheckInTimeChange}
+              />
+            )}
+          </View>
+
+          {/* Thời gian check-out */}
+          <View style={styles.formGroup}>
+            <Text style={[styles.label, darkMode && styles.darkText]}>
+              {t('Thời gian ra')}
+            </Text>
+            <TouchableOpacity
+              style={[styles.timeInput, darkMode && styles.darkTimeInput]}
+              onPress={() => setShowCheckOutPicker(true)}
+            >
+              <Text style={[styles.timeText, darkMode && styles.darkText]}>
+                {checkOutTimeString}
+              </Text>
+              <MaterialCommunityIcons
+                name="clock-outline"
+                size={24}
+                color={darkMode ? COLORS.TEXT_DARK : COLORS.TEXT_LIGHT}
+              />
+            </TouchableOpacity>
+            {showCheckOutPicker && (
+              <DateTimePicker
+                value={checkOutTime}
+                mode="time"
+                is24Hour={true}
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={handleCheckOutTimeChange}
+              />
+            )}
+          </View>
+
+          {/* Nút lưu */}
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity
+              style={[styles.saveButton, isSaving && styles.disabledButton]}
+              onPress={handleSave}
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.saveButtonText}>{t('Lưu')}</Text>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.cancelButton, darkMode && styles.darkCancelButton]}
+              onPress={onClose}
+              disabled={isSaving}
+            >
+              <Text style={[styles.cancelButtonText, darkMode && styles.darkCancelButtonText]}>
+                {t('Hủy')}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+    </ScrollView>
+  )
+
+  const modalTitle = selectedDay
+    ? `${t('Cập nhật trạng thái')} - ${selectedDay.date}`
+    : t('Cập nhật trạng thái');
 
   return (
     <NoteFormModal
       visible={visible}
       onClose={onClose}
-      title={selectedDay ? `${t('Cập nhật trạng thái')} - ${selectedDay.date}` : t('Cập nhật trạng thái')}
-    >
-      <ScrollView style={styles.scrollView}>
-        {isLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={darkMode ? COLORS.PRIMARY_DARK : COLORS.PRIMARY} />
-            <Text style={[styles.loadingText, darkMode && styles.darkText]}>
-              {t('Đang tải dữ liệu...')}
-            </Text>
-          </View>
-        ) : (
-          <View style={styles.formContainer}>
-            {/* Trạng thái */}
-            <View style={styles.formGroup}>
-              <Text style={[styles.label, darkMode && styles.darkText]}>
-                {t('Trạng thái')}
-              </Text>
-              {renderStatusOptions()}
-            </View>
-
-            {/* Ca làm việc */}
-            <View style={styles.formGroup}>
-              <Text style={[styles.label, darkMode && styles.darkText]}>
-                {t('Ca làm việc')}
-              </Text>
-              {renderShiftOptions()}
-            </View>
-
-            {/* Thời gian check-in */}
-            <View style={styles.formGroup}>
-              <Text style={[styles.label, darkMode && styles.darkText]}>
-                {t('Thời gian vào')}
-              </Text>
-              <TouchableOpacity
-                style={[styles.timeInput, darkMode && styles.darkTimeInput]}
-                onPress={() => setShowCheckInPicker(true)}
-              >
-                <Text style={[styles.timeText, darkMode && styles.darkText]}>
-                  {checkInTimeString}
-                </Text>
-                <MaterialCommunityIcons
-                  name="clock-outline"
-                  size={24}
-                  color={darkMode ? COLORS.TEXT_DARK : COLORS.TEXT_LIGHT}
-                />
-              </TouchableOpacity>
-              {showCheckInPicker && (
-                <DateTimePicker
-                  value={checkInTime}
-                  mode="time"
-                  is24Hour={true}
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                  onChange={handleCheckInTimeChange}
-                />
-              )}
-            </View>
-
-            {/* Thời gian check-out */}
-            <View style={styles.formGroup}>
-              <Text style={[styles.label, darkMode && styles.darkText]}>
-                {t('Thời gian ra')}
-              </Text>
-              <TouchableOpacity
-                style={[styles.timeInput, darkMode && styles.darkTimeInput]}
-                onPress={() => setShowCheckOutPicker(true)}
-              >
-                <Text style={[styles.timeText, darkMode && styles.darkText]}>
-                  {checkOutTimeString}
-                </Text>
-                <MaterialCommunityIcons
-                  name="clock-outline"
-                  size={24}
-                  color={darkMode ? COLORS.TEXT_DARK : COLORS.TEXT_LIGHT}
-                />
-              </TouchableOpacity>
-              {showCheckOutPicker && (
-                <DateTimePicker
-                  value={checkOutTime}
-                  mode="time"
-                  is24Hour={true}
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                  onChange={handleCheckOutTimeChange}
-                />
-              )}
-            </View>
-
-            {/* Nút lưu */}
-            <View style={styles.buttonContainer}>
-              <TouchableOpacity
-                style={[styles.saveButton, isSaving && styles.disabledButton]}
-                onPress={handleSave}
-                disabled={isSaving}
-              >
-                {isSaving ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Text style={styles.saveButtonText}>{t('Lưu')}</Text>
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.cancelButton, darkMode && styles.darkCancelButton]}
-                onPress={onClose}
-                disabled={isSaving}
-              >
-                <Text style={[styles.cancelButtonText, darkMode && styles.darkCancelButtonText]}>
-                  {t('Hủy')}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-      </ScrollView>
-    </NoteFormModal>
+      title={modalTitle}
+      children={content}
+    />
   )
 }
 
@@ -437,17 +450,23 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     color: COLORS.TEXT_LIGHT,
   },
-  picker: {
+  pickerContainer: {
     backgroundColor: COLORS.SECONDARY_CARD_LIGHT,
     borderRadius: 8,
-    color: COLORS.TEXT_LIGHT,
     borderWidth: 1,
     borderColor: COLORS.BORDER_LIGHT,
+    overflow: 'hidden',
+  },
+  darkPickerContainer: {
+    backgroundColor: COLORS.SECONDARY_CARD_DARK,
+    borderColor: COLORS.BORDER_DARK,
+  },
+  picker: {
+    color: COLORS.TEXT_LIGHT,
+    height: 50,
   },
   darkPicker: {
-    backgroundColor: COLORS.SECONDARY_CARD_DARK,
     color: COLORS.TEXT_DARK,
-    borderColor: COLORS.BORDER_DARK,
   },
   pickerItem: {
     ...TEXT_STYLES.body,
