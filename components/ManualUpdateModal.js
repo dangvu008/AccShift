@@ -443,22 +443,18 @@ const styles = StyleSheet.create({
     color: COLORS.TEXT_LIGHT,
     borderWidth: 1,
     borderColor: COLORS.BORDER_LIGHT,
-    fontWeight: 'bold',
   },
   darkPicker: {
     backgroundColor: COLORS.SECONDARY_CARD_DARK,
     color: COLORS.TEXT_DARK,
     borderColor: COLORS.BORDER_DARK,
-    fontWeight: 'bold',
   },
   pickerItem: {
     ...TEXT_STYLES.body,
     color: COLORS.TEXT_LIGHT,
-    fontWeight: 'bold',
   },
   darkPickerItem: {
     color: COLORS.TEXT_DARK,
-    fontWeight: 'bold',
   },
   timeInput: {
     flexDirection: 'row',
@@ -477,14 +473,13 @@ const styles = StyleSheet.create({
   timeText: {
     ...TEXT_STYLES.body,
     color: COLORS.TEXT_LIGHT,
-    fontWeight: 'bold',
   },
   darkText: {
     color: COLORS.TEXT_DARK,
   },
   noShiftsContainer: {
     padding: 12,
-    backgroundColor: COLORS.SECONDARY_CARD_LIGHT,
+    backgroundColor: COLORS.CARD_LIGHT,
     borderRadius: 8,
     alignItems: 'center',
     borderWidth: 1,
