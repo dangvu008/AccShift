@@ -1,5 +1,7 @@
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Dimensions } from 'react-native';
 import { COLORS } from '../common/colors';
+
+const { width, height } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
   keyboardAvoidingView: {
@@ -14,10 +16,10 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     width: '100%',
-    maxHeight: '90%',
+    maxHeight: height * 0.8,
     backgroundColor: COLORS.CARD_LIGHT,
     borderRadius: 16,
-    padding: 20,
+    padding: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
@@ -32,16 +34,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.BORDER_LIGHT,
-    paddingBottom: 16,
+    paddingBottom: 12,
   },
   darkModalHeader: {
     borderBottomColor: COLORS.BORDER_DARK,
   },
+  modalContent: {
+    flex: 1,
+    width: '100%',
+  },
   title: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: 'bold',
     color: COLORS.TEXT_LIGHT,
     flex: 1,

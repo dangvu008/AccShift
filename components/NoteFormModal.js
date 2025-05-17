@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Platform,
   KeyboardAvoidingView,
+  ScrollView,
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { AppContext } from '../context/AppContext'
@@ -21,6 +22,7 @@ const NoteFormModal = ({ visible, onClose, children, title }) => {
       transparent
       animationType="slide"
       onRequestClose={onClose}
+      statusBarTranslucent={true}
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -48,7 +50,9 @@ const NoteFormModal = ({ visible, onClose, children, title }) => {
               </TouchableOpacity>
             </View>
 
-            {children}
+            <View style={styles.modalContent}>
+              {children}
+            </View>
           </View>
         </View>
       </KeyboardAvoidingView>
