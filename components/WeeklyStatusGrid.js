@@ -283,6 +283,8 @@ const WeeklyStatusGrid = () => {
     (updatedStatus) => {
       if (!updatedStatus) return
 
+      console.log('[DEBUG] Nhận được thông báo cập nhật trạng thái thành công từ ManualUpdateModal:', updatedStatus)
+
       // Cập nhật trạng thái local
       setDailyStatuses((prevStatuses) => ({
         ...prevStatuses,
@@ -292,10 +294,18 @@ const WeeklyStatusGrid = () => {
       // Làm mới dữ liệu
       refreshData()
 
+      // Tải lại dữ liệu trạng thái hàng ngày
+      loadDailyStatuses()
+
+      // Thông báo cho hệ thống về việc cập nhật trạng thái
+      if (notifyWorkStatusUpdate && typeof notifyWorkStatusUpdate === 'function') {
+        notifyWorkStatusUpdate(updatedStatus)
+      }
+
       // Đóng modal
       setManualUpdateModalVisible(false)
     },
-    [refreshData]
+    [refreshData, loadDailyStatuses, notifyWorkStatusUpdate]
   )
 
   // Cập nhật trạng thái từ attendanceLogs
@@ -1496,18 +1506,8 @@ const WeeklyStatusGrid = () => {
     }
   }
 
-  // Xử lý sau khi cập nhật trạng thái thành công từ ManualUpdateModal
-  const handleStatusUpdated = (updatedStatus) => {
-    console.log('[DEBUG] Nhận được thông báo cập nhật trạng thái thành công từ ManualUpdateModal:', updatedStatus)
-  
-    // Tải lại dữ liệu trạng thái hàng ngày
-    loadDailyStatuses()
-  
-    // Thông báo cho hệ thống về việc cập nhật trạng thái
-    if (notifyWorkStatusUpdate && typeof notifyWorkStatusUpdate === 'function') {
-      notifyWorkStatusUpdate(updatedStatus)
-    }
-  }
+  // Hàm này đã được khai báo ở trên với useCallback nên không cần khai báo lại
+  // Xóa khai báo trùng lặp để tránh lỗi "Identifier 'handleStatusUpdated' has already been declared"
 
   // Hàm tính toán giờ công từ ca làm việc
   const calculateWorkHoursFromShift = (shift) => {

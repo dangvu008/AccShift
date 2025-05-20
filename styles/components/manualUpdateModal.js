@@ -13,6 +13,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 16,
+    width: '100%',
   },
   modalContainer: {
     width: '100%',
@@ -28,6 +29,8 @@ const styles = StyleSheet.create({
   },
   darkModalContainer: {
     backgroundColor: COLORS.CARD_DARK,
+    borderWidth: 1,
+    borderColor: COLORS.BORDER_DARK,
   },
   modalHeader: {
     width: '100%',
@@ -38,6 +41,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: COLORS.BORDER_LIGHT,
     paddingBottom: 12,
+    paddingHorizontal: 4,
   },
   darkModalHeader: {
     borderBottomColor: COLORS.BORDER_DARK,
@@ -63,9 +67,13 @@ const styles = StyleSheet.create({
     padding: 12,
     backgroundColor: COLORS.BACKGROUND_LIGHT,
     borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.BORDER_LIGHT,
+    alignItems: 'center',
   },
   darkDateInfo: {
     backgroundColor: COLORS.BACKGROUND_DARK,
+    borderColor: COLORS.BORDER_DARK,
   },
   dateText: {
     fontSize: 16,
@@ -89,6 +97,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 8,
     backgroundColor: COLORS.BACKGROUND_LIGHT,
+    borderWidth: 1,
+    borderColor: COLORS.BORDER_LIGHT,
   },
   darkStatusOption: {
     backgroundColor: COLORS.BACKGROUND_DARK,
@@ -129,6 +139,9 @@ const styles = StyleSheet.create({
     color: COLORS.TEXT_LIGHT,
     minHeight: 80,
     textAlignVertical: 'top',
+    borderWidth: 1,
+    borderColor: COLORS.BORDER_LIGHT,
+    fontSize: 16,
   },
   darkNotesInput: {
     backgroundColor: COLORS.BACKGROUND_DARK,
@@ -155,6 +168,9 @@ const styles = StyleSheet.create({
     padding: 12,
     flex: 1,
     color: COLORS.TEXT_LIGHT,
+    borderWidth: 1,
+    borderColor: COLORS.BORDER_LIGHT,
+    fontSize: 16,
   },
   darkTimeInput: {
     backgroundColor: COLORS.BACKGROUND_DARK,
@@ -174,9 +190,12 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.BACKGROUND_LIGHT,
     marginRight: 8,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.BORDER_LIGHT,
   },
   darkCancelButton: {
     backgroundColor: COLORS.BACKGROUND_DARK,
+    borderColor: COLORS.BORDER_DARK,
   },
   saveButton: {
     flex: 1,
@@ -185,6 +204,11 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.PRIMARY,
     marginLeft: 8,
     alignItems: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.5,
   },
   cancelButtonText: {
     color: COLORS.TEXT_LIGHT,

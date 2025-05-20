@@ -237,6 +237,7 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
             style={[
               styles.modalContainer,
               darkMode && styles.darkModalContainer,
+              { width: '95%' }
             ]}
           >
             <View
@@ -245,7 +246,13 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
               <Text style={[styles.title, darkMode && styles.darkText]}>
                 {t('Cập nhật trạng thái làm việc')}
               </Text>
-              <TouchableOpacity onPress={onClose} style={styles.closeIcon}>
+              <TouchableOpacity
+                onPress={onClose}
+                style={[
+                  styles.closeIcon,
+                  { backgroundColor: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)', borderRadius: 20, padding: 6 }
+                ]}
+              >
                 <Ionicons
                   name="close"
                   size={24}
@@ -254,7 +261,7 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.modalContent}>
+            <ScrollView style={styles.modalContent} contentContainerStyle={{ paddingBottom: 20 }}>
               {selectedDay ? (
                 <>
                   {/* Thông tin ngày */}
