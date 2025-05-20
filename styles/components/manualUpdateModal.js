@@ -92,6 +92,8 @@ const styles = StyleSheet.create({
   },
   darkStatusOption: {
     backgroundColor: COLORS.BACKGROUND_DARK,
+    borderColor: COLORS.BORDER_DARK,
+    borderWidth: 1, // Thêm viền để tăng độ tương phản trong chế độ tối
   },
   selectedStatusOption: {
     backgroundColor: 'rgba(138, 86, 255, 0.1)',
@@ -131,6 +133,8 @@ const styles = StyleSheet.create({
   darkNotesInput: {
     backgroundColor: COLORS.BACKGROUND_DARK,
     color: COLORS.TEXT_DARK,
+    borderColor: COLORS.BORDER_DARK,
+    borderWidth: 1, // Thêm viền để tăng độ tương phản trong chế độ tối
   },
   timeInputContainer: {
     marginBottom: 16,
@@ -155,6 +159,8 @@ const styles = StyleSheet.create({
   darkTimeInput: {
     backgroundColor: COLORS.BACKGROUND_DARK,
     color: COLORS.TEXT_DARK,
+    borderColor: COLORS.BORDER_DARK,
+    borderWidth: 1, // Thêm viền để tăng độ tương phản trong chế độ tối
   },
   buttonContainer: {
     flexDirection: 'row',
