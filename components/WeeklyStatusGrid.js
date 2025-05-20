@@ -1496,6 +1496,19 @@ const WeeklyStatusGrid = () => {
     }
   }
 
+  // Xử lý sau khi cập nhật trạng thái thành công từ ManualUpdateModal
+  const handleStatusUpdated = (updatedStatus) => {
+    console.log('[DEBUG] Nhận được thông báo cập nhật trạng thái thành công từ ManualUpdateModal:', updatedStatus)
+  
+    // Tải lại dữ liệu trạng thái hàng ngày
+    loadDailyStatuses()
+  
+    // Thông báo cho hệ thống về việc cập nhật trạng thái
+    if (notifyWorkStatusUpdate && typeof notifyWorkStatusUpdate === 'function') {
+      notifyWorkStatusUpdate(updatedStatus)
+    }
+  }
+
   // Hàm tính toán giờ công từ ca làm việc
   const calculateWorkHoursFromShift = (shift) => {
     if (!shift) return {}
