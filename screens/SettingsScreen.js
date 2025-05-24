@@ -314,6 +314,29 @@ const SettingsScreen = ({ navigation }) => {
             </Text>
           </View>
         </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.menuItem, darkMode && styles.darkCard]}
+          onPress={() => navigation.navigate('WorkStatusUpdate')}
+        >
+          <View style={styles.menuIconContainer}>
+            <MaterialIcons
+              name="bug-report"
+              size={24}
+              color={darkMode ? '#fff' : '#000'}
+            />
+          </View>
+          <View style={styles.menuTextContainer}>
+            <Text style={[styles.menuTitle, darkMode && styles.darkText]}>
+              {t('Test Cập Nhật Trạng Thái')}
+            </Text>
+            <Text
+              style={[styles.menuDescription, darkMode && styles.darkSubtitle]}
+            >
+              {t('Test chức năng cập nhật trạng thái làm việc')}
+            </Text>
+          </View>
+        </TouchableOpacity>
       </View>
 
       {/* Language Selection Modal */}

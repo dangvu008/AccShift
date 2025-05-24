@@ -68,6 +68,7 @@ import LogHistoryDetailScreen from './screens/LogHistoryDetailScreen'
 import ImageViewerScreen from './screens/ImageViewerScreen'
 import AlarmScreen from './screens/AlarmScreen'
 import MapPickerScreen from './screens/MapPickerScreen'
+import WorkStatusUpdateScreen from './screens/WorkStatusUpdateScreen'
 import React from 'react'
 import { View, Text, ScrollView } from 'react-native'
 
@@ -299,6 +300,11 @@ function SettingsStack() {
         name="WeatherApiKeys"
         component={WeatherApiKeysScreen}
         options={{ title: t('Weather API Keys') }}
+      />
+      <Stack.Screen
+        name="WorkStatusUpdate"
+        component={WorkStatusUpdateScreen}
+        options={{ title: t('Test Cập Nhật Trạng Thái') }}
       />
     </Stack.Navigator>
   )
