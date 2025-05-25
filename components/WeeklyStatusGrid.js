@@ -3431,11 +3431,7 @@ const styles = StyleSheet.create({
     color: '#8a56ff',
     fontWeight: 'bold',
   },
-  dropdownIconContainer: {
-    width: 30,
-    alignItems: 'center',
-    marginRight: 10,
-  },
+
   // Styles cho nút Lưu (biểu tượng)
   saveIconButton: {
     backgroundColor: '#8a56ff',

@@ -42,10 +42,7 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
     console.log('[ManualUpdateModal] Selected day:', selectedDay)
   }, [visible, darkMode, selectedDay])
 
-  useEffect(() => {
-    console.log('[ManualUpdateModal] Selected status changed:', selectedStatus)
-    console.log('[ManualUpdateModal] Requires time input:', requiresTimeInput())
-  }, [selectedStatus])
+
 
   // Debug effect để theo dõi state changes
   useEffect(() => {
@@ -149,6 +146,12 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
     const option = statusOptions.find(opt => opt.key === selectedStatus)
     return option?.requiresTime || false
   }
+
+  // Debug effect để theo dõi selected status changes
+  useEffect(() => {
+    console.log('[ManualUpdateModal] Selected status changed:', selectedStatus)
+    console.log('[ManualUpdateModal] Requires time input:', requiresTimeInput())
+  }, [selectedStatus, requiresTimeInput])
 
   // Format ngày hiển thị
   const formatDisplayDate = (date) => {
@@ -499,32 +502,7 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
                       ]}>
                         {t('Vào:')}
                       </Text>
-                      <TouchableOpacity
-                        style={[
-                          styles.timeInput,
-                          darkMode && styles.darkTimeInput
-                        ]}
-                        onPress={() => {
-                          console.log('[ManualUpdateModal] Check-in time input pressed')
-                          setShowCheckInPicker(true)
-                        }}
-                        activeOpacity={0.7}
-                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                      >
-                        <Text style={[
-                          styles.timeInputText,
-                          darkMode && styles.darkText,
-                          !checkInTime && styles.placeholderText
-                        ]}>
-                          {checkInTime || t('Chọn thời gian')}
-                        </Text>
-                        <Ionicons
-                          name="time-outline"
-                          size={20}
-                          color={darkMode ? '#fff' : '#666'}
-                          style={styles.timeIcon}
-                        />
-                      </TouchableOpacity>
+
                     </View>
 
                     {/* Check-out time */}
@@ -535,32 +513,7 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
                       ]}>
                         {t('Ra:')}
                       </Text>
-                      <TouchableOpacity
-                        style={[
-                          styles.timeInput,
-                          darkMode && styles.darkTimeInput
-                        ]}
-                        onPress={() => {
-                          console.log('[ManualUpdateModal] Check-out time input pressed')
-                          setShowCheckOutPicker(true)
-                        }}
-                        activeOpacity={0.7}
-                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                      >
-                        <Text style={[
-                          styles.timeInputText,
-                          darkMode && styles.darkText,
-                          !checkOutTime && styles.placeholderText
-                        ]}>
-                          {checkOutTime || t('Chọn thời gian')}
-                        </Text>
-                        <Ionicons
-                          name="time-outline"
-                          size={20}
-                          color={darkMode ? '#fff' : '#666'}
-                          style={styles.timeIcon}
-                        />
-                      </TouchableOpacity>
+
                     </View>
                   </View>
                 )}

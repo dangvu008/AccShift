@@ -597,12 +597,7 @@ const styles = StyleSheet.create({
     color: '#666',
     marginRight: 16,
   },
-  notesText: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 4,
-    fontStyle: 'italic',
-  },
+
 })
 
 export default WorkStatusUpdateScreen
