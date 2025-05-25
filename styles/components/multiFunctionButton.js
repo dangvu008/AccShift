@@ -1,72 +1,93 @@
 import { StyleSheet } from 'react-native';
 import { COLORS } from '../common/colors';
+import { FONT_SIZES, FONT_WEIGHTS, TEXT_STYLES } from '../common/typography';
 
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 24, // Tăng spacing
   },
   buttonContainer: {
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 16, // Tăng spacing
   },
   mainButton: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
+    width: 160, // Tăng kích thước từ 140
+    height: 160, // Tăng kích thước từ 140
+    borderRadius: 80, // Tăng border radius
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    padding: 10,
+    // Enhanced shadow effects
+    elevation: 8, // Tăng từ 5
+    shadowColor: COLORS.SHADOW,
+    shadowOffset: { width: 0, height: 4 }, // Tăng từ 2
+    shadowOpacity: 0.3, // Tăng từ 0.25
+    shadowRadius: 6, // Tăng từ 3.84
+    padding: 12, // Tăng padding
+    // Gradient background sẽ được thêm qua LinearGradient component
   },
   darkButton: {
-    shadowColor: '#fff',
+    shadowColor: COLORS.TEXT_DARK,
+    shadowOpacity: 0.4,
   },
   disabledButton: {
-    opacity: 0.7,
+    opacity: 0.6, // Giảm từ 0.7 để rõ ràng hơn
   },
   mainButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginTop: 8,
+    color: COLORS.TEXT_DARK,
+    fontSize: FONT_SIZES.BUTTON, // Sử dụng typography system
+    fontWeight: FONT_WEIGHTS.BOLD,
+    marginTop: 10, // Tăng từ 8
     textAlign: 'center',
+    letterSpacing: 0.5, // Thêm letter spacing
   },
   buttonDescription: {
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontSize: 10,
+    color: 'rgba(255, 255, 255, 0.9)', // Tăng opacity từ 0.8
+    fontSize: FONT_SIZES.CAPTION_SMALL,
+    fontWeight: FONT_WEIGHTS.MEDIUM, // Thêm font weight
     textAlign: 'center',
-    marginTop: 4,
-    paddingHorizontal: 5,
+    marginTop: 6, // Tăng từ 4
+    paddingHorizontal: 8, // Tăng từ 5
+    lineHeight: FONT_SIZES.CAPTION_SMALL * 1.3, // Thêm line height
   },
   resetButton: {
     position: 'absolute',
-    top: 10,
-    right: 10,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    top: 12, // Tăng từ 10
+    right: 12, // Tăng từ 10
+    width: 28, // Tăng từ 24
+    height: 28, // Tăng từ 24
+    borderRadius: 14, // Tăng từ 12
+    backgroundColor: 'rgba(0, 0, 0, 0.4)', // Tăng opacity từ 0.3
     justifyContent: 'center',
     alignItems: 'center',
+    // Thêm shadow cho reset button
+    elevation: 2,
+    shadowColor: COLORS.SHADOW,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
   },
   punchButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.ERROR,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    marginTop: 10,
+    paddingVertical: 12, // Tăng từ 8
+    paddingHorizontal: 20, // Tăng từ 16
+    borderRadius: 25, // Tăng từ 20
+    marginTop: 12, // Tăng từ 10
+    // Thêm shadow cho punch button
+    elevation: 4,
+    shadowColor: COLORS.SHADOW,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
   },
   punchButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
+    color: COLORS.TEXT_DARK,
+    fontSize: FONT_SIZES.BUTTON_SMALL,
+    fontWeight: FONT_WEIGHTS.SEMI_BOLD,
     marginLeft: 8,
+    letterSpacing: 0.3,
   },
   logsContainer: {
     width: '100%',

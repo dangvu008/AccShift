@@ -1,12 +1,14 @@
 'use client'
 
-import { useContext } from 'react'
+import { useContext, useEffect, useState } from 'react'
 import { View, Text, TouchableOpacity, Alert } from 'react-native'
 import { Ionicons, MaterialIcons } from '@expo/vector-icons'
 import { AppContext, BUTTON_STATES } from '../context/AppContext'
 import { formatTimeDisplay } from '../utils/helpers'
 import { COLORS } from '../styles/common/colors'
 import styles from '../styles/components/multiFunctionButton'
+import timeManager from '../utils/timeManager'
+import GradientButton from './GradientButton'
 
 const MultiFunctionButton = () => {
   const {
@@ -19,7 +21,58 @@ const MultiFunctionButton = () => {
     handleMultiFunctionButton,
     handlePunchButton,
     resetAttendanceLogs,
+    currentShift,
+    setButtonState,
   } = useContext(AppContext)
+
+  // State để quản lý hiển thị button dựa trên cửa sổ hoạt động
+  const [shouldShowButton, setShouldShowButton] = useState(true)
+  const [shouldResetButton, setShouldResetButton] = useState(false)
+
+  // Effect để theo dõi thay đổi thời gian và activeShift
+  useEffect(() => {
+    // Cập nhật activeShift trong timeManager
+    if (currentShift) {
+      timeManager.updateActiveShift(currentShift)
+    }
+
+    // Kiểm tra trạng thái hiển thị button
+    const checkButtonVisibility = () => {
+      const showButton = timeManager.shouldShowButton(currentShift)
+      const resetButton = timeManager.shouldResetButtonState(currentShift)
+
+      setShouldShowButton(showButton)
+      setShouldResetButton(resetButton)
+
+      // Tự động reset button state nếu cần
+      if (resetButton && buttonState !== BUTTON_STATES.GO_WORK) {
+        setButtonState(BUTTON_STATES.GO_WORK)
+      }
+    }
+
+    // Kiểm tra ngay lập tức
+    checkButtonVisibility()
+
+    // Đặt interval để kiểm tra định kỳ (mỗi phút)
+    const interval = setInterval(checkButtonVisibility, 60000)
+
+    // Đăng ký listener cho timeManager
+    const unsubscribe = timeManager.addListener((eventType, data) => {
+      if (eventType === 'activeShiftChanged' || eventType === 'timingsCalculated') {
+        checkButtonVisibility()
+      }
+    })
+
+    return () => {
+      clearInterval(interval)
+      unsubscribe()
+    }
+  }, [currentShift, buttonState, setButtonState])
+
+  // Nếu button không nên hiển thị, return null
+  if (!shouldShowButton) {
+    return null
+  }
 
   // Get button configuration based on current state
   const getButtonConfig = () => {
@@ -224,21 +277,42 @@ const MultiFunctionButton = () => {
   const shouldShowPunchButton =
     showPunchButton && buttonState === BUTTON_STATES.WORKING
 
+  // Lấy gradient colors dựa trên button state
+  const getGradientColors = () => {
+    switch (buttonConfig.color) {
+      case COLORS.PRIMARY:
+        return COLORS.GRADIENT_PRIMARY
+      case COLORS.SUCCESS:
+        return COLORS.GRADIENT_SUCCESS
+      case COLORS.WARNING:
+        return COLORS.GRADIENT_ACCENT
+      case COLORS.ERROR:
+        return [COLORS.ERROR, COLORS.ERROR_DARK]
+      case COLORS.INFO:
+        return [COLORS.INFO, COLORS.INFO_DARK]
+      default:
+        return [buttonConfig.color, buttonConfig.color]
+    }
+  }
+
   return (
     <View style={styles.container}>
-      {/* Main Multi-Function Button */}
+      {/* Main Multi-Function Button với Gradient */}
       <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={[
-            styles.mainButton,
-            { backgroundColor: buttonConfig.color },
-            buttonConfig.disabled && styles.disabledButton,
-            darkMode && styles.darkButton,
-          ]}
+        <GradientButton
+          title={buttonConfig.text}
+          iconName={buttonConfig.icon}
+          iconSize={36} // Tăng kích thước icon
+          gradientColors={getGradientColors()}
           onPress={handleMultiFunctionButton}
           disabled={buttonConfig.disabled}
+          description={buttonConfig.description}
+          style={[
+            darkMode && styles.darkButton,
+          ]}
         >
-          <Ionicons name={buttonConfig.icon} size={32} color="#fff" />
+          {/* Custom content với reset button */}
+          <Ionicons name={buttonConfig.icon} size={36} color={COLORS.TEXT_DARK} />
           <Text style={styles.mainButtonText}>{buttonConfig.text}</Text>
 
           {/* Button description */}
@@ -255,10 +329,10 @@ const MultiFunctionButton = () => {
               onPress={confirmReset}
               hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
             >
-              <Ionicons name="refresh" size={18} color="#fff" />
+              <Ionicons name="refresh" size={20} color={COLORS.TEXT_DARK} />
             </TouchableOpacity>
           )}
-        </TouchableOpacity>
+        </GradientButton>
 
         {/* Punch Button (only show in WORKING state if enabled) */}
         {shouldShowPunchButton && (

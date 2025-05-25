@@ -41,14 +41,28 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
     }
   }, [visible, selectedDay])
 
-  // Danh sách trạng thái có thể chọn
-  const statusOptions = [
+  // Kiểm tra xem ngày được chọn có phải là ngày trong tương lai không
+  const isFutureDate = () => {
+    if (!selectedDay?.date) return false
+
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    const selectedDate = new Date(selectedDay.date)
+    selectedDate.setHours(0, 0, 0, 0)
+
+    return selectedDate > today
+  }
+
+  // Danh sách tất cả trạng thái có thể chọn
+  const allStatusOptions = [
     {
       key: WORK_STATUS.DU_CONG,
       label: t('Đủ công'),
       icon: 'checkmark-circle',
       color: '#4CAF50',
       requiresTime: true,
+      allowedForFuture: false, // Không cho phép cho ngày tương lai
     },
     {
       key: WORK_STATUS.DI_MUON,
@@ -56,6 +70,7 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
       icon: 'time',
       color: '#FF9800',
       requiresTime: true,
+      allowedForFuture: false, // Không cho phép cho ngày tương lai
     },
     {
       key: WORK_STATUS.VE_SOM,
@@ -63,6 +78,7 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
       icon: 'exit',
       color: '#FF9800',
       requiresTime: true,
+      allowedForFuture: false, // Không cho phép cho ngày tương lai
     },
     {
       key: WORK_STATUS.DI_MUON_VE_SOM,
@@ -70,6 +86,7 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
       icon: 'swap-horizontal',
       color: '#FF5722',
       requiresTime: true,
+      allowedForFuture: false, // Không cho phép cho ngày tương lai
     },
     {
       key: WORK_STATUS.THIEU_LOG,
@@ -77,6 +94,7 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
       icon: 'warning',
       color: '#FF9800',
       requiresTime: false,
+      allowedForFuture: false, // Không cho phép cho ngày tương lai
     },
     {
       key: WORK_STATUS.NGHI_PHEP,
@@ -84,6 +102,7 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
       icon: 'calendar',
       color: '#2196F3',
       requiresTime: false,
+      allowedForFuture: true, // Cho phép cho ngày tương lai
     },
     {
       key: WORK_STATUS.NGHI_BENH,
@@ -91,6 +110,7 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
       icon: 'medical',
       color: '#9C27B0',
       requiresTime: false,
+      allowedForFuture: true, // Cho phép cho ngày tương lai
     },
     {
       key: WORK_STATUS.NGHI_LE,
@@ -98,6 +118,7 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
       icon: 'gift',
       color: '#E91E63',
       requiresTime: false,
+      allowedForFuture: true, // Cho phép cho ngày tương lai
     },
     {
       key: WORK_STATUS.VANG_MAT,
@@ -105,8 +126,22 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
       icon: 'close-circle',
       color: '#F44336',
       requiresTime: false,
+      allowedForFuture: true, // Cho phép cho ngày tương lai
     },
   ]
+
+  // Lọc trạng thái dựa trên ngày được chọn
+  const statusOptions = allStatusOptions.filter(option => {
+    if (isFutureDate()) {
+      // Nếu là ngày tương lai, chỉ hiển thị các trạng thái nghỉ
+      return option.allowedForFuture
+    }
+    // Nếu không phải ngày tương lai, hiển thị tất cả trạng thái
+    return true
+  })
+
+  // Debug log
+  console.log(`[ManualUpdateModal] Ngày tương lai: ${isFutureDate()}, Trạng thái có thể chọn: ${statusOptions.length}/${allStatusOptions.length}`)
 
   // Reset form khi modal mở
   useEffect(() => {
@@ -477,6 +512,25 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
                   <Text style={[styles.dateText, darkMode && styles.darkText]}>
                     {formatDisplayDate(selectedDay.date)}
                   </Text>
+                  {isFutureDate() && (
+                    <View style={[
+                      styles.futureNotice,
+                      darkMode && styles.darkFutureNotice
+                    ]}>
+                      <Ionicons
+                        name="information-circle"
+                        size={16}
+                        color={darkMode ? '#64B5F6' : '#2196F3'}
+                        style={styles.futureNoticeIcon}
+                      />
+                      <Text style={[
+                        styles.futureNoticeText,
+                        darkMode && styles.darkFutureNoticeText
+                      ]}>
+                        {t('Ngày tương lai chỉ có thể cập nhật thành trạng thái nghỉ')}
+                      </Text>
+                    </View>
+                  )}
                 </View>
 
                 {/* Chọn trạng thái */}

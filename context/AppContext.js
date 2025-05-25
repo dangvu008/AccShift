@@ -28,6 +28,8 @@ import { STORAGE_KEYS } from '../utils/constants'
 import { getTheme, COLORS } from '../utils/theme'
 // Import storage manager
 import { storage } from '../utils/storage'
+// Import timeManager
+import timeManager from '../utils/timeManager'
 
 export const AppContext = createContext()
 
@@ -249,6 +251,11 @@ export const AppProvider = ({ children }) => {
 
         setCurrentShift(shift)
 
+        // Cập nhật activeShift trong timeManager
+        if (shift) {
+          await timeManager.updateActiveShift(shift)
+        }
+
         // Cập nhật trạng thái nút chấm công
         if (shift && shift.showCheckInButtonWhileWorking) {
           setShowPunchButton(true)
@@ -399,6 +406,9 @@ export const AppProvider = ({ children }) => {
 
     // Bắt đầu tải dữ liệu
     loadAllData()
+
+    // Khởi tạo timeManager
+    timeManager.initialize()
 
     // Cleanup function
     return () => {
@@ -646,6 +656,11 @@ export const AppProvider = ({ children }) => {
       } else {
         // Cập nhật state với ca mới hoặc null
         setCurrentShift(shift)
+
+        // Cập nhật activeShift trong timeManager
+        if (shift) {
+          await timeManager.updateActiveShift(shift)
+        }
       }
 
       if (shift) {
@@ -772,6 +787,9 @@ export const AppProvider = ({ children }) => {
         // Xóa thông tin ca hiện tại
         await AsyncStorage.removeItem(STORAGE_KEYS.CURRENT_SHIFT)
         await storage.updateUserSettings({ activeShiftId: null })
+
+        // Cập nhật timeManager với null
+        await timeManager.updateActiveShift(null)
 
         // Reset trạng thái nút về mặc định nếu không có ca nào được chọn
         setButtonState(BUTTON_STATES.GO_WORK)
@@ -2209,6 +2227,7 @@ export const AppProvider = ({ children }) => {
         handleMultiFunctionButton,
         handlePunchButton,
         resetAttendanceLogs,
+        setButtonState,
         // Note functions
         addNoteWithReminder,
         updateNoteWithReminder,

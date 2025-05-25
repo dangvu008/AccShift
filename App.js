@@ -15,7 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 
 import { AppProvider, AppContext } from './context/AppContext'
 import { STORAGE_KEYS } from './config/appConfig'
-import { COLORS } from './utils/theme'
+import { COLORS, FONT_SIZES, FONT_WEIGHTS } from './utils/theme'
 
 // Import screens
 import HomeScreen from './screens/HomeScreen'
@@ -63,12 +63,22 @@ function HomeStack() {
     <Stack.Navigator
       screenOptions={{
         headerStyle: {
-          backgroundColor: darkMode ? COLORS.CARD_DARK : COLORS.CARD_LIGHT,
+          backgroundColor: darkMode ? COLORS.CARD_ELEVATED_DARK : COLORS.CARD_ELEVATED_LIGHT,
+          elevation: 4, // Thêm shadow cho Android
+          shadowColor: COLORS.SHADOW_MEDIUM, // Shadow cho iOS
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 4,
+          borderBottomWidth: 1,
+          borderBottomColor: darkMode ? COLORS.BORDER_DARK : COLORS.BORDER_LIGHT,
         },
         headerTintColor: darkMode ? COLORS.TEXT_DARK : COLORS.TEXT_LIGHT,
         headerTitleStyle: {
-          fontWeight: 'bold',
+          fontWeight: FONT_WEIGHTS.BOLD,
+          fontSize: FONT_SIZES.HEADER_4,
+          letterSpacing: 0.3,
         },
+        headerBackTitleVisible: false, // Ẩn back title trên iOS
       }}
     >
       <Stack.Screen
@@ -133,12 +143,22 @@ function ShiftsStack() {
     <Stack.Navigator
       screenOptions={{
         headerStyle: {
-          backgroundColor: darkMode ? COLORS.CARD_DARK : COLORS.CARD_LIGHT,
+          backgroundColor: darkMode ? COLORS.CARD_ELEVATED_DARK : COLORS.CARD_ELEVATED_LIGHT,
+          elevation: 4,
+          shadowColor: COLORS.SHADOW_MEDIUM,
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 4,
+          borderBottomWidth: 1,
+          borderBottomColor: darkMode ? COLORS.BORDER_DARK : COLORS.BORDER_LIGHT,
         },
         headerTintColor: darkMode ? COLORS.TEXT_DARK : COLORS.TEXT_LIGHT,
         headerTitleStyle: {
-          fontWeight: 'bold',
+          fontWeight: FONT_WEIGHTS.BOLD,
+          fontSize: FONT_SIZES.HEADER_4,
+          letterSpacing: 0.3,
         },
+        headerBackTitleVisible: false,
       }}
     >
       <Stack.Screen
@@ -168,12 +188,22 @@ function StatisticsStack() {
     <Stack.Navigator
       screenOptions={{
         headerStyle: {
-          backgroundColor: darkMode ? COLORS.CARD_DARK : COLORS.CARD_LIGHT,
+          backgroundColor: darkMode ? COLORS.CARD_ELEVATED_DARK : COLORS.CARD_ELEVATED_LIGHT,
+          elevation: 4,
+          shadowColor: COLORS.SHADOW_MEDIUM,
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 4,
+          borderBottomWidth: 1,
+          borderBottomColor: darkMode ? COLORS.BORDER_DARK : COLORS.BORDER_LIGHT,
         },
         headerTintColor: darkMode ? COLORS.TEXT_DARK : COLORS.TEXT_LIGHT,
         headerTitleStyle: {
-          fontWeight: 'bold',
+          fontWeight: FONT_WEIGHTS.BOLD,
+          fontSize: FONT_SIZES.HEADER_4,
+          letterSpacing: 0.3,
         },
+        headerBackTitleVisible: false,
       }}
     >
       <Stack.Screen
@@ -222,12 +252,22 @@ function SettingsStack() {
     <Stack.Navigator
       screenOptions={{
         headerStyle: {
-          backgroundColor: darkMode ? COLORS.CARD_DARK : COLORS.CARD_LIGHT,
+          backgroundColor: darkMode ? COLORS.CARD_ELEVATED_DARK : COLORS.CARD_ELEVATED_LIGHT,
+          elevation: 4,
+          shadowColor: COLORS.SHADOW_MEDIUM,
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 4,
+          borderBottomWidth: 1,
+          borderBottomColor: darkMode ? COLORS.BORDER_DARK : COLORS.BORDER_LIGHT,
         },
         headerTintColor: darkMode ? COLORS.TEXT_DARK : COLORS.TEXT_LIGHT,
         headerTitleStyle: {
-          fontWeight: 'bold',
+          fontWeight: FONT_WEIGHTS.BOLD,
+          fontSize: FONT_SIZES.HEADER_4,
+          letterSpacing: 0.3,
         },
+        headerBackTitleVisible: false,
       }}
       initialRouteName="Settings"
     >
@@ -388,6 +428,24 @@ function AppContent(props) {
           tabBarStyle: {
             backgroundColor: theme.tabBarBackgroundColor,
             borderTopColor: theme.tabBarBorderColor,
+            borderTopWidth: 1,
+            // Enhanced tab bar styling
+            height: 65, // Tăng chiều cao
+            paddingBottom: 8, // Thêm padding bottom
+            paddingTop: 8, // Thêm padding top
+            elevation: 8, // Thêm shadow cho Android
+            shadowColor: theme.shadowMedium, // Shadow cho iOS
+            shadowOffset: { width: 0, height: -2 },
+            shadowOpacity: 0.1,
+            shadowRadius: 4,
+          },
+          tabBarLabelStyle: {
+            fontSize: theme.fontSizes.CAPTION, // Sử dụng typography system
+            fontWeight: theme.fontWeights.MEDIUM,
+            marginTop: 2,
+          },
+          tabBarIconStyle: {
+            marginBottom: 2,
           },
         }}
       >
@@ -400,7 +458,7 @@ function AppContent(props) {
             tabBarIcon: ({ focused, color, size }) => (
               <Ionicons
                 name={focused ? 'home' : 'home-outline'}
-                size={size}
+                size={focused ? size + 2 : size} // Tăng kích thước khi active
                 color={color}
               />
             ),
@@ -414,8 +472,8 @@ function AppContent(props) {
             headerShown: false,
             tabBarIcon: ({ focused, color, size }) => (
               <Ionicons
-                name={focused ? 'calendar' : 'calendar-outline'}
-                size={size}
+                name={focused ? 'briefcase' : 'briefcase-outline'} // Thay đổi icon đẹp hơn
+                size={focused ? size + 2 : size}
                 color={color}
               />
             ),
@@ -429,8 +487,8 @@ function AppContent(props) {
             headerShown: false,
             tabBarIcon: ({ focused, color, size }) => (
               <Ionicons
-                name={focused ? 'stats-chart' : 'stats-chart-outline'}
-                size={size}
+                name={focused ? 'analytics' : 'analytics-outline'} // Thay đổi icon đẹp hơn
+                size={focused ? size + 2 : size}
                 color={color}
               />
             ),
@@ -444,8 +502,8 @@ function AppContent(props) {
             headerShown: false,
             tabBarIcon: ({ focused, color, size }) => (
               <Ionicons
-                name={focused ? 'settings' : 'settings-outline'}
-                size={size}
+                name={focused ? 'cog' : 'cog-outline'} // Thay đổi icon đẹp hơn
+                size={focused ? size + 2 : size}
                 color={color}
               />
             ),

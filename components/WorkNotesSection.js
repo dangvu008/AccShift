@@ -15,6 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { STORAGE_KEYS } from '../utils/constants'
 import { useFocusEffect } from '@react-navigation/native'
 import styles from '../styles/components/workNotesSection'
+import timeManager from '../utils/timeManager'
 
 const WorkNotesSection = ({ navigation, route }) => {
   const { t, darkMode, currentShift, shifts } = useContext(AppContext)
@@ -330,13 +331,18 @@ const WorkNotesSection = ({ navigation, route }) => {
           note.nextReminderTime
       )
 
-      // Sắp xếp candidateList: Ưu tiên theo isPriority, sau đó theo nextReminderTime
+      // Sắp xếp candidateList: Ưu tiên theo activeShift, isPriority, sau đó theo nextReminderTime
       candidateList.sort((a, b) => {
-        // First, prioritize notes marked as priority
-        if (a.isPriority && !b.isPriority) return -1
-        if (!a.isPriority && b.isPriority) return 1
+        // Tính độ ưu tiên dựa trên timeManager
+        const priorityA = timeManager.calculateNotePriority(a)
+        const priorityB = timeManager.calculateNotePriority(b)
 
-        // If both have same priority status, sort by nextReminderTime
+        // Sắp xếp theo độ ưu tiên giảm dần
+        if (priorityA !== priorityB) {
+          return priorityB - priorityA
+        }
+
+        // Nếu độ ưu tiên bằng nhau, sắp xếp theo nextReminderTime
         return a.nextReminderTime - b.nextReminderTime
       })
 

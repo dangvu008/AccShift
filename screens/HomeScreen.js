@@ -10,6 +10,7 @@ import MultiFunctionButton from '../components/MultiFunctionButton'
 import WeeklyStatusGrid from '../components/WeeklyStatusGrid'
 import WeatherWidget from '../components/WeatherWidget'
 import WorkNotesSection from '../components/WorkNotesSection'
+import timeManager from '../utils/timeManager'
 
 const HomeScreen = ({ navigation, route }) => {
   const {
@@ -27,6 +28,7 @@ const HomeScreen = ({ navigation, route }) => {
   const [showAlarmPermissionAlert, setShowAlarmPermissionAlert] = useState(
     !alarmPermissionGranted
   )
+  const [shouldShowButtonHistory, setShouldShowButtonHistory] = useState(true)
 
   // Sử dụng useRef để lưu trữ giá trị mà không gây re-render
   const isWorkingRef = useRef(isWorking)
@@ -37,6 +39,32 @@ const HomeScreen = ({ navigation, route }) => {
     isWorkingRef.current = isWorking
     workStartTimeRef.current = workStartTime
   }, [isWorking, workStartTime])
+
+  // Effect để theo dõi thay đổi activeShift và cập nhật hiển thị lịch sử
+  useEffect(() => {
+    // Cập nhật activeShift trong timeManager
+    if (currentShift) {
+      timeManager.updateActiveShift(currentShift)
+    }
+
+    // Kiểm tra xem có nên hiển thị lịch sử bấm nút không
+    const checkButtonHistoryVisibility = () => {
+      const shouldShow = timeManager.shouldShowButton(currentShift)
+      setShouldShowButtonHistory(shouldShow)
+    }
+
+    // Kiểm tra ngay lập tức
+    checkButtonHistoryVisibility()
+
+    // Đăng ký listener cho timeManager
+    const unsubscribe = timeManager.addListener((eventType, data) => {
+      if (eventType === 'activeShiftChanged' || eventType === 'timingsCalculated') {
+        checkButtonHistoryVisibility()
+      }
+    })
+
+    return unsubscribe
+  }, [currentShift])
 
   // Update current time mỗi 5 giây để giảm số lần render
   useEffect(() => {
@@ -133,16 +161,16 @@ const HomeScreen = ({ navigation, route }) => {
     <ScrollView
       style={{ flex: 1, backgroundColor: theme.backgroundColor, padding: 16 }}
     >
-      {/* 1. Thanh trên cùng (Ngày/giờ) */}
+      {/* 1. Thanh trên cùng (Ngày/giờ) - Cải thiện typography */}
       <View style={styles.header}>
         <View style={styles.dateTimeContainer}>
           <Text
-            style={{ fontSize: 32, fontWeight: 'bold', color: theme.textColor }}
+            style={[styles.timeText, { color: theme.textColor }]}
           >
             {formattedTime}
           </Text>
           <Text
-            style={{ fontSize: 14, color: theme.subtextColor, marginTop: 4 }}
+            style={[styles.dateText, { color: theme.subtextColor }]}
           >
             {formattedDate}
           </Text>
@@ -154,27 +182,20 @@ const HomeScreen = ({ navigation, route }) => {
 
       {/* Vùng Cảnh báo Thời tiết (nếu có) - Đã được tích hợp vào WeatherWidget */}
 
-      {/* 3. Tên ca làm việc đang áp dụng */}
+      {/* 3. Tên ca làm việc đang áp dụng - Cải thiện styling */}
       <TouchableOpacity
-        style={{
-          backgroundColor: theme.cardColor,
-          borderRadius: 12,
-          padding: 16,
-          marginBottom: 16,
-        }}
+        style={[
+          styles.card,
+          { backgroundColor: theme.cardElevatedColor }
+        ]}
         onPress={() => navigation.navigate('ShiftsStack')}
       >
         <Text
-          style={{
-            fontSize: 18,
-            fontWeight: 'bold',
-            color: theme.textColor,
-            marginBottom: 4,
-          }}
+          style={[styles.cardTitle, { color: theme.textColor }]}
         >
           {currentShift ? currentShift.name : t('No shift selected')}
         </Text>
-        <Text style={{ fontSize: 14, color: theme.subtextColor }}>
+        <Text style={[styles.cardSubtitle, { color: theme.subtextColor }]}>
           {currentShift
             ? `${currentShift.startTime} - ${currentShift.endTime}`
             : ''}
@@ -182,49 +203,51 @@ const HomeScreen = ({ navigation, route }) => {
         <View style={styles.shiftEditIcon}>
           <Ionicons
             name="chevron-forward"
-            size={20}
-            color={theme.subtextColor}
+            size={24} // Tăng kích thước icon
+            color={theme.primaryColor} // Sử dụng primary color
           />
         </View>
       </TouchableOpacity>
 
-      {/* Hiển thị trạng thái làm việc nếu đang làm việc */}
+      {/* Hiển thị trạng thái làm việc nếu đang làm việc - Cải thiện styling */}
       {isWorking && (
         <View
-          style={{
-            backgroundColor: theme.cardColor,
-            borderRadius: 12,
-            padding: 16,
-            marginBottom: 16,
-            flexDirection: 'row',
-            alignItems: 'center',
-          }}
+          style={[
+            styles.card,
+            {
+              backgroundColor: theme.cardElevatedColor,
+              flexDirection: 'row',
+              alignItems: 'center',
+            }
+          ]}
         >
           <View
             style={{
-              width: 36,
-              height: 36,
-              borderRadius: 18,
-              backgroundColor: theme.primaryColor,
+              width: 44, // Tăng từ 36
+              height: 44, // Tăng từ 36
+              borderRadius: 22, // Tăng từ 18
+              backgroundColor: theme.successColor, // Sử dụng success color
               justifyContent: 'center',
               alignItems: 'center',
-              marginRight: 12,
+              marginRight: 16, // Tăng từ 12
+              // Thêm shadow
+              elevation: 2,
+              shadowColor: theme.shadowLight,
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.2,
+              shadowRadius: 2,
             }}
           >
-            <Ionicons name="checkmark" size={24} color="#fff" />
+            <Ionicons name="checkmark" size={26} color="#fff" />
           </View>
           <View style={{ flex: 1 }}>
             <Text
-              style={{
-                fontSize: 16,
-                fontWeight: 'bold',
-                color: theme.textColor,
-              }}
+              style={[styles.cardTitle, { color: theme.textColor, marginBottom: 4 }]}
             >
               {t('Working')} {currentShift ? currentShift.name : ''}
             </Text>
             <Text
-              style={{ fontSize: 14, color: theme.subtextColor, marginTop: 4 }}
+              style={[styles.cardSubtitle, { color: theme.subtextColor }]}
             >
               {t('Worked for')} {formatDuration(workDuration)}
             </Text>
@@ -237,35 +260,34 @@ const HomeScreen = ({ navigation, route }) => {
 
       {/* 6. Lịch sử bấm nút (được hiển thị trong MultiFunctionButton) */}
 
-      {/* 7. Lưới trạng thái tuần */}
+      {/* 7. Lưới trạng thái tuần - Cải thiện styling */}
       <View
-        style={{
-          backgroundColor: theme.cardColor,
-          borderRadius: 12,
-          padding: 16,
-          marginBottom: 16,
-        }}
+        style={[
+          styles.card,
+          { backgroundColor: theme.cardElevatedColor }
+        ]}
       >
         <View
           style={{
             flexDirection: 'row',
             justifyContent: 'space-between',
             alignItems: 'center',
-            marginBottom: 12,
+            marginBottom: 16, // Tăng từ 12
           }}
         >
           <Text
-            style={{ fontSize: 18, fontWeight: 'bold', color: theme.textColor }}
+            style={[styles.cardTitle, { color: theme.textColor }]}
           >
             {t('Weekly Status')}
           </Text>
           <TouchableOpacity
+            style={styles.headerButton}
             onPress={() => navigation.navigate('AttendanceStats')}
           >
             <Ionicons
-              name="chevron-forward"
-              size={24}
-              color={theme.subtextColor}
+              name="analytics-outline"
+              size={20}
+              color={theme.primaryColor}
             />
           </TouchableOpacity>
         </View>

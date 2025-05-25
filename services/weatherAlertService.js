@@ -10,6 +10,7 @@ import {
 import { STORAGE_KEYS } from '../config/appConfig'
 import locationUtils from '../utils/location'
 import { translations } from '../utils/translations'
+import timeManager from '../utils/timeManager'
 
 // Hàm dịch đơn giản, sử dụng ngôn ngữ mặc định là tiếng Việt
 const t = (key) => {
@@ -229,7 +230,12 @@ const analyzeWeatherForecast = async (
     }
 
     // Phân tích dự báo tại NHÀ (lúc sắp đi)
-    const departureTime = shift.departureTime || shift.startTime
+    // Sử dụng timeManager để lấy departureTime chính xác
+    const departureTimeObj = timeManager.getDepartureTime(shift)
+    const departureTime = departureTimeObj
+      ? `${departureTimeObj.getHours().toString().padStart(2, '0')}:${departureTimeObj.getMinutes().toString().padStart(2, '0')}`
+      : shift.departureTime || shift.startTime
+
     const homeDepartureForecast = findForecastForTime(
       homeForecast,
       departureTime
@@ -425,18 +431,27 @@ export const scheduleWeatherCheck = async (shift) => {
       return
     }
 
-    // Tính thời gian kiểm tra (1 giờ trước departureTime)
+    // Tính thời gian kiểm tra (1 giờ trước departureTime) sử dụng timeManager
+    const checkTime = timeManager.getWeatherCheckTime(shift)
+
+    if (!checkTime) {
+      console.log('Không thể tính toán thời gian kiểm tra thời tiết')
+      return
+    }
+
     const now = new Date()
-    const [departureHours, departureMinutes] = shift.startTime
-      .split(':')
-      .map(Number)
 
-    const checkTime = new Date(now)
-    checkTime.setHours(departureHours - 1, departureMinutes, 0)
-
-    // Nếu thời gian kiểm tra đã qua, đặt lịch cho ngày mai
+    // Nếu thời gian kiểm tra đã qua, đặt lịch cho ngày làm việc tiếp theo
     if (checkTime < now) {
-      checkTime.setDate(checkTime.getDate() + 1)
+      const nextWorkDay = timeManager.getNextWorkDay(shift)
+      if (nextWorkDay) {
+        checkTime.setDate(nextWorkDay.getDate())
+        checkTime.setMonth(nextWorkDay.getMonth())
+        checkTime.setFullYear(nextWorkDay.getFullYear())
+      } else {
+        // Nếu không tìm được ngày làm việc tiếp theo, đặt cho ngày mai
+        checkTime.setDate(checkTime.getDate() + 1)
+      }
     }
 
     // Lên lịch kiểm tra

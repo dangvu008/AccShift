@@ -92,6 +92,33 @@ const styles = StyleSheet.create({
     color: COLORS.TEXT_LIGHT,
     fontWeight: 'bold',
   },
+  futureNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#E3F2FD',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#2196F3',
+  },
+  darkFutureNotice: {
+    backgroundColor: '#1A237E',
+    borderColor: '#64B5F6',
+  },
+  futureNoticeIcon: {
+    marginRight: 8,
+  },
+  futureNoticeText: {
+    fontSize: 14,
+    color: '#1976D2',
+    flex: 1,
+    fontWeight: '500',
+  },
+  darkFutureNoticeText: {
+    color: '#64B5F6',
+  },
   statusOptionsContainer: {
     marginBottom: 16,
   },
