@@ -284,6 +284,29 @@ const SettingsScreen = ({ navigation }) => {
 
         <TouchableOpacity
           style={[styles.menuItem, darkMode && styles.darkCard]}
+          onPress={() => navigation.navigate('WeatherDebug')}
+        >
+          <View style={styles.menuIconContainer}>
+            <MaterialIcons
+              name="cloud"
+              size={24}
+              color={darkMode ? '#fff' : '#000'}
+            />
+          </View>
+          <View style={styles.menuTextContainer}>
+            <Text style={[styles.menuTitle, darkMode && styles.darkText]}>
+              {t('Weather Debug')}
+            </Text>
+            <Text
+              style={[styles.menuDescription, darkMode && styles.darkSubtitle]}
+            >
+              {t('Debug weather API and location issues')}
+            </Text>
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.menuItem, darkMode && styles.darkCard]}
           onPress={handleResetData}
         >
           <View style={styles.menuIconContainer}>

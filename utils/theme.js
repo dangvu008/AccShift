@@ -4,7 +4,7 @@
  */
 
 // Import typography
-import { TEXT_STYLES, FONT_SIZES, FONT_WEIGHTS, LINE_HEIGHTS, LETTER_SPACING } from '../styles/common/typography';
+import { TEXT_STYLES, FONT_SIZES, FONT_WEIGHTS, LINE_HEIGHTS, LETTER_SPACING } from '../styles/common/typography.js';
 
 // Màu sắc chính
 export const COLORS = {
@@ -103,6 +103,9 @@ export const getTheme = (darkMode) => {
     letterSpacing: LETTER_SPACING,
   }
 }
+
+// Re-export typography constants for convenience
+export { TEXT_STYLES, FONT_SIZES, FONT_WEIGHTS, LINE_HEIGHTS, LETTER_SPACING };
 
 export default {
   COLORS,

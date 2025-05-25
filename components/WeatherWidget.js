@@ -1086,6 +1086,15 @@ const WeatherWidget = ({ onPress }) => {
             </Text>
           )}
 
+          {/* Debug info */}
+          {__DEV__ && (
+            <View style={{ marginBottom: 12 }}>
+              <Text style={{ fontSize: 12, color: theme.subtextColor, textAlign: 'center' }}>
+                🏠 Home: {homeLocation ? '✅' : '❌'} | 🏢 Work: {workLocation ? '✅' : '❌'} | 🔐 Permission: {locationPermissionGranted ? '✅' : '❌'}
+              </Text>
+            </View>
+          )}
+
           {/* Hiển thị nút làm mới */}
           <TouchableOpacity
             style={{

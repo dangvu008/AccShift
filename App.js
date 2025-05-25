@@ -37,6 +37,7 @@ import LogHistoryDetailScreen from './screens/LogHistoryDetailScreen'
 import ImageViewerScreen from './screens/ImageViewerScreen'
 import AlarmScreen from './screens/AlarmScreen'
 import MapPickerScreen from './screens/MapPickerScreen'
+import WeatherDebugScreen from './screens/WeatherDebugScreen'
 
 // Set up notification handler
 try {
@@ -306,6 +307,11 @@ function SettingsStack() {
         name="WeatherApiKeys"
         component={WeatherApiKeysScreen}
         options={{ title: t('Weather API Keys') }}
+      />
+      <Stack.Screen
+        name="WeatherDebug"
+        component={WeatherDebugScreen}
+        options={{ title: t('Weather Debug') }}
       />
       {/* Removed test screen WorkStatusUpdate */}
     </Stack.Navigator>
