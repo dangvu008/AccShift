@@ -8,7 +8,7 @@ import { AppContext } from '../context/AppContext'
 import { formatDuration } from '../utils/helpers'
 import MultiFunctionButton from '../components/MultiFunctionButton'
 import WeeklyStatusGrid from '../components/WeeklyStatusGrid'
-import WeatherWidget from '../components/WeatherWidget'
+// import WeatherWidget from '../components/WeatherWidget' // TẠM THỜI ẨN
 import WorkNotesSection from '../components/WorkNotesSection'
 import timeManager from '../utils/timeManager'
 
@@ -177,8 +177,8 @@ const HomeScreen = ({ navigation, route }) => {
         </View>
       </View>
 
-      {/* 2. Khu vực Thời tiết Hiện tại & Dự báo Ngắn hạn */}
-      <WeatherWidget onPress={() => navigation.navigate('WeatherDetail')} />
+      {/* 2. Khu vực Thời tiết Hiện tại & Dự báo Ngắn hạn - TẠM THỜI ẨN */}
+      {/* <WeatherWidget onPress={() => navigation.navigate('WeatherDetail')} /> */}
 
       {/* Vùng Cảnh báo Thời tiết (nếu có) - Đã được tích hợp vào WeatherWidget */}
 

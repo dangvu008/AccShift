@@ -14,6 +14,7 @@ const MultiFunctionButton = () => {
   const {
     t,
     darkMode,
+    theme, // Thêm theme
     buttonState,
     attendanceLogs,
     onlyGoWorkMode,
@@ -83,7 +84,7 @@ const MultiFunctionButton = () => {
           return {
             text: t('Go Work'),
             icon: 'walk-outline',
-            color: COLORS.PRIMARY,
+            color: theme.primaryColor,
             disabled: false,
             description: t('Bắt đầu ca làm việc'),
           }
@@ -91,7 +92,7 @@ const MultiFunctionButton = () => {
           return {
             text: t('Ký Công'),
             icon: 'checkmark-circle-outline',
-            color: COLORS.SUCCESS,
+            color: theme.successColor,
             disabled: false,
             description: t('Xác nhận hoàn thành ca làm việc'),
           }

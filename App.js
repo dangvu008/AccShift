@@ -26,7 +26,7 @@ import SettingsScreen from './screens/SettingsScreen'
 import BackupRestoreScreen from './screens/BackupRestoreScreen'
 import WeatherAlertsScreen from './screens/WeatherAlertsScreen'
 import WeatherApiKeysScreen from './screens/WeatherApiKeysScreen'
-import WeatherDetailScreen from './screens/WeatherDetailScreen'
+// import WeatherDetailScreen from './screens/WeatherDetailScreen' // TẠM THỜI ẨN
 import StatisticsScreen from './screens/StatisticsScreen'
 import MonthlyReportScreen from './screens/MonthlyReportScreen'
 import AttendanceStatsScreen from './screens/AttendanceStatsScreen'
@@ -58,25 +58,25 @@ const Stack = createStackNavigator()
 // Home stack navigator
 function HomeStack() {
   // Import context to use t() function and theme
-  const { t, darkMode } = useContext(AppContext)
+  const { t, darkMode, theme } = useContext(AppContext)
 
   return (
     <Stack.Navigator
       screenOptions={{
         headerStyle: {
-          backgroundColor: darkMode ? COLORS.CARD_ELEVATED_DARK : COLORS.CARD_ELEVATED_LIGHT,
+          backgroundColor: theme.cardElevatedColor,
           elevation: 4, // Thêm shadow cho Android
-          shadowColor: COLORS.SHADOW_MEDIUM, // Shadow cho iOS
+          shadowColor: theme.shadowMedium, // Shadow cho iOS
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: 0.1,
           shadowRadius: 4,
           borderBottomWidth: 1,
-          borderBottomColor: darkMode ? COLORS.BORDER_DARK : COLORS.BORDER_LIGHT,
+          borderBottomColor: theme.borderColor,
         },
-        headerTintColor: darkMode ? COLORS.TEXT_DARK : COLORS.TEXT_LIGHT,
+        headerTintColor: theme.textColor,
         headerTitleStyle: {
-          fontWeight: FONT_WEIGHTS.BOLD,
-          fontSize: FONT_SIZES.HEADER_4,
+          fontWeight: theme.fontWeights.BOLD,
+          fontSize: theme.fontSizes.HEADER_4,
           letterSpacing: 0.3,
         },
         headerBackTitleVisible: false, // Ẩn back title trên iOS
@@ -126,11 +126,12 @@ function HomeStack() {
           })
         }
       />
-      <Stack.Screen
+      {/* TẠM THỜI ẨN WEATHER DETAIL */}
+      {/* <Stack.Screen
         name="WeatherDetail"
         component={WeatherDetailScreen}
         options={{ title: t('Weather') }}
-      />
+      /> */}
     </Stack.Navigator>
   )
 }
@@ -138,25 +139,25 @@ function HomeStack() {
 // Shifts stack navigator
 function ShiftsStack() {
   // Import context to use t() function and theme
-  const { t, darkMode } = useContext(AppContext)
+  const { t, darkMode, theme } = useContext(AppContext)
 
   return (
     <Stack.Navigator
       screenOptions={{
         headerStyle: {
-          backgroundColor: darkMode ? COLORS.CARD_ELEVATED_DARK : COLORS.CARD_ELEVATED_LIGHT,
+          backgroundColor: theme.cardElevatedColor,
           elevation: 4,
-          shadowColor: COLORS.SHADOW_MEDIUM,
+          shadowColor: theme.shadowMedium,
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: 0.1,
           shadowRadius: 4,
           borderBottomWidth: 1,
-          borderBottomColor: darkMode ? COLORS.BORDER_DARK : COLORS.BORDER_LIGHT,
+          borderBottomColor: theme.borderColor,
         },
-        headerTintColor: darkMode ? COLORS.TEXT_DARK : COLORS.TEXT_LIGHT,
+        headerTintColor: theme.textColor,
         headerTitleStyle: {
-          fontWeight: FONT_WEIGHTS.BOLD,
-          fontSize: FONT_SIZES.HEADER_4,
+          fontWeight: theme.fontWeights.BOLD,
+          fontSize: theme.fontSizes.HEADER_4,
           letterSpacing: 0.3,
         },
         headerBackTitleVisible: false,
@@ -183,25 +184,25 @@ function ShiftsStack() {
 // Statistics stack navigator
 function StatisticsStack() {
   // Import context to use t() function and theme
-  const { t, darkMode } = useContext(AppContext)
+  const { t, darkMode, theme } = useContext(AppContext)
 
   return (
     <Stack.Navigator
       screenOptions={{
         headerStyle: {
-          backgroundColor: darkMode ? COLORS.CARD_ELEVATED_DARK : COLORS.CARD_ELEVATED_LIGHT,
+          backgroundColor: theme.cardElevatedColor,
           elevation: 4,
-          shadowColor: COLORS.SHADOW_MEDIUM,
+          shadowColor: theme.shadowMedium,
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: 0.1,
           shadowRadius: 4,
           borderBottomWidth: 1,
-          borderBottomColor: darkMode ? COLORS.BORDER_DARK : COLORS.BORDER_LIGHT,
+          borderBottomColor: theme.borderColor,
         },
-        headerTintColor: darkMode ? COLORS.TEXT_DARK : COLORS.TEXT_LIGHT,
+        headerTintColor: theme.textColor,
         headerTitleStyle: {
-          fontWeight: FONT_WEIGHTS.BOLD,
-          fontSize: FONT_SIZES.HEADER_4,
+          fontWeight: theme.fontWeights.BOLD,
+          fontSize: theme.fontSizes.HEADER_4,
           letterSpacing: 0.3,
         },
         headerBackTitleVisible: false,
@@ -244,7 +245,7 @@ function StatisticsStack() {
 // Settings stack navigator
 function SettingsStack() {
   // Import context to use t() function and theme
-  const { t, darkMode } = useContext(AppContext)
+  const { t, darkMode, theme } = useContext(AppContext)
 
   // Log để debug
   console.log('SettingsStack được render')
@@ -253,19 +254,19 @@ function SettingsStack() {
     <Stack.Navigator
       screenOptions={{
         headerStyle: {
-          backgroundColor: darkMode ? COLORS.CARD_ELEVATED_DARK : COLORS.CARD_ELEVATED_LIGHT,
+          backgroundColor: theme.cardElevatedColor,
           elevation: 4,
-          shadowColor: COLORS.SHADOW_MEDIUM,
+          shadowColor: theme.shadowMedium,
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: 0.1,
           shadowRadius: 4,
           borderBottomWidth: 1,
-          borderBottomColor: darkMode ? COLORS.BORDER_DARK : COLORS.BORDER_LIGHT,
+          borderBottomColor: theme.borderColor,
         },
-        headerTintColor: darkMode ? COLORS.TEXT_DARK : COLORS.TEXT_LIGHT,
+        headerTintColor: theme.textColor,
         headerTitleStyle: {
-          fontWeight: FONT_WEIGHTS.BOLD,
-          fontSize: FONT_SIZES.HEADER_4,
+          fontWeight: theme.fontWeights.BOLD,
+          fontSize: theme.fontSizes.HEADER_4,
           letterSpacing: 0.3,
         },
         headerBackTitleVisible: false,
