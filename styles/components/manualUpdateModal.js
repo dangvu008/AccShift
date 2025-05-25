@@ -95,53 +95,64 @@ const styles = StyleSheet.create({
   statusOptionsContainer: {
     marginBottom: 16,
   },
-  statusOptionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: COLORS.TEXT_LIGHT,
-    marginBottom: 8,
+  statusPickerContainer: {
+    marginBottom: 16,
   },
-  statusOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 18,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    marginBottom: 12,
+  pickerWrapper: {
     backgroundColor: COLORS.BACKGROUND_LIGHT,
+    borderRadius: 12,
     borderWidth: 2,
     borderColor: COLORS.BORDER_LIGHT,
-    minHeight: 60,
+    marginTop: 8,
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
-  darkStatusOption: {
+  darkPickerWrapper: {
     backgroundColor: COLORS.BACKGROUND_DARK,
     borderColor: COLORS.BORDER_DARK,
-    borderWidth: 2,
   },
-  selectedStatusOption: {
-    backgroundColor: 'rgba(138, 86, 255, 0.15)',
-    borderWidth: 3,
-    borderColor: COLORS.PRIMARY,
-    transform: [{ scale: 1.02 }],
-  },
-  darkSelectedStatusOption: {
-    backgroundColor: 'rgba(138, 86, 255, 0.25)',
-    borderWidth: 3,
-    borderColor: COLORS.PRIMARY,
-  },
-  statusIcon: {
-    marginRight: 12,
-  },
-  statusText: {
-    fontSize: 16,
+  statusPicker: {
+    height: 56,
     color: COLORS.TEXT_LIGHT,
-    flex: 1,
   },
+  darkStatusPicker: {
+    color: COLORS.TEXT_DARK,
+  },
+  selectedStatusIndicator: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: COLORS.BACKGROUND_LIGHT,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.BORDER_LIGHT,
+  },
+  darkSelectedStatusIndicator: {
+    backgroundColor: COLORS.BACKGROUND_DARK,
+    borderColor: COLORS.BORDER_DARK,
+  },
+  statusIndicatorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  selectedStatusIcon: {
+    marginRight: 8,
+  },
+  selectedStatusText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.TEXT_LIGHT,
+  },
+  statusOptionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: COLORS.TEXT_LIGHT,
+    marginBottom: 8,
+  },
+
   notesContainer: {
     marginBottom: 16,
   },
@@ -298,29 +309,40 @@ const styles = StyleSheet.create({
   },
   pickerHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.BORDER_LIGHT,
+    backgroundColor: COLORS.CARD_LIGHT,
+    position: 'relative',
+  },
+  darkPickerHeader: {
+    backgroundColor: COLORS.CARD_DARK,
+    borderBottomColor: COLORS.BORDER_DARK,
   },
   pickerTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: COLORS.TEXT_LIGHT,
+    flex: 1,
+    textAlign: 'center',
   },
-  pickerButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+  pickerCloseButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0,0,0,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'absolute',
+    right: 16,
+    top: 12,
+    zIndex: 1,
   },
-  pickerButtonText: {
-    fontSize: 16,
-    color: COLORS.TEXT_LIGHT,
-  },
-  doneButton: {
-    color: COLORS.PRIMARY,
-    fontWeight: '600',
+  darkPickerCloseButton: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
   },
   picker: {
     height: 200,

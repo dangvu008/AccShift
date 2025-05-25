@@ -13,6 +13,7 @@ import {
   Dimensions,
   SafeAreaView,
 } from 'react-native'
+import { Picker } from '@react-native-picker/picker'
 import { Ionicons } from '@expo/vector-icons'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import { AppContext } from '../context/AppContext'
@@ -367,7 +368,7 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
                 </View>
 
                 {/* Chọn trạng thái */}
-                <View style={styles.statusOptionsContainer}>
+                <View style={styles.statusPickerContainer}>
                   <Text style={[
                     styles.statusOptionTitle,
                     darkMode && styles.darkText
@@ -375,42 +376,64 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
                     {t('Chọn trạng thái')}
                   </Text>
 
-                  {statusOptions.map((option, index) => {
-                    const isSelected = selectedStatus === option.key
-                    console.log(`[ManualUpdateModal] Rendering status option ${index}:`, option.key, 'selected:', isSelected)
-
-                    return (
-                      <TouchableOpacity
-                        key={option.key}
-                        style={[
-                          styles.statusOption,
-                          darkMode && styles.darkStatusOption,
-                          isSelected && styles.selectedStatusOption,
-                          isSelected && darkMode && styles.darkSelectedStatusOption,
-                        ]}
-                        onPress={() => {
-                          console.log('[ManualUpdateModal] Status option pressed:', option.key)
-                          setSelectedStatus(option.key)
-                        }}
-                        activeOpacity={0.7}
-                        hitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}
-                      >
-                        <Ionicons
-                          name={option.icon}
-                          size={22}
-                          color={isSelected ? option.color : (darkMode ? '#fff' : '#666')}
-                          style={styles.statusIcon}
+                  <View style={[
+                    styles.pickerWrapper,
+                    darkMode && styles.darkPickerWrapper
+                  ]}>
+                    <Picker
+                      selectedValue={selectedStatus}
+                      onValueChange={(itemValue) => {
+                        console.log('[ManualUpdateModal] Picker value changed:', itemValue)
+                        setSelectedStatus(itemValue)
+                      }}
+                      style={[
+                        styles.statusPicker,
+                        darkMode && styles.darkStatusPicker
+                      ]}
+                      dropdownIconColor={darkMode ? '#fff' : '#666'}
+                    >
+                      <Picker.Item
+                        label={t('-- Chọn trạng thái --')}
+                        value=""
+                      />
+                      {statusOptions.map((option) => (
+                        <Picker.Item
+                          key={option.key}
+                          label={option.label}
+                          value={option.key}
                         />
-                        <Text style={[
-                          styles.statusText,
-                          darkMode && styles.darkText,
-                          isSelected && { color: option.color, fontWeight: '600' }
-                        ]}>
-                          {option.label}
-                        </Text>
-                      </TouchableOpacity>
-                    )
-                  })}
+                      ))}
+                    </Picker>
+                  </View>
+
+                  {/* Hiển thị icon và màu của trạng thái đã chọn */}
+                  {selectedStatus && (
+                    <View style={[
+                      styles.selectedStatusIndicator,
+                      darkMode && styles.darkSelectedStatusIndicator
+                    ]}>
+                      {(() => {
+                        const selectedOption = statusOptions.find(opt => opt.key === selectedStatus)
+                        return selectedOption ? (
+                          <View style={styles.statusIndicatorRow}>
+                            <Ionicons
+                              name={selectedOption.icon}
+                              size={20}
+                              color={selectedOption.color}
+                              style={styles.selectedStatusIcon}
+                            />
+                            <Text style={[
+                              styles.selectedStatusText,
+                              darkMode && styles.darkText,
+                              { color: selectedOption.color }
+                            ]}>
+                              {selectedOption.label}
+                            </Text>
+                          </View>
+                        ) : null
+                      })()}
+                    </View>
+                  )}
                 </View>
 
                 {/* Thời gian check-in/check-out */}
@@ -549,31 +572,33 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
       {showCheckInPicker && (
         <Modal
           transparent={true}
-          animationType="fade"
+          animationType="slide"
           visible={showCheckInPicker}
           onRequestClose={() => setShowCheckInPicker(false)}
         >
           <View style={styles.pickerOverlay}>
             <View style={[styles.pickerContainer, darkMode && styles.darkPickerContainer]}>
-              <View style={styles.pickerHeader}>
-                <TouchableOpacity
-                  onPress={() => setShowCheckInPicker(false)}
-                  style={styles.pickerButton}
-                >
-                  <Text style={[styles.pickerButtonText, darkMode && styles.darkText]}>
-                    {t('Hủy')}
-                  </Text>
-                </TouchableOpacity>
+              <View style={[
+                styles.pickerHeader,
+                darkMode && styles.darkPickerHeader
+              ]}>
                 <Text style={[styles.pickerTitle, darkMode && styles.darkText]}>
                   {t('Chọn giờ vào')}
                 </Text>
                 <TouchableOpacity
                   onPress={() => setShowCheckInPicker(false)}
-                  style={styles.pickerButton}
+                  style={[
+                    styles.pickerCloseButton,
+                    darkMode && styles.darkPickerCloseButton
+                  ]}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  activeOpacity={0.7}
                 >
-                  <Text style={[styles.pickerButtonText, styles.doneButton]}>
-                    {t('Xong')}
-                  </Text>
+                  <Ionicons
+                    name="close"
+                    size={24}
+                    color={darkMode ? '#fff' : '#000'}
+                  />
                 </TouchableOpacity>
               </View>
               <DateTimePicker
@@ -593,31 +618,33 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
       {showCheckOutPicker && (
         <Modal
           transparent={true}
-          animationType="fade"
+          animationType="slide"
           visible={showCheckOutPicker}
           onRequestClose={() => setShowCheckOutPicker(false)}
         >
           <View style={styles.pickerOverlay}>
             <View style={[styles.pickerContainer, darkMode && styles.darkPickerContainer]}>
-              <View style={styles.pickerHeader}>
-                <TouchableOpacity
-                  onPress={() => setShowCheckOutPicker(false)}
-                  style={styles.pickerButton}
-                >
-                  <Text style={[styles.pickerButtonText, darkMode && styles.darkText]}>
-                    {t('Hủy')}
-                  </Text>
-                </TouchableOpacity>
+              <View style={[
+                styles.pickerHeader,
+                darkMode && styles.darkPickerHeader
+              ]}>
                 <Text style={[styles.pickerTitle, darkMode && styles.darkText]}>
                   {t('Chọn giờ ra')}
                 </Text>
                 <TouchableOpacity
                   onPress={() => setShowCheckOutPicker(false)}
-                  style={styles.pickerButton}
+                  style={[
+                    styles.pickerCloseButton,
+                    darkMode && styles.darkPickerCloseButton
+                  ]}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  activeOpacity={0.7}
                 >
-                  <Text style={[styles.pickerButtonText, styles.doneButton]}>
-                    {t('Xong')}
-                  </Text>
+                  <Ionicons
+                    name="close"
+                    size={24}
+                    color={darkMode ? '#fff' : '#000'}
+                  />
                 </TouchableOpacity>
               </View>
               <DateTimePicker
