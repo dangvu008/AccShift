@@ -27,6 +27,7 @@ const SettingsScreen = ({ navigation }) => {
     notificationSound,
     notificationVibration,
     onlyGoWorkMode,
+    theme, // Thêm theme từ context
     // Functions
     toggleDarkMode,
     changeLanguage,
@@ -107,16 +108,16 @@ const SettingsScreen = ({ navigation }) => {
   }
 
   return (
-    <ScrollView style={[styles.container, darkMode && styles.darkContainer]}>
+    <ScrollView style={[styles.container, { backgroundColor: theme.backgroundColor }]}>
       {/* 1. General Settings */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <MaterialIcons
             name="settings"
             size={24}
-            color={darkMode ? '#fff' : '#000'}
+            color={theme.textColor}
           />
-          <Text style={[styles.sectionTitle, darkMode && styles.darkText]}>
+          <Text style={[styles.sectionTitle, { color: theme.textColor }]}>
             {t('General Settings')}
           </Text>
         </View>
@@ -131,7 +132,7 @@ const SettingsScreen = ({ navigation }) => {
           <Switch
             value={darkMode}
             onValueChange={toggleDarkMode}
-            trackColor={{ false: '#767577', true: '#8a56ff' }}
+            trackColor={{ false: '#767577', true: theme.primaryColor }}
             thumbColor={darkMode ? '#fff' : '#f4f3f4'}
           />
         </View>

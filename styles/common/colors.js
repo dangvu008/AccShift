@@ -17,10 +17,10 @@ export const COLORS = {
   ACCENT_LIGHT: '#fbbf24', // Amber-400
   ACCENT_DARK: '#d97706', // Amber-600
 
-  // Màu nền - Cải thiện contrast và độ sáng
-  BACKGROUND_LIGHT: '#f8fafc', // Slate-50 - Sáng và sạch sẽ
+  // Màu nền - Cải thiện contrast và độ sáng cho light mode
+  BACKGROUND_LIGHT: '#f1f5f9', // Slate-100 - Đậm hơn để tăng contrast
   BACKGROUND_DARK: '#0f172a', // Slate-900 - Đậm và sang trọng
-  BACKGROUND_SECONDARY_LIGHT: '#f1f5f9', // Slate-100
+  BACKGROUND_SECONDARY_LIGHT: '#e2e8f0', // Slate-200 - Đậm hơn cho secondary
   BACKGROUND_SECONDARY_DARK: '#1e293b', // Slate-800
 
   // Màu nền thẻ - Gradient và shadow effects
@@ -30,7 +30,7 @@ export const COLORS = {
   CARD_ELEVATED_DARK: '#334155', // Slate-700
 
   // Màu nền thẻ thứ cấp
-  SECONDARY_CARD_LIGHT: '#f1f5f9', // Slate-100 - Nhẹ nhàng
+  SECONDARY_CARD_LIGHT: '#e2e8f0', // Slate-200 - Đậm hơn để tăng contrast
   SECONDARY_CARD_DARK: '#334155', // Slate-700 - Cân bằng
 
   // Màu văn bản - Font đậm và rõ ràng
@@ -83,7 +83,7 @@ export const COLORS = {
   GRADIENT_PRIMARY: ['#6366f1', '#8b5cf6'],
   GRADIENT_ACCENT: ['#f59e0b', '#f97316'],
   GRADIENT_SUCCESS: ['#10b981', '#059669'],
-  GRADIENT_CARD_LIGHT: ['#ffffff', '#f8fafc'],
+  GRADIENT_CARD_LIGHT: ['#ffffff', '#f1f5f9'],
   GRADIENT_CARD_DARK: ['#1e293b', '#0f172a'],
 }
 

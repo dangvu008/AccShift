@@ -1,6 +1,9 @@
 /**
+ * DEPRECATED: File này đã được thay thế bởi styles/common/theme.js
  * Hệ thống màu sắc và typography cho ứng dụng AccShift
  * Cung cấp các màu sắc và typography nhất quán cho toàn bộ ứng dụng
+ *
+ * @deprecated Sử dụng styles/common/theme.js thay thế
  */
 
 // Import typography

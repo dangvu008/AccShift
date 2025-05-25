@@ -6,7 +6,8 @@ export * from './constants'
 export * from './helpers'
 export * from './formatters'
 export * from './storage'
-export * from './theme'
+// Theme đã được chuyển sang styles/common/theme.js
+// export * from './theme'
 export * from './translations'
 
 // Database and data management

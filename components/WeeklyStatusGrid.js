@@ -1091,16 +1091,16 @@ const WeeklyStatusGrid = () => {
     }
   }
 
-  // Get icon for status - Cải thiện với màu sắc nhất quán
+  // Get icon for status - Cải thiện với màu sắc nhất quán từ theme
   const getStatusIcon = (status) => {
     // Sử dụng màu sắc từ theme để đảm bảo tính nhất quán
     const colors = {
-      success: darkMode ? '#2ecc71' : '#27ae60', // Xanh lá - thành công
-      warning: darkMode ? '#f1c40f' : '#f39c12', // Cam - cảnh báo
-      error: darkMode ? '#e74c3c' : '#e74c3c', // Đỏ - lỗi
-      info: darkMode ? '#3498db' : '#3498db', // Xanh dương - thông tin
-      neutral: darkMode ? '#7f8c8d' : '#95a5a6', // Xám - trung tính
-      primary: darkMode ? '#9b59b6' : '#8a56ff', // Tím - màu chính của ứng dụng
+      success: theme.successColor, // Xanh lá - thành công
+      warning: theme.warningColor, // Cam - cảnh báo
+      error: theme.errorColor, // Đỏ - lỗi
+      info: theme.infoColor, // Xanh dương - thông tin
+      neutral: theme.subtextColor, // Xám - trung tính
+      primary: theme.primaryColor, // Màu chính của ứng dụng
     }
 
     switch (status) {

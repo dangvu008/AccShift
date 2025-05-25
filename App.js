@@ -15,7 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 
 import { AppProvider, AppContext } from './context/AppContext'
 import { STORAGE_KEYS } from './config/appConfig'
-import { COLORS, FONT_SIZES, FONT_WEIGHTS } from './utils/theme'
+import { COLORS, FONT_SIZES, FONT_WEIGHTS } from './styles/common/theme'
 
 // Import screens
 import HomeScreen from './screens/HomeScreen'

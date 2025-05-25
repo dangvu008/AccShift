@@ -14,7 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import { AppContext } from '../context/AppContext'
-import { COLORS } from '../utils/theme'
+import { COLORS } from '../styles/common/theme'
 import {
   getNotes,
   getShifts,
