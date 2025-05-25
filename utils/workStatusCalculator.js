@@ -1,3 +1,13 @@
+/**
+ * Enhanced Work Status Calculator
+ * Hệ thống tính toán trạng thái làm việc nâng cao với:
+ * - Real-time status calculation
+ * - Integration với shift management
+ * - Automatic status updates
+ * - Advanced analytics
+ * - Conflict resolution
+ */
+
 import { WORK_STATUS } from '../config/appConfig'
 import { storage } from './storage'
 import { formatDate } from './helpers'
@@ -1969,6 +1979,400 @@ export const calculateScheduledWorkTime = (shift, baseDate, userSettings) => {
   }
 }
 
+/**
+ * Real-time work status calculation with shift integration
+ */
+export const calculateRealTimeWorkStatus = async (employeeId = 'default') => {
+  try {
+    console.log('[WorkStatusCalculator] Calculating real-time work status for:', employeeId)
+
+    // Get current attendance session
+    const currentSession = attendanceManager.getCurrentSession()
+
+    if (!currentSession || currentSession.completed) {
+      // Not currently working
+      return {
+        isWorking: false,
+        status: WORK_STATUS.CHUA_CAP_NHAT,
+        workDuration: 0,
+        expectedEndTime: null,
+        overtimeStatus: null,
+      }
+    }
+
+    // Get current shift
+    const shift = await shiftManager.getShiftById(currentSession.shiftId)
+    if (!shift) {
+      console.warn('[WorkStatusCalculator] No shift found for current session')
+      return {
+        isWorking: true,
+        status: WORK_STATUS.THIEU_LOG,
+        workDuration: attendanceManager.getCurrentWorkDuration(),
+        expectedEndTime: null,
+        overtimeStatus: null,
+      }
+    }
+
+    // Calculate current work duration
+    const workDuration = attendanceManager.getCurrentWorkDuration()
+
+    // Calculate expected end time
+    const shiftDuration = shiftManager.calculateShiftDuration(shift.startTime, shift.endTime)
+    const expectedEndTime = new Date(currentSession.startTime.getTime() + shiftDuration * 60 * 1000)
+
+    // Determine current status
+    let status = WORK_STATUS.DANG_LAM_VIEC
+    let overtimeStatus = null
+
+    const now = new Date()
+    if (now > expectedEndTime) {
+      const overtimeMinutes = Math.floor((now - expectedEndTime) / (1000 * 60))
+      overtimeStatus = {
+        isOvertime: true,
+        overtimeMinutes,
+        overtimeHours: Math.floor(overtimeMinutes / 60),
+      }
+    }
+
+    return {
+      isWorking: true,
+      status,
+      workDuration,
+      expectedEndTime,
+      overtimeStatus,
+      shift,
+      session: currentSession,
+    }
+
+  } catch (error) {
+    console.error('[WorkStatusCalculator] Failed to calculate real-time status:', error)
+    return {
+      isWorking: false,
+      status: WORK_STATUS.CHUA_CAP_NHAT,
+      error: error.message,
+    }
+  }
+}
+
+/**
+ * Automatic status update based on attendance events
+ */
+export const triggerAutomaticStatusUpdate = async (attendanceEvent) => {
+  try {
+    console.log('[WorkStatusCalculator] Triggering automatic status update for event:', attendanceEvent.type)
+
+    const dateKey = formatDate(new Date(attendanceEvent.timestamp))
+
+    // Get current status
+    const currentStatus = await storage.getDailyWorkStatus(dateKey)
+
+    // Skip if manually updated
+    if (currentStatus?.isManuallyUpdated) {
+      console.log('[WorkStatusCalculator] Status manually updated, skipping automatic update')
+      return currentStatus
+    }
+
+    // Get shift information
+    const shift = await shiftManager.getShiftById(attendanceEvent.shiftId)
+
+    // Recalculate status
+    const newStatus = await calculateDailyWorkStatus(dateKey, shift)
+
+    // Save updated status
+    await storage.setDailyWorkStatus(dateKey, newStatus)
+
+    // Trigger notifications if needed
+    await triggerStatusChangeNotifications(currentStatus, newStatus)
+
+    console.log('[WorkStatusCalculator] Automatic status update completed:', newStatus.status)
+    return newStatus
+
+  } catch (error) {
+    console.error('[WorkStatusCalculator] Failed to trigger automatic status update:', error)
+    return null
+  }
+}
+
+/**
+ * Batch status calculation for multiple dates
+ */
+export const calculateBatchWorkStatus = async (dates, shift = null) => {
+  try {
+    console.log(`[WorkStatusCalculator] Calculating batch work status for ${dates.length} dates`)
+
+    const results = []
+    const activeShift = shift || await storage.getActiveShift()
+
+    // Process in chunks to avoid memory issues
+    const chunkSize = 10
+    for (let i = 0; i < dates.length; i += chunkSize) {
+      const chunk = dates.slice(i, i + chunkSize)
+
+      const chunkPromises = chunk.map(async (date) => {
+        const dateStr = typeof date === 'string' ? date : formatDate(date)
+
+        try {
+          const status = await calculateDailyWorkStatus(dateStr, activeShift)
+          await storage.setDailyWorkStatus(dateStr, status)
+          return status
+        } catch (error) {
+          console.error(`[WorkStatusCalculator] Failed to calculate status for ${dateStr}:`, error)
+          return {
+            date: dateStr,
+            status: WORK_STATUS.CHUA_CAP_NHAT,
+            error: error.message,
+          }
+        }
+      })
+
+      const chunkResults = await Promise.all(chunkPromises)
+      results.push(...chunkResults)
+
+      // Small delay between chunks
+      await new Promise(resolve => setTimeout(resolve, 10))
+    }
+
+    console.log(`[WorkStatusCalculator] Batch calculation completed: ${results.length} statuses`)
+    return results
+
+  } catch (error) {
+    console.error('[WorkStatusCalculator] Failed to calculate batch work status:', error)
+    return []
+  }
+}
+
+/**
+ * Conflict detection and resolution
+ */
+export const detectAndResolveStatusConflicts = async (dateRange = 30) => {
+  try {
+    console.log('[WorkStatusCalculator] Detecting status conflicts...')
+
+    const conflicts = []
+    const endDate = new Date()
+    const startDate = new Date()
+    startDate.setDate(endDate.getDate() - dateRange)
+
+    // Check each date in range
+    const currentDate = new Date(startDate)
+    while (currentDate <= endDate) {
+      const dateStr = formatDate(currentDate)
+
+      // Get stored status
+      const storedStatus = await storage.getDailyWorkStatus(dateStr)
+
+      if (storedStatus && !storedStatus.isManuallyUpdated) {
+        // Recalculate status
+        const shift = await shiftManager.getShiftById(storedStatus.shiftId)
+        const calculatedStatus = await calculateDailyWorkStatus(dateStr, shift)
+
+        // Compare statuses
+        if (storedStatus.status !== calculatedStatus.status) {
+          conflicts.push({
+            date: dateStr,
+            storedStatus: storedStatus.status,
+            calculatedStatus: calculatedStatus.status,
+            reason: 'Status mismatch',
+          })
+
+          // Auto-resolve by updating to calculated status
+          await storage.setDailyWorkStatus(dateStr, calculatedStatus)
+        }
+
+        // Check for data inconsistencies
+        if (storedStatus.vaoLogTime && storedStatus.raLogTime) {
+          const checkInTime = storedStatus.vaoLogTime
+          const checkOutTime = storedStatus.raLogTime
+
+          if (checkOutTime <= checkInTime) {
+            conflicts.push({
+              date: dateStr,
+              reason: 'Check-out time before check-in time',
+              checkInTime,
+              checkOutTime,
+            })
+
+            // Auto-resolve by marking as data error
+            const correctedStatus = {
+              ...storedStatus,
+              status: WORK_STATUS.LOI_DU_LIEU,
+              updatedAt: new Date().toISOString(),
+            }
+            await storage.setDailyWorkStatus(dateStr, correctedStatus)
+          }
+        }
+      }
+
+      currentDate.setDate(currentDate.getDate() + 1)
+    }
+
+    console.log(`[WorkStatusCalculator] Found and resolved ${conflicts.length} conflicts`)
+    return { conflicts, resolved: conflicts.length }
+
+  } catch (error) {
+    console.error('[WorkStatusCalculator] Failed to detect/resolve conflicts:', error)
+    return { conflicts: [], resolved: 0, error: error.message }
+  }
+}
+
+/**
+ * Advanced analytics and reporting
+ */
+export const generateWorkStatusAnalytics = async (startDate, endDate) => {
+  try {
+    console.log('[WorkStatusCalculator] Generating work status analytics...')
+
+    const analytics = {
+      totalDays: 0,
+      workDays: 0,
+      absentDays: 0,
+      lateDays: 0,
+      earlyLeaveDays: 0,
+      overtimeDays: 0,
+      totalWorkHours: 0,
+      totalOvertimeHours: 0,
+      averageWorkHours: 0,
+      statusBreakdown: {},
+      trends: [],
+    }
+
+    // Collect data for date range
+    const currentDate = new Date(startDate)
+    const dailyData = []
+
+    while (currentDate <= endDate) {
+      const dateStr = formatDate(currentDate)
+      const status = await storage.getDailyWorkStatus(dateStr)
+
+      if (status) {
+        dailyData.push(status)
+        analytics.totalDays++
+
+        // Count by status
+        if (!analytics.statusBreakdown[status.status]) {
+          analytics.statusBreakdown[status.status] = 0
+        }
+        analytics.statusBreakdown[status.status]++
+
+        // Analyze work patterns
+        if (status.status === WORK_STATUS.DU_CONG ||
+            status.status === WORK_STATUS.DI_MUON ||
+            status.status === WORK_STATUS.VE_SOM ||
+            status.status === WORK_STATUS.DI_MUON_VE_SOM) {
+          analytics.workDays++
+
+          if (status.totalHoursScheduled) {
+            analytics.totalWorkHours += status.totalHoursScheduled
+          }
+
+          if (status.otHoursScheduled) {
+            analytics.totalOvertimeHours += status.otHoursScheduled
+            analytics.overtimeDays++
+          }
+
+          if (status.lateMinutes > 0) {
+            analytics.lateDays++
+          }
+
+          if (status.earlyMinutes > 0) {
+            analytics.earlyLeaveDays++
+          }
+        } else if ([WORK_STATUS.NGHI_PHEP, WORK_STATUS.NGHI_BENH, WORK_STATUS.VANG_MAT].includes(status.status)) {
+          analytics.absentDays++
+        }
+      }
+
+      currentDate.setDate(currentDate.getDate() + 1)
+    }
+
+    // Calculate averages
+    if (analytics.workDays > 0) {
+      analytics.averageWorkHours = analytics.totalWorkHours / analytics.workDays
+    }
+
+    // Generate trends (weekly aggregation)
+    const weeklyData = {}
+    dailyData.forEach(status => {
+      const date = new Date(status.date)
+      const weekStart = new Date(date)
+      weekStart.setDate(date.getDate() - date.getDay()) // Start of week
+      const weekKey = formatDate(weekStart)
+
+      if (!weeklyData[weekKey]) {
+        weeklyData[weekKey] = {
+          week: weekKey,
+          workDays: 0,
+          totalHours: 0,
+          overtimeHours: 0,
+          lateDays: 0,
+        }
+      }
+
+      if (status.status === WORK_STATUS.DU_CONG ||
+          status.status === WORK_STATUS.DI_MUON ||
+          status.status === WORK_STATUS.VE_SOM ||
+          status.status === WORK_STATUS.DI_MUON_VE_SOM) {
+        weeklyData[weekKey].workDays++
+        weeklyData[weekKey].totalHours += status.totalHoursScheduled || 0
+        weeklyData[weekKey].overtimeHours += status.otHoursScheduled || 0
+
+        if (status.lateMinutes > 0) {
+          weeklyData[weekKey].lateDays++
+        }
+      }
+    })
+
+    analytics.trends = Object.values(weeklyData).sort((a, b) => a.week.localeCompare(b.week))
+
+    console.log('[WorkStatusCalculator] Analytics generation completed')
+    return analytics
+
+  } catch (error) {
+    console.error('[WorkStatusCalculator] Failed to generate analytics:', error)
+    return null
+  }
+}
+
+/**
+ * Trigger status change notifications
+ */
+const triggerStatusChangeNotifications = async (oldStatus, newStatus) => {
+  try {
+    // Import alarmManager to avoid circular dependency
+    const alarmManager = require('./alarmManager').default
+
+    // Check for significant status changes
+    if (!oldStatus || oldStatus.status !== newStatus.status) {
+      // Status changed, potentially trigger notifications
+
+      if (newStatus.status === WORK_STATUS.DI_MUON) {
+        // Late arrival notification
+        await alarmManager.scheduleAlarm({
+          title: 'Đi muộn',
+          body: `Bạn đã đi muộn ${newStatus.lateMinutes || 0} phút hôm nay`,
+          scheduledTime: new Date(Date.now() + 5000), // 5 seconds delay
+          type: 'status_change',
+          id: `late_notification_${newStatus.date}`,
+        })
+      }
+
+      if (newStatus.status === WORK_STATUS.VE_SOM) {
+        // Early leave notification
+        await alarmManager.scheduleAlarm({
+          title: 'Về sớm',
+          body: `Bạn đã về sớm ${newStatus.earlyMinutes || 0} phút hôm nay`,
+          scheduledTime: new Date(Date.now() + 5000),
+          type: 'status_change',
+          id: `early_notification_${newStatus.date}`,
+        })
+      }
+    }
+
+  } catch (error) {
+    console.error('[WorkStatusCalculator] Failed to trigger status change notifications:', error)
+  }
+}
+
 export default {
   calculateDailyWorkStatus,
   calculateAndSaveDailyWorkStatus,
@@ -1976,4 +2380,9 @@ export default {
   calculateTodayWorkStatus,
   calculateWorkStatusForDateRange,
   calculateScheduledWorkTime,
+  calculateRealTimeWorkStatus,
+  triggerAutomaticStatusUpdate,
+  calculateBatchWorkStatus,
+  detectAndResolveStatusConflicts,
+  generateWorkStatusAnalytics,
 }

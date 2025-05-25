@@ -1,3 +1,13 @@
+/**
+ * Enhanced Alarm & Notification Management System
+ * Hệ thống quản lý báo thức và thông báo nâng cao với:
+ * - Smart scheduling based on shift patterns
+ * - Adaptive reminder timing
+ * - Conflict detection và resolution
+ * - Offline notification support
+ * - Advanced notification types
+ */
+
 import * as Notifications from 'expo-notifications'
 // Mock Battery API since expo-battery is not available in Snack
 const Battery = {
@@ -7,6 +17,7 @@ import { Platform } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { NOTIFICATION_CONFIG, API_CONFIG } from '../config/appConfig'
 import { logNotification } from './notifications'
+import { storage } from './storage'
 
 // Kiểm tra môi trường web
 const isWeb = Platform.OS === 'web'
@@ -568,6 +579,272 @@ class AlarmManager {
       id: `check_out_${shift.id}_${Date.now()}`,
       data: { shiftId: shift.id, action: 'check_out' },
     })
+  }
+
+  /**
+   * Smart scheduling - Lên lịch báo thức thông minh dựa trên ca làm việc
+   * @param {Object} shift Thông tin ca làm việc
+   * @param {Object} options Tùy chọn lên lịch
+   */
+  async scheduleSmartShiftAlarms(shift, options = {}) {
+    try {
+      console.log('[AlarmManager] Scheduling smart alarms for shift:', shift.name)
+
+      const {
+        checkInReminderMinutes = 15,
+        checkOutReminderMinutes = 15,
+        enableMissedCheckInAlert = true,
+        enableOvertimeAlert = true,
+        enableBreakReminder = true,
+      } = options
+
+      const results = []
+
+      // Get user settings for alarm preferences
+      const userSettings = await storage.getUserSettings() || {}
+      const alarmEnabled = userSettings.alarmSoundEnabled !== false
+
+      if (!alarmEnabled) {
+        console.log('[AlarmManager] Alarms disabled in user settings')
+        return { success: true, scheduled: 0, results: [] }
+      }
+
+      // Schedule check-in reminder
+      if (checkInReminderMinutes > 0) {
+        const checkInTime = this.parseShiftTime(shift.startTime)
+        const reminderTime = new Date(checkInTime.getTime() - checkInReminderMinutes * 60 * 1000)
+
+        if (reminderTime > new Date()) {
+          const alarmId = await this.scheduleCheckInAlarm(shift, reminderTime)
+          if (alarmId) {
+            results.push({ type: 'check_in_reminder', alarmId, time: reminderTime })
+          }
+        }
+      }
+
+      // Schedule check-out reminder
+      if (checkOutReminderMinutes > 0) {
+        const checkOutTime = this.parseShiftTime(shift.endTime, shift.startTime)
+        const reminderTime = new Date(checkOutTime.getTime() - checkOutReminderMinutes * 60 * 1000)
+
+        if (reminderTime > new Date()) {
+          const alarmId = await this.scheduleCheckOutAlarm(shift, reminderTime)
+          if (alarmId) {
+            results.push({ type: 'check_out_reminder', alarmId, time: reminderTime })
+          }
+        }
+      }
+
+      // Schedule missed check-in alert (30 minutes after shift start)
+      if (enableMissedCheckInAlert) {
+        const checkInTime = this.parseShiftTime(shift.startTime)
+        const missedAlertTime = new Date(checkInTime.getTime() + 30 * 60 * 1000)
+
+        if (missedAlertTime > new Date()) {
+          const alarmId = await this.scheduleAlarm({
+            title: 'Quên check-in?',
+            body: `Bạn đã check-in ca ${shift.name} chưa?`,
+            scheduledTime: missedAlertTime,
+            type: 'missed_checkin',
+            id: `missed_checkin_${shift.id}_${Date.now()}`,
+            data: { shiftId: shift.id, action: 'missed_checkin_check' },
+          })
+
+          if (alarmId) {
+            results.push({ type: 'missed_checkin_alert', alarmId, time: missedAlertTime })
+          }
+        }
+      }
+
+      // Schedule overtime alert (1 hour after shift end)
+      if (enableOvertimeAlert) {
+        const checkOutTime = this.parseShiftTime(shift.endTime, shift.startTime)
+        const overtimeAlertTime = new Date(checkOutTime.getTime() + 60 * 60 * 1000)
+
+        if (overtimeAlertTime > new Date()) {
+          const alarmId = await this.scheduleAlarm({
+            title: 'Làm thêm giờ',
+            body: `Bạn đang làm thêm giờ. Nhớ check-out khi kết thúc!`,
+            scheduledTime: overtimeAlertTime,
+            type: 'overtime_alert',
+            id: `overtime_${shift.id}_${Date.now()}`,
+            data: { shiftId: shift.id, action: 'overtime_reminder' },
+          })
+
+          if (alarmId) {
+            results.push({ type: 'overtime_alert', alarmId, time: overtimeAlertTime })
+          }
+        }
+      }
+
+      console.log(`[AlarmManager] Scheduled ${results.length} smart alarms for shift ${shift.name}`)
+      return { success: true, scheduled: results.length, results }
+
+    } catch (error) {
+      console.error('[AlarmManager] Failed to schedule smart shift alarms:', error)
+      return { success: false, error: error.message, results: [] }
+    }
+  }
+
+  /**
+   * Parse shift time string to Date object
+   */
+  parseShiftTime(timeString, startTimeString = null) {
+    const [hours, minutes] = timeString.split(':').map(Number)
+    const now = new Date()
+    const shiftTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0)
+
+    // Handle overnight shifts
+    if (startTimeString) {
+      const [startHours] = startTimeString.split(':').map(Number)
+      if (hours < startHours) {
+        // This is next day
+        shiftTime.setDate(shiftTime.getDate() + 1)
+      }
+    }
+
+    return shiftTime
+  }
+
+  /**
+   * Cancel all alarms for a specific shift
+   */
+  async cancelShiftAlarms(shiftId) {
+    try {
+      console.log(`[AlarmManager] Canceling all alarms for shift: ${shiftId}`)
+
+      const prefixes = [
+        `check_in_${shiftId}`,
+        `check_out_${shiftId}`,
+        `missed_checkin_${shiftId}`,
+        `overtime_${shiftId}`,
+      ]
+
+      let canceledCount = 0
+      for (const prefix of prefixes) {
+        const success = await this.cancelAlarmsByPrefix(prefix)
+        if (success) canceledCount++
+      }
+
+      console.log(`[AlarmManager] Canceled alarms for ${canceledCount} categories`)
+      return { success: true, canceled: canceledCount }
+
+    } catch (error) {
+      console.error('[AlarmManager] Failed to cancel shift alarms:', error)
+      return { success: false, error: error.message }
+    }
+  }
+
+  /**
+   * Adaptive reminder timing based on user behavior
+   */
+  async scheduleAdaptiveReminders(shift) {
+    try {
+      // Get user's historical check-in patterns
+      const userSettings = await storage.getUserSettings() || {}
+      const checkInHistory = userSettings.checkInHistory || []
+
+      // Calculate average check-in time relative to shift start
+      let avgEarlyMinutes = 15 // Default 15 minutes early
+
+      if (checkInHistory.length > 0) {
+        const earlyTimes = checkInHistory
+          .filter(entry => entry.shiftId === shift.id)
+          .map(entry => {
+            const shiftStart = this.parseShiftTime(shift.startTime)
+            const checkInTime = new Date(entry.timestamp)
+            return (shiftStart.getTime() - checkInTime.getTime()) / (1000 * 60)
+          })
+          .filter(minutes => minutes > 0 && minutes < 120) // Filter reasonable values
+
+        if (earlyTimes.length > 0) {
+          avgEarlyMinutes = Math.round(earlyTimes.reduce((a, b) => a + b, 0) / earlyTimes.length)
+          avgEarlyMinutes = Math.max(5, Math.min(60, avgEarlyMinutes)) // Clamp between 5-60 minutes
+        }
+      }
+
+      console.log(`[AlarmManager] Using adaptive reminder: ${avgEarlyMinutes} minutes before shift`)
+
+      // Schedule with adaptive timing
+      return await this.scheduleSmartShiftAlarms(shift, {
+        checkInReminderMinutes: avgEarlyMinutes,
+        checkOutReminderMinutes: 15,
+        enableMissedCheckInAlert: true,
+        enableOvertimeAlert: true,
+      })
+
+    } catch (error) {
+      console.error('[AlarmManager] Failed to schedule adaptive reminders:', error)
+      // Fallback to default scheduling
+      return await this.scheduleSmartShiftAlarms(shift)
+    }
+  }
+
+  /**
+   * Check for notification conflicts and resolve them
+   */
+  async detectAndResolveConflicts() {
+    try {
+      const scheduledAlarms = await this.getAllScheduledAlarms()
+      const conflicts = []
+
+      // Group alarms by time (within 5 minutes)
+      const timeGroups = new Map()
+
+      for (const alarm of scheduledAlarms) {
+        if (!alarm.trigger?.date) continue
+
+        const alarmTime = new Date(alarm.trigger.date)
+        const timeKey = Math.floor(alarmTime.getTime() / (5 * 60 * 1000)) // 5-minute buckets
+
+        if (!timeGroups.has(timeKey)) {
+          timeGroups.set(timeKey, [])
+        }
+        timeGroups.get(timeKey).push(alarm)
+      }
+
+      // Find conflicts (more than 2 alarms in same time bucket)
+      for (const [timeKey, alarms] of timeGroups) {
+        if (alarms.length > 2) {
+          conflicts.push({
+            timeKey,
+            time: new Date(timeKey * 5 * 60 * 1000),
+            alarms,
+            count: alarms.length
+          })
+        }
+      }
+
+      // Resolve conflicts by spacing them out
+      for (const conflict of conflicts) {
+        console.log(`[AlarmManager] Resolving conflict at ${conflict.time}: ${conflict.count} alarms`)
+
+        // Keep the first alarm, reschedule others with 2-minute intervals
+        for (let i = 1; i < conflict.alarms.length; i++) {
+          const alarm = conflict.alarms[i]
+          const newTime = new Date(conflict.time.getTime() + i * 2 * 60 * 1000)
+
+          // Cancel old alarm
+          await this.cancelAlarm(alarm.id)
+
+          // Reschedule with new time
+          await this.scheduleAlarm({
+            title: alarm.title,
+            body: alarm.body,
+            scheduledTime: newTime,
+            type: alarm.data?.type || 'general',
+            id: `${alarm.id}_resolved`,
+            data: alarm.data || {},
+          })
+        }
+      }
+
+      return { success: true, conflicts: conflicts.length, resolved: conflicts.length }
+
+    } catch (error) {
+      console.error('[AlarmManager] Failed to detect/resolve conflicts:', error)
+      return { success: false, error: error.message }
+    }
   }
 }
 

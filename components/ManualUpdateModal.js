@@ -6,29 +6,43 @@ import {
   Text,
   Modal,
   TouchableOpacity,
-  TextInput,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
   Alert,
+  Dimensions,
+  SafeAreaView,
 } from 'react-native'
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
+import { Ionicons } from '@expo/vector-icons'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import { AppContext } from '../context/AppContext'
 import { WORK_STATUS } from '../config/appConfig'
 import styles from '../styles/components/manualUpdateModal'
+
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window')
 
 const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) => {
   const { t, darkMode } = useContext(AppContext)
 
   // State cho form
   const [selectedStatus, setSelectedStatus] = useState('')
-  const [notes, setNotes] = useState('')
   const [checkInTime, setCheckInTime] = useState('')
   const [checkOutTime, setCheckOutTime] = useState('')
   const [showCheckInPicker, setShowCheckInPicker] = useState(false)
   const [showCheckOutPicker, setShowCheckOutPicker] = useState(false)
   const [loading, setLoading] = useState(false)
+
+  // Debug logs
+  useEffect(() => {
+    console.log('[ManualUpdateModal] Component mounted, visible:', visible)
+    console.log('[ManualUpdateModal] Screen dimensions:', { screenWidth, screenHeight })
+    console.log('[ManualUpdateModal] Dark mode:', darkMode)
+  }, [visible, darkMode])
+
+  useEffect(() => {
+    console.log('[ManualUpdateModal] Selected status changed:', selectedStatus)
+    console.log('[ManualUpdateModal] Requires time input:', requiresTimeInput())
+  }, [selectedStatus])
 
   // Danh sách trạng thái có thể chọn
   const statusOptions = [
@@ -100,11 +114,16 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
   // Reset form khi modal mở
   useEffect(() => {
     if (visible && selectedDay) {
+      console.log('[ManualUpdateModal] Resetting form for day:', selectedDay)
       const currentStatus = selectedDay.status || {}
       setSelectedStatus(currentStatus.status || '')
-      setNotes(currentStatus.notes || '')
       setCheckInTime(currentStatus.vaoLogTime || '')
       setCheckOutTime(currentStatus.raLogTime || '')
+
+      // Reset time pickers
+      setShowCheckInPicker(false)
+      setShowCheckOutPicker(false)
+      setLoading(false)
     }
   }, [visible, selectedDay])
 
@@ -128,25 +147,39 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
 
   // Xử lý thay đổi thời gian check-in
   const handleCheckInTimeChange = (event, selectedTime) => {
+    console.log('[ManualUpdateModal] Check-in time change:', { event: event?.type, selectedTime })
+
     if (Platform.OS === 'android') {
       setShowCheckInPicker(false)
     }
 
-    if (selectedTime) {
+    if (selectedTime && event?.type !== 'dismissed') {
       const timeString = selectedTime.toTimeString().slice(0, 5)
+      console.log('[ManualUpdateModal] Setting check-in time:', timeString)
       setCheckInTime(timeString)
+    }
+
+    if (Platform.OS === 'ios' && event?.type === 'dismissed') {
+      setShowCheckInPicker(false)
     }
   }
 
   // Xử lý thay đổi thời gian check-out
   const handleCheckOutTimeChange = (event, selectedTime) => {
+    console.log('[ManualUpdateModal] Check-out time change:', { event: event?.type, selectedTime })
+
     if (Platform.OS === 'android') {
       setShowCheckOutPicker(false)
     }
 
-    if (selectedTime) {
+    if (selectedTime && event?.type !== 'dismissed') {
       const timeString = selectedTime.toTimeString().slice(0, 5)
+      console.log('[ManualUpdateModal] Setting check-out time:', timeString)
       setCheckOutTime(timeString)
+    }
+
+    if (Platform.OS === 'ios' && event?.type === 'dismissed') {
+      setShowCheckOutPicker(false)
     }
   }
 
@@ -191,6 +224,14 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
 
   // Xử lý lưu
   const handleSave = async () => {
+    console.log('[ManualUpdateModal] Save button pressed')
+    console.log('[ManualUpdateModal] Form data:', {
+      selectedStatus,
+      checkInTime,
+      checkOutTime,
+      requiresTimeInput: requiresTimeInput()
+    })
+
     if (!validateForm()) return
 
     setLoading(true)
@@ -201,15 +242,17 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
       // Chuẩn bị dữ liệu
       const dateKey = selectedDay.date.toISOString().split('T')[0]
       const additionalData = {
-        notes,
         vaoLogTime: requiresTimeInput() ? checkInTime : null,
         raLogTime: requiresTimeInput() ? checkOutTime : null,
       }
+
+      console.log('[ManualUpdateModal] Updating status:', { dateKey, selectedStatus, additionalData })
 
       // Cập nhật trạng thái
       const result = await updateWorkStatusManually(dateKey, selectedStatus, additionalData)
 
       if (result) {
+        console.log('[ManualUpdateModal] Update successful:', result)
         // Thông báo thành công
         Alert.alert(t('Thành công'), t('Đã cập nhật trạng thái làm việc'), [
           {
@@ -221,53 +264,74 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
           }
         ])
       } else {
+        console.log('[ManualUpdateModal] Update failed: no result')
         Alert.alert(t('Lỗi'), t('Không thể cập nhật trạng thái'))
       }
     } catch (error) {
-      console.error('Lỗi khi cập nhật trạng thái:', error)
+      console.error('[ManualUpdateModal] Error updating status:', error)
       Alert.alert(t('Lỗi'), t('Đã xảy ra lỗi khi cập nhật trạng thái'))
     } finally {
       setLoading(false)
     }
   }
 
-  if (!visible || !selectedDay) return null
+  if (!visible || !selectedDay) {
+    console.log('[ManualUpdateModal] Not rendering - visible:', visible, 'selectedDay:', !!selectedDay)
+    return null
+  }
+
+  console.log('[ManualUpdateModal] Rendering modal')
 
   return (
     <Modal
       visible={visible}
-      transparent
+      transparent={true}
       animationType="slide"
       onRequestClose={onClose}
-      statusBarTranslucent={true}
+      statusBarTranslucent={false}
+      presentationStyle="overFullScreen"
     >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardAvoidingView}
-      >
-        <View style={styles.overlay}>
-          <View style={[
-            styles.modalContainer,
-            darkMode && styles.darkModalContainer
-          ]}>
-            {/* Header */}
+      <SafeAreaView style={styles.safeArea}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardAvoidingView}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        >
+          <View style={styles.overlay}>
             <View style={[
-              styles.modalHeader,
-              darkMode && styles.darkModalHeader
+              styles.modalContainer,
+              darkMode && styles.darkModalContainer,
+              { maxHeight: screenHeight * 0.9 }
             ]}>
-              <Text style={[styles.title, darkMode && styles.darkText]}>
-                {t('Cập nhật trạng thái')}
-              </Text>
-              <TouchableOpacity onPress={onClose} style={styles.closeIcon}>
-                <Ionicons
-                  name="close"
-                  size={24}
-                  color={darkMode ? '#fff' : '#000'}
-                />
-              </TouchableOpacity>
-            </View>
+              {/* Header */}
+              <View style={[
+                styles.modalHeader,
+                darkMode && styles.darkModalHeader
+              ]}>
+                <Text style={[styles.title, darkMode && styles.darkText]}>
+                  {t('Cập nhật trạng thái')}
+                </Text>
+                <TouchableOpacity
+                  onPress={onClose}
+                  style={styles.closeIcon}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name="close"
+                    size={24}
+                    color={darkMode ? '#fff' : '#000'}
+                  />
+                </TouchableOpacity>
+              </View>
 
-            <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+              <ScrollView
+                style={styles.modalContent}
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+                bounces={false}
+                keyboardShouldPersistTaps="handled"
+              >
               {/* Thông tin ngày */}
               <View style={[
                 styles.dateInfo,
@@ -287,32 +351,42 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
                   {t('Chọn trạng thái')}
                 </Text>
 
-                {statusOptions.map((option) => (
-                  <TouchableOpacity
-                    key={option.key}
-                    style={[
-                      styles.statusOption,
-                      darkMode && styles.darkStatusOption,
-                      selectedStatus === option.key && styles.selectedStatusOption,
-                      selectedStatus === option.key && darkMode && styles.darkSelectedStatusOption,
-                    ]}
-                    onPress={() => setSelectedStatus(option.key)}
-                  >
-                    <Ionicons
-                      name={option.icon}
-                      size={20}
-                      color={selectedStatus === option.key ? option.color : (darkMode ? '#fff' : '#666')}
-                      style={styles.statusIcon}
-                    />
-                    <Text style={[
-                      styles.statusText,
-                      darkMode && styles.darkText,
-                      selectedStatus === option.key && { color: option.color }
-                    ]}>
-                      {option.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+                {statusOptions.map((option, index) => {
+                  const isSelected = selectedStatus === option.key
+                  console.log(`[ManualUpdateModal] Rendering status option ${index}:`, option.key, 'selected:', isSelected)
+
+                  return (
+                    <TouchableOpacity
+                      key={option.key}
+                      style={[
+                        styles.statusOption,
+                        darkMode && styles.darkStatusOption,
+                        isSelected && styles.selectedStatusOption,
+                        isSelected && darkMode && styles.darkSelectedStatusOption,
+                      ]}
+                      onPress={() => {
+                        console.log('[ManualUpdateModal] Status option pressed:', option.key)
+                        setSelectedStatus(option.key)
+                      }}
+                      activeOpacity={0.7}
+                      hitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}
+                    >
+                      <Ionicons
+                        name={option.icon}
+                        size={22}
+                        color={isSelected ? option.color : (darkMode ? '#fff' : '#666')}
+                        style={styles.statusIcon}
+                      />
+                      <Text style={[
+                        styles.statusText,
+                        darkMode && styles.darkText,
+                        isSelected && { color: option.color, fontWeight: '600' }
+                      ]}>
+                        {option.label}
+                      </Text>
+                    </TouchableOpacity>
+                  )
+                })}
               </View>
 
               {/* Thời gian check-in/check-out */}
@@ -338,14 +412,26 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
                         styles.timeInput,
                         darkMode && styles.darkTimeInput
                       ]}
-                      onPress={() => setShowCheckInPicker(true)}
+                      onPress={() => {
+                        console.log('[ManualUpdateModal] Check-in time input pressed')
+                        setShowCheckInPicker(true)
+                      }}
+                      activeOpacity={0.7}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     >
                       <Text style={[
-                        styles.statusText,
-                        darkMode && styles.darkText
+                        styles.timeInputText,
+                        darkMode && styles.darkText,
+                        !checkInTime && styles.placeholderText
                       ]}>
                         {checkInTime || t('Chọn thời gian')}
                       </Text>
+                      <Ionicons
+                        name="time-outline"
+                        size={20}
+                        color={darkMode ? '#fff' : '#666'}
+                        style={styles.timeIcon}
+                      />
                     </TouchableOpacity>
                   </View>
 
@@ -362,50 +448,50 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
                         styles.timeInput,
                         darkMode && styles.darkTimeInput
                       ]}
-                      onPress={() => setShowCheckOutPicker(true)}
+                      onPress={() => {
+                        console.log('[ManualUpdateModal] Check-out time input pressed')
+                        setShowCheckOutPicker(true)
+                      }}
+                      activeOpacity={0.7}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     >
                       <Text style={[
-                        styles.statusText,
-                        darkMode && styles.darkText
+                        styles.timeInputText,
+                        darkMode && styles.darkText,
+                        !checkOutTime && styles.placeholderText
                       ]}>
                         {checkOutTime || t('Chọn thời gian')}
                       </Text>
+                      <Ionicons
+                        name="time-outline"
+                        size={20}
+                        color={darkMode ? '#fff' : '#666'}
+                        style={styles.timeIcon}
+                      />
                     </TouchableOpacity>
                   </View>
                 </View>
               )}
 
-              {/* Ghi chú */}
-              <View style={styles.notesContainer}>
-                <Text style={[
-                  styles.notesLabel,
-                  darkMode && styles.darkText
-                ]}>
-                  {t('Ghi chú')}
-                </Text>
-                <TextInput
-                  style={[
-                    styles.notesInput,
-                    darkMode && styles.darkNotesInput
-                  ]}
-                  value={notes}
-                  onChangeText={setNotes}
-                  placeholder={t('Nhập ghi chú (tùy chọn)')}
-                  placeholderTextColor={darkMode ? '#888' : '#666'}
-                  multiline
-                  numberOfLines={4}
-                />
-              </View>
+              </ScrollView>
 
-              {/* Buttons */}
-              <View style={styles.buttonContainer}>
+              {/* Buttons - Fixed at bottom */}
+              <View style={[
+                styles.buttonContainer,
+                darkMode && styles.darkButtonContainer
+              ]}>
                 <TouchableOpacity
                   style={[
                     styles.cancelButton,
                     darkMode && styles.darkCancelButton
                   ]}
-                  onPress={onClose}
+                  onPress={() => {
+                    console.log('[ManualUpdateModal] Cancel button pressed')
+                    onClose()
+                  }}
                   disabled={loading}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
                   <Text style={[
                     styles.cancelButtonText,
@@ -416,42 +502,114 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={styles.saveButton}
+                  style={[
+                    styles.saveButton,
+                    loading && styles.disabledButton
+                  ]}
                   onPress={handleSave}
                   disabled={loading}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
                   <Text style={styles.saveButtonText}>
                     {loading ? t('Đang lưu...') : t('Lưu')}
                   </Text>
                 </TouchableOpacity>
               </View>
-            </ScrollView>
 
-            {/* Time Pickers */}
-            {showCheckInPicker && (
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+
+      {/* Time Pickers - Separate modals for better mobile support */}
+      {showCheckInPicker && (
+        <Modal
+          transparent={true}
+          animationType="fade"
+          visible={showCheckInPicker}
+          onRequestClose={() => setShowCheckInPicker(false)}
+        >
+          <View style={styles.pickerOverlay}>
+            <View style={[styles.pickerContainer, darkMode && styles.darkPickerContainer]}>
+              <View style={styles.pickerHeader}>
+                <TouchableOpacity
+                  onPress={() => setShowCheckInPicker(false)}
+                  style={styles.pickerButton}
+                >
+                  <Text style={[styles.pickerButtonText, darkMode && styles.darkText]}>
+                    {t('Hủy')}
+                  </Text>
+                </TouchableOpacity>
+                <Text style={[styles.pickerTitle, darkMode && styles.darkText]}>
+                  {t('Chọn giờ vào')}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setShowCheckInPicker(false)}
+                  style={styles.pickerButton}
+                >
+                  <Text style={[styles.pickerButtonText, styles.doneButton]}>
+                    {t('Xong')}
+                  </Text>
+                </TouchableOpacity>
+              </View>
               <DateTimePicker
                 value={createTimeDate(checkInTime)}
                 mode="time"
                 is24Hour={true}
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                display="spinner"
                 onChange={handleCheckInTimeChange}
                 themeVariant={darkMode ? 'dark' : 'light'}
+                style={styles.picker}
               />
-            )}
+            </View>
+          </View>
+        </Modal>
+      )}
 
-            {showCheckOutPicker && (
+      {showCheckOutPicker && (
+        <Modal
+          transparent={true}
+          animationType="fade"
+          visible={showCheckOutPicker}
+          onRequestClose={() => setShowCheckOutPicker(false)}
+        >
+          <View style={styles.pickerOverlay}>
+            <View style={[styles.pickerContainer, darkMode && styles.darkPickerContainer]}>
+              <View style={styles.pickerHeader}>
+                <TouchableOpacity
+                  onPress={() => setShowCheckOutPicker(false)}
+                  style={styles.pickerButton}
+                >
+                  <Text style={[styles.pickerButtonText, darkMode && styles.darkText]}>
+                    {t('Hủy')}
+                  </Text>
+                </TouchableOpacity>
+                <Text style={[styles.pickerTitle, darkMode && styles.darkText]}>
+                  {t('Chọn giờ ra')}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setShowCheckOutPicker(false)}
+                  style={styles.pickerButton}
+                >
+                  <Text style={[styles.pickerButtonText, styles.doneButton]}>
+                    {t('Xong')}
+                  </Text>
+                </TouchableOpacity>
+              </View>
               <DateTimePicker
                 value={createTimeDate(checkOutTime)}
                 mode="time"
                 is24Hour={true}
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                display="spinner"
                 onChange={handleCheckOutTimeChange}
                 themeVariant={darkMode ? 'dark' : 'light'}
+                style={styles.picker}
               />
-            )}
+            </View>
           </View>
-        </View>
-      </KeyboardAvoidingView>
+        </Modal>
+      )}
     </Modal>
   )
 }

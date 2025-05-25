@@ -16,6 +16,15 @@ export const WORK_STATUS = {
   DANG_LAM_VIEC: 'DANG_LAM_VIEC', // Đang làm việc (chỉ có check-in, chưa check-out)
 }
 
+export const SHIFT_TYPES = {
+  REGULAR: 'REGULAR',
+  OVERTIME: 'OVERTIME',
+  NIGHT: 'NIGHT',
+  OVERNIGHT: 'OVERNIGHT',
+  WEEKEND: 'WEEKEND',
+  HOLIDAY: 'HOLIDAY',
+}
+
 export const API_CONFIG = {
   // API URLs - Sử dụng API trực tiếp không qua proxy
   WEATHER_BASE_URL: 'https://api.openweathermap.org/data/2.5',
@@ -86,4 +95,6 @@ export const STORAGE_KEYS = {
   IS_WORKING: 'isWorking',
   WORK_START_TIME: 'workStartTime',
   LAST_AUTO_RESET_TIME: 'lastAutoResetTime',
+  SHIFT_ASSIGNMENTS: 'shift_assignments',
+  SHIFT_SCHEDULES: 'shift_schedules',
 }

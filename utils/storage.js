@@ -960,6 +960,64 @@ class StorageManager {
       return false
     }
   }
+
+  /**
+   * Lấy danh sách gán ca làm việc
+   * @returns {Promise<Object>} Danh sách gán ca (employeeId -> shiftId)
+   */
+  async getShiftAssignments() {
+    try {
+      const assignmentsJson = await AsyncStorage.getItem(STORAGE_KEYS.SHIFT_ASSIGNMENTS)
+      return assignmentsJson ? JSON.parse(assignmentsJson) : {}
+    } catch (error) {
+      console.error('Lỗi khi lấy danh sách gán ca:', error)
+      return {}
+    }
+  }
+
+  /**
+   * Lưu danh sách gán ca làm việc
+   * @param {Object} assignments Danh sách gán ca (employeeId -> shiftId)
+   * @returns {Promise<boolean>} Kết quả lưu
+   */
+  async setShiftAssignments(assignments) {
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.SHIFT_ASSIGNMENTS, JSON.stringify(assignments))
+      return true
+    } catch (error) {
+      console.error('Lỗi khi lưu danh sách gán ca:', error)
+      return false
+    }
+  }
+
+  /**
+   * Lấy lịch ca làm việc
+   * @returns {Promise<Object>} Lịch ca (date -> employeeId -> shiftId)
+   */
+  async getShiftSchedules() {
+    try {
+      const schedulesJson = await AsyncStorage.getItem(STORAGE_KEYS.SHIFT_SCHEDULES)
+      return schedulesJson ? JSON.parse(schedulesJson) : {}
+    } catch (error) {
+      console.error('Lỗi khi lấy lịch ca làm việc:', error)
+      return {}
+    }
+  }
+
+  /**
+   * Lưu lịch ca làm việc
+   * @param {Object} schedules Lịch ca (date -> employeeId -> shiftId)
+   * @returns {Promise<boolean>} Kết quả lưu
+   */
+  async setShiftSchedules(schedules) {
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.SHIFT_SCHEDULES, JSON.stringify(schedules))
+      return true
+    } catch (error) {
+      console.error('Lỗi khi lưu lịch ca làm việc:', error)
+      return false
+    }
+  }
 }
 
 // Xuất một thể hiện duy nhất của StorageManager

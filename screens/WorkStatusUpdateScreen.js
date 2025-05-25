@@ -15,12 +15,14 @@ import { Ionicons } from '@expo/vector-icons'
 import { AppContext } from '../context/AppContext'
 import { WORK_STATUS } from '../config/appConfig'
 import ManualUpdateModal from '../components/ManualUpdateModal'
+import DebugModal from '../components/DebugModal'
 
 const WorkStatusUpdateScreen = ({ navigation }) => {
   const { t, darkMode } = useContext(AppContext)
 
   // State
   const [modalVisible, setModalVisible] = useState(false)
+  const [debugModalVisible, setDebugModalVisible] = useState(false)
   const [selectedTestDay, setSelectedTestDay] = useState(null)
   const [testResults, setTestResults] = useState([])
 
@@ -146,7 +148,6 @@ const WorkStatusUpdateScreen = ({ navigation }) => {
       status: updatedStatus.status,
       vaoLogTime: updatedStatus.vaoLogTime,
       raLogTime: updatedStatus.raLogTime,
-      notes: updatedStatus.notes,
       timestamp: new Date().toLocaleString('vi-VN'),
     }
 
@@ -198,16 +199,28 @@ const WorkStatusUpdateScreen = ({ navigation }) => {
         <Text style={[styles.headerTitle, darkMode && styles.darkText]}>
           {t('Test Cập Nhật Trạng Thái')}
         </Text>
-        <TouchableOpacity
-          style={styles.clearButton}
-          onPress={clearTestResults}
-        >
-          <Ionicons
-            name="trash"
-            size={24}
-            color={darkMode ? '#fff' : '#000'}
-          />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row' }}>
+          <TouchableOpacity
+            style={[styles.clearButton, { marginRight: 10 }]}
+            onPress={() => setDebugModalVisible(true)}
+          >
+            <Ionicons
+              name="bug"
+              size={24}
+              color={darkMode ? '#fff' : '#000'}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.clearButton}
+            onPress={clearTestResults}
+          >
+            <Ionicons
+              name="trash"
+              size={24}
+              color={darkMode ? '#fff' : '#000'}
+            />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -332,11 +345,7 @@ const WorkStatusUpdateScreen = ({ navigation }) => {
                   </View>
                 )}
 
-                {result.notes && (
-                  <Text style={[styles.notesText, darkMode && styles.darkText]}>
-                    {t('Ghi chú')}: {result.notes}
-                  </Text>
-                )}
+
               </View>
             ))}
           </View>
@@ -349,6 +358,12 @@ const WorkStatusUpdateScreen = ({ navigation }) => {
         onClose={() => setModalVisible(false)}
         selectedDay={selectedTestDay}
         onStatusUpdated={handleStatusUpdated}
+      />
+
+      {/* Debug Modal */}
+      <DebugModal
+        visible={debugModalVisible}
+        onClose={() => setDebugModalVisible(false)}
       />
     </SafeAreaView>
   )

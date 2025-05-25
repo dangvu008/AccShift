@@ -4,30 +4,31 @@ import { COLORS } from '../common/colors';
 const { width, height } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
   keyboardAvoidingView: {
     flex: 1,
   },
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 16,
-    width: '100%',
+    padding: 20,
   },
   modalContainer: {
     width: '100%',
-    maxWidth: 500,
-    maxHeight: height * 0.85,
+    maxWidth: width > 600 ? 500 : width - 40,
     backgroundColor: COLORS.CARD_LIGHT,
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: 20,
+    overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-    marginHorizontal: 16,
+    shadowRadius: 12,
+    elevation: 12,
   },
   darkModalContainer: {
     backgroundColor: COLORS.CARD_DARK,
@@ -35,22 +36,26 @@ const styles = StyleSheet.create({
     borderColor: COLORS.BORDER_DARK,
   },
   modalHeader: {
-    width: '100%',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.BORDER_LIGHT,
-    paddingBottom: 12,
-    paddingHorizontal: 4,
+    backgroundColor: COLORS.CARD_LIGHT,
   },
   darkModalHeader: {
     borderBottomColor: COLORS.BORDER_DARK,
+    backgroundColor: COLORS.CARD_DARK,
   },
   modalContent: {
     flex: 1,
-    width: '100%',
+    maxHeight: height * 0.6,
+  },
+  scrollContent: {
+    padding: 20,
+    paddingBottom: 10,
   },
   title: {
     fontSize: 18,
@@ -169,28 +174,46 @@ const styles = StyleSheet.create({
   },
   timeInput: {
     backgroundColor: COLORS.BACKGROUND_LIGHT,
-    borderRadius: 8,
-    padding: 14,
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
     flex: 1,
     marginLeft: 12,
     borderWidth: 2,
     borderColor: COLORS.BORDER_LIGHT,
-    minHeight: 48,
-    justifyContent: 'center',
+    minHeight: 56,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
   darkTimeInput: {
     backgroundColor: COLORS.BACKGROUND_DARK,
     borderColor: COLORS.BORDER_DARK,
-    borderWidth: 2,
+  },
+  timeInputText: {
+    fontSize: 16,
+    color: COLORS.TEXT_LIGHT,
+    fontWeight: '500',
+  },
+  placeholderText: {
+    color: '#999',
+    fontWeight: 'normal',
+  },
+  timeIcon: {
+    marginLeft: 8,
   },
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 24,
-    paddingTop: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     borderTopWidth: 1,
     borderTopColor: COLORS.BORDER_LIGHT,
+    backgroundColor: COLORS.CARD_LIGHT,
+  },
+  darkButtonContainer: {
+    borderTopColor: COLORS.BORDER_DARK,
+    backgroundColor: COLORS.CARD_DARK,
   },
   cancelButton: {
     flex: 1,
@@ -234,6 +257,53 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  disabledButton: {
+    opacity: 0.6,
+  },
+  // Picker styles
+  pickerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  pickerContainer: {
+    backgroundColor: COLORS.CARD_LIGHT,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 20,
+  },
+  darkPickerContainer: {
+    backgroundColor: COLORS.CARD_DARK,
+  },
+  pickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.BORDER_LIGHT,
+  },
+  pickerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: COLORS.TEXT_LIGHT,
+  },
+  pickerButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  pickerButtonText: {
+    fontSize: 16,
+    color: COLORS.TEXT_LIGHT,
+  },
+  doneButton: {
+    color: COLORS.PRIMARY,
+    fontWeight: '600',
+  },
+  picker: {
+    height: 200,
   },
 });
 
