@@ -10,7 +10,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
-  Dimensions,
   SafeAreaView,
 } from 'react-native'
 
@@ -20,7 +19,8 @@ import { AppContext } from '../context/AppContext'
 import { WORK_STATUS } from '../config/appConfig'
 import styles from '../styles/components/manualUpdateModal'
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window')
+// Screen dimensions available if needed
+// const { width: screenWidth, height: screenHeight } = Dimensions.get('window')
 
 const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) => {
   const { t, darkMode } = useContext(AppContext)
@@ -34,29 +34,12 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
   const [showStatusDropdown, setShowStatusDropdown] = useState(false)
   const [loading, setLoading] = useState(false)
 
-  // Debug logs
+  // Component lifecycle tracking
   useEffect(() => {
-    console.log('[ManualUpdateModal] Component mounted, visible:', visible)
-    console.log('[ManualUpdateModal] Screen dimensions:', { screenWidth, screenHeight })
-    console.log('[ManualUpdateModal] Dark mode:', darkMode)
-    console.log('[ManualUpdateModal] Selected day:', selectedDay)
-  }, [visible, darkMode, selectedDay])
-
-
-
-  // Debug effect để theo dõi state changes
-  useEffect(() => {
-    console.log('[ManualUpdateModal] State update:', {
-      visible,
-      selectedDay: selectedDay?.date,
-      selectedStatus,
-      checkInTime,
-      checkOutTime,
-      showCheckInPicker,
-      showCheckOutPicker,
-      loading
-    })
-  }, [visible, selectedDay, selectedStatus, checkInTime, checkOutTime, showCheckInPicker, showCheckOutPicker, loading])
+    if (visible && selectedDay) {
+      // Component is now visible with selected day
+    }
+  }, [visible, selectedDay])
 
   // Danh sách trạng thái có thể chọn
   const statusOptions = [
@@ -128,7 +111,6 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
   // Reset form khi modal mở
   useEffect(() => {
     if (visible && selectedDay) {
-      console.log('[ManualUpdateModal] Resetting form for day:', selectedDay)
       const currentStatus = selectedDay.status || {}
       setSelectedStatus(currentStatus.status || '')
       setCheckInTime(currentStatus.vaoLogTime || '')
@@ -147,13 +129,16 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
     return option?.requiresTime || false
   }
 
-  // Debug effect để theo dõi selected status changes
+  // Track selected status changes for time input requirements
   useEffect(() => {
-    console.log('[ManualUpdateModal] Selected status changed:', selectedStatus)
-    console.log('[ManualUpdateModal] Requires time input:', requiresTimeInput())
+    // Status changed, check if time input is required
   }, [selectedStatus, requiresTimeInput])
 
-  // Format ngày hiển thị
+  /**
+   * Format ngày hiển thị theo định dạng tiếng Việt
+   * @param {Date|string} date - Ngày cần format
+   * @returns {string} Chuỗi ngày đã format
+   */
   const formatDisplayDate = (date) => {
     if (!date) return ''
     const d = new Date(date)
@@ -165,7 +150,11 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
     })
   }
 
-  // Xử lý thay đổi thời gian check-in
+  /**
+   * Xử lý thay đổi thời gian check-in
+   * @param {Object} event - Event từ DateTimePicker
+   * @param {Date} selectedTime - Thời gian được chọn
+   */
   const handleCheckInTimeChange = (event, selectedTime) => {
     console.log('[ManualUpdateModal] Check-in time change:', { event: event?.type, selectedTime })
 
@@ -184,7 +173,11 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
     }
   }
 
-  // Xử lý thay đổi thời gian check-out
+  /**
+   * Xử lý thay đổi thời gian check-out
+   * @param {Object} event - Event từ DateTimePicker
+   * @param {Date} selectedTime - Thời gian được chọn
+   */
   const handleCheckOutTimeChange = (event, selectedTime) => {
     console.log('[ManualUpdateModal] Check-out time change:', { event: event?.type, selectedTime })
 
@@ -203,7 +196,11 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
     }
   }
 
-  // Tạo Date object từ time string
+  /**
+   * Tạo Date object từ time string
+   * @param {string} timeString - Chuỗi thời gian dạng HH:MM
+   * @returns {Date} Date object
+   */
   const createTimeDate = (timeString) => {
     if (!timeString) return new Date()
     const [hours, minutes] = timeString.split(':').map(Number)
@@ -502,7 +499,30 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
                       ]}>
                         {t('Vào:')}
                       </Text>
-
+                      <TouchableOpacity
+                        style={[
+                          styles.timeInput,
+                          darkMode && styles.darkTimeInput
+                        ]}
+                        onPress={() => {
+                          console.log('[ManualUpdateModal] Check-in time button pressed')
+                          setShowCheckInPicker(true)
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[
+                          styles.timeInputText,
+                          darkMode && styles.darkText,
+                          !checkInTime && styles.placeholderText
+                        ]}>
+                          {checkInTime || t('Chọn thời gian')}
+                        </Text>
+                        <Ionicons
+                          name="time"
+                          size={20}
+                          color={darkMode ? '#fff' : '#666'}
+                        />
+                      </TouchableOpacity>
                     </View>
 
                     {/* Check-out time */}
@@ -513,7 +533,30 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
                       ]}>
                         {t('Ra:')}
                       </Text>
-
+                      <TouchableOpacity
+                        style={[
+                          styles.timeInput,
+                          darkMode && styles.darkTimeInput
+                        ]}
+                        onPress={() => {
+                          console.log('[ManualUpdateModal] Check-out time button pressed')
+                          setShowCheckOutPicker(true)
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[
+                          styles.timeInputText,
+                          darkMode && styles.darkText,
+                          !checkOutTime && styles.placeholderText
+                        ]}>
+                          {checkOutTime || t('Chọn thời gian')}
+                        </Text>
+                        <Ionicons
+                          name="time"
+                          size={20}
+                          color={darkMode ? '#fff' : '#666'}
+                        />
+                      </TouchableOpacity>
                     </View>
                   </View>
                 )}
@@ -578,7 +621,10 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
         presentationStyle="overFullScreen"
       >
         <View style={styles.pickerOverlay}>
-
+          <View style={[
+            styles.pickerContainer,
+            darkMode && styles.darkPickerContainer
+          ]}>
             <DateTimePicker
               value={createTimeDate(checkInTime)}
               mode="time"
@@ -588,7 +634,7 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
               themeVariant={darkMode ? 'dark' : 'light'}
               style={styles.picker}
             />
-
+          </View>
         </View>
       </Modal>
     )}
@@ -602,7 +648,11 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
         statusBarTranslucent={false}
         presentationStyle="overFullScreen"
       >
-
+        <View style={styles.pickerOverlay}>
+          <View style={[
+            styles.pickerContainer,
+            darkMode && styles.darkPickerContainer
+          ]}>
             <DateTimePicker
               value={createTimeDate(checkOutTime)}
               mode="time"

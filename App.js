@@ -1,52 +1,21 @@
 // App.js - Main entry point for the AccShift application
 
-// Import TurboModuleRegistry mock first
+// Import essential mocks only when needed
 import './turbo-module-registry'
-
-// Import platform constants mock to fix TurboModuleRegistry errors
 import './platform-constants'
 
-// Import PlatformConstants mock
-import './PlatformConstants'
-
-// Import TurboModuleProxy mock
-import './turbo-module-proxy'
-
-// Import picker mock if needed
-import './@react-native-picker/picker'
-
-// Import datetimepicker mock if needed
-import './@react-native-community/datetimepicker'
-
-// Import safe-area-context mock if needed
-import './react-native-safe-area-context'
-
-// Import reanimated mock if needed
-import './react-native-reanimated'
-
-import { useEffect, useState, useContext } from 'react'
+import React, { useEffect, useState, useContext } from 'react'
 import { StatusBar } from 'expo-status-bar'
-import {
-  TouchableOpacity,
-  NativeEventEmitter,
-  NativeModules,
-} from 'react-native'
 import { NavigationContainer } from '@react-navigation/native'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import { createStackNavigator } from '@react-navigation/stack'
 import { Ionicons } from '@expo/vector-icons'
 import * as Notifications from 'expo-notifications'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-// Import JSDoc types
-// @ts-ignore
-import './types.js'
+
 import { AppProvider, AppContext } from './context/AppContext'
-import { createSampleNotes } from './utils/sampleNotes'
 import { STORAGE_KEYS } from './config/appConfig'
 import { COLORS } from './utils/theme'
-
-// Sử dụng DeviceEventEmitter có sẵn trong React Native để các component có thể giao tiếp với nhau
-console.log('Sử dụng DeviceEventEmitter cho giao tiếp giữa các component')
 
 // Import screens
 import HomeScreen from './screens/HomeScreen'
@@ -56,7 +25,7 @@ import AddEditShiftScreen from './screens/AddEditShiftScreen'
 import SettingsScreen from './screens/SettingsScreen'
 import BackupRestoreScreen from './screens/BackupRestoreScreen'
 import WeatherAlertsScreen from './screens/WeatherAlertsScreen'
-import WeatherApiKeysScreen from './screens/WeatherApiKeysScreen' // Giữ lại import nhưng không hiển thị trong UI
+import WeatherApiKeysScreen from './screens/WeatherApiKeysScreen'
 import WeatherDetailScreen from './screens/WeatherDetailScreen'
 import StatisticsScreen from './screens/StatisticsScreen'
 import MonthlyReportScreen from './screens/MonthlyReportScreen'
@@ -68,9 +37,6 @@ import LogHistoryDetailScreen from './screens/LogHistoryDetailScreen'
 import ImageViewerScreen from './screens/ImageViewerScreen'
 import AlarmScreen from './screens/AlarmScreen'
 import MapPickerScreen from './screens/MapPickerScreen'
-import WorkStatusUpdateScreen from './screens/WorkStatusUpdateScreen'
-import React from 'react'
-import { View, Text, ScrollView } from 'react-native'
 
 // Set up notification handler
 try {
@@ -301,11 +267,7 @@ function SettingsStack() {
         component={WeatherApiKeysScreen}
         options={{ title: t('Weather API Keys') }}
       />
-      <Stack.Screen
-        name="WorkStatusUpdate"
-        component={WorkStatusUpdateScreen}
-        options={{ title: t('Test Cập Nhật Trạng Thái') }}
-      />
+      {/* Removed test screen WorkStatusUpdate */}
     </Stack.Navigator>
   )
 }
@@ -356,137 +318,15 @@ export default function App() {
     // Khởi tạo dữ liệu mẫu cho ghi chú và ca làm việc
     const initSampleData = async () => {
       try {
-        console.log('Bắt đầu khởi tạo dữ liệu mẫu...')
-        console.log('Platform:', require('react-native').Platform.OS)
+        // Initialize database and sample data if needed
+        const shiftsJson = await AsyncStorage.getItem(STORAGE_KEYS.SHIFT_LIST)
 
-        // Kiểm tra xem đã thử tạo dữ liệu mẫu chưa
-        let hasAttempted = false
-        try {
-          const attemptedFlag = await AsyncStorage.getItem(
-            'sample_notes_attempted'
-          )
-          hasAttempted = attemptedFlag === 'true'
-          console.log(
-            'Đã thử tạo dữ liệu mẫu trước đó:',
-            hasAttempted ? 'Có' : 'Không'
-          )
-        } catch (flagError) {
-          console.error(
-            'Lỗi khi kiểm tra cờ đã thử tạo dữ liệu mẫu:',
-            flagError
-          )
-        }
-
-        // Kiểm tra xem đã có dữ liệu nào chưa
-        let hasNotes = false
-        let hasShifts = false
-        try {
-          const shiftsJson = await AsyncStorage.getItem(STORAGE_KEYS.SHIFT_LIST)
-          const notesJson = await AsyncStorage.getItem(STORAGE_KEYS.NOTES)
-
-          hasShifts = !!shiftsJson
-          hasNotes = !!notesJson
-
-          console.log('Kiểm tra dữ liệu hiện có:')
-          console.log(
-            '- Ca làm việc:',
-            hasShifts ? 'Có dữ liệu' : 'Không có dữ liệu'
-          )
-          console.log(
-            '- Ghi chú:',
-            hasNotes ? 'Có dữ liệu' : 'Không có dữ liệu'
-          )
-
-          // Kiểm tra số lượng ghi chú
-          if (notesJson) {
-            try {
-              const notes = JSON.parse(notesJson)
-              console.log(`Số lượng ghi chú hiện có: ${notes.length}`)
-
-              // Nếu có ghi chú nhưng số lượng là 0, coi như không có
-              if (notes.length === 0) {
-                hasNotes = false
-                console.log('Mảng ghi chú rỗng, cần tạo dữ liệu mẫu')
-              }
-            } catch (parseError) {
-              console.error('Lỗi khi parse dữ liệu ghi chú:', parseError)
-              hasNotes = false
-            }
-          }
-        } catch (checkError) {
-          console.error('Lỗi khi kiểm tra dữ liệu hiện có:', checkError)
-        }
-
-        // Khởi tạo cơ sở dữ liệu và dữ liệu mẫu ca làm việc nếu cần
-        if (!hasShifts) {
-          console.log('Bắt đầu khởi tạo cơ sở dữ liệu...')
+        if (!shiftsJson) {
           const { initializeDatabase } = require('./utils/database')
-          const dbResult = await initializeDatabase()
-          console.log(
-            'Kết quả khởi tạo cơ sở dữ liệu:',
-            dbResult ? 'Thành công' : 'Thất bại'
-          )
-
-          // Kiểm tra lại sau khi khởi tạo cơ sở dữ liệu
-          try {
-            const shiftsJson = await AsyncStorage.getItem(
-              STORAGE_KEYS.SHIFT_LIST
-            )
-            console.log(
-              'Kiểm tra ca làm việc sau khi khởi tạo:',
-              shiftsJson ? 'Có dữ liệu' : 'Không có dữ liệu'
-            )
-            if (shiftsJson) {
-              const shifts = JSON.parse(shiftsJson)
-              console.log(`Số lượng ca làm việc: ${shifts.length}`)
-            }
-          } catch (checkError) {
-            console.error(
-              'Lỗi khi kiểm tra ca làm việc sau khi khởi tạo:',
-              checkError
-            )
-          }
-        } else {
-          console.log('Đã có dữ liệu ca làm việc, không cần khởi tạo lại')
+          await initializeDatabase()
         }
-
-        // Khởi tạo dữ liệu mẫu cho ghi chú nếu cần
-        if (!hasNotes || !hasAttempted) {
-          console.log('Bắt đầu khởi tạo ghi chú mẫu...')
-          // Sử dụng force=true nếu đã thử trước đó nhưng vẫn không có dữ liệu
-          const forceCreate = hasAttempted && !hasNotes
-          console.log('Force create:', forceCreate ? 'Bật' : 'Tắt')
-
-          const notesResult = await createSampleNotes(forceCreate)
-          console.log(
-            'Kết quả khởi tạo ghi chú mẫu:',
-            notesResult ? 'Thành công' : 'Không cần thiết'
-          )
-
-          // Kiểm tra lại sau khi khởi tạo ghi chú
-          try {
-            const notesJson = await AsyncStorage.getItem(STORAGE_KEYS.NOTES)
-            console.log(
-              'Kiểm tra ghi chú sau khi khởi tạo:',
-              notesJson ? 'Có dữ liệu' : 'Không có dữ liệu'
-            )
-            if (notesJson) {
-              const notes = JSON.parse(notesJson)
-              console.log(`Số lượng ghi chú: ${notes.length}`)
-            }
-          } catch (checkError) {
-            console.error(
-              'Lỗi khi kiểm tra ghi chú sau khi khởi tạo:',
-              checkError
-            )
-          }
-        } else {
-          console.log('Đã có dữ liệu ghi chú, không cần khởi tạo lại')
-        }
-
-        console.log('Hoàn thành khởi tạo dữ liệu mẫu')
       } catch (error) {
-        console.error('Lỗi khi khởi tạo dữ liệu mẫu:', error)
+        // Database initialization error - continue with defaults
       }
     }
 

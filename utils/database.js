@@ -4,22 +4,11 @@ import { STORAGE_KEYS } from './constants'
 // Initialize database and load sample data
 export const initializeDatabase = async () => {
   try {
-    console.log('Bắt đầu khởi tạo cơ sở dữ liệu...')
-    console.log('Platform:', require('react-native').Platform.OS)
-
     // Check if shifts are already initialized
     let shiftsJson
     try {
       shiftsJson = await AsyncStorage.getItem(STORAGE_KEYS.SHIFT_LIST)
-      console.log(
-        'Đã đọc dữ liệu ca làm việc từ AsyncStorage:',
-        shiftsJson ? 'Có dữ liệu' : 'Không có dữ liệu'
-      )
     } catch (storageError) {
-      console.error(
-        'Lỗi khi đọc dữ liệu ca làm việc từ AsyncStorage:',
-        storageError
-      )
       shiftsJson = null
     }
 
@@ -575,35 +564,7 @@ export const getNotes = async () => {
     // Nếu không có dữ liệu hoặc có lỗi, khởi tạo mảng rỗng
     console.log('Không tìm thấy dữ liệu ghi chú hợp lệ, tạo dữ liệu mẫu')
 
-    // Thử khởi tạo dữ liệu ghi chú mẫu
-    try {
-      const { createSampleNotes, createTestNote } = require('./sampleNotes')
-
-      // Thử tạo dữ liệu mẫu đầy đủ
-      let sampleResult = await createSampleNotes(true) // Force mode
-
-      if (!sampleResult) {
-        // Nếu không thành công, thử tạo một ghi chú đơn giản
-        console.log(
-          'Không thể tạo dữ liệu mẫu đầy đủ, thử tạo ghi chú đơn giản'
-        )
-        await createTestNote()
-      }
-
-      // Thử đọc lại sau khi tạo dữ liệu mẫu
-      const newNotesJson = await AsyncStorage.getItem(STORAGE_KEYS.NOTES)
-      if (newNotesJson) {
-        try {
-          const notes = JSON.parse(newNotesJson)
-          console.log(`Đã tạo và đọc được ${notes.length} ghi chú mẫu`)
-          return notes
-        } catch (parseError) {
-          console.error('Lỗi khi phân tích dữ liệu ghi chú mẫu:', parseError)
-        }
-      }
-    } catch (sampleError) {
-      console.error('Lỗi khi tạo dữ liệu ghi chú mẫu:', sampleError)
-    }
+    // Sample notes creation removed - using manual note creation instead
 
     // Nếu tất cả đều thất bại, trả về mảng rỗng
     console.log('Tất cả các phương pháp đều thất bại, trả về mảng rỗng')

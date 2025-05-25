@@ -214,7 +214,7 @@ export const AppProvider = ({ children }) => {
           if (storedOnlyGoWorkMode)
             setOnlyGoWorkMode(storedOnlyGoWorkMode === 'true')
         } catch (legacyError) {
-          console.error('Lỗi khi tải cài đặt cũ:', legacyError)
+          // Legacy settings load error - continue with defaults
         }
       }
     }
@@ -235,7 +235,7 @@ export const AppProvider = ({ children }) => {
         const loadedNotes = await getNotes()
         if (isMounted) setNotes(loadedNotes)
       } catch (error) {
-        console.error('Lỗi khi tải dữ liệu cơ bản:', error)
+        // Basic data load error - continue with empty state
       }
     }
 

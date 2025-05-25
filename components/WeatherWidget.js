@@ -680,7 +680,7 @@ const WeatherWidget = ({ onPress }) => {
         setSmartAlert(null)
       }
     },
-    [t, checkForRain] // Loại bỏ setSmartAlert và generateSmartAlert khỏi dependencies
+    [t, checkForRain, setSmartAlert] // Thêm setSmartAlert vào dependencies
   )
 
   // Hàm làm mới dữ liệu thời tiết
@@ -703,8 +703,6 @@ const WeatherWidget = ({ onPress }) => {
 
     // Nếu đang chạy trên Expo Snack, sử dụng dữ liệu giả
     if (isExpoSnack) {
-      console.log('Đang chạy trên Expo Snack, làm mới dữ liệu thời tiết giả...')
-
       // Đợi một chút để giả lập thời gian tải
       await new Promise((resolve) => setTimeout(resolve, 1000))
 
@@ -745,11 +743,7 @@ const WeatherWidget = ({ onPress }) => {
       timeSinceLastFetch < MIN_REFRESH_INTERVAL &&
       lastFetchTime.current !== 0
     ) {
-      console.log(
-        `Đã làm mới gần đây (${Math.round(
-          timeSinceLastFetch / 1000
-        )}s trước). Đợi thêm.`
-      )
+      // Đã làm mới gần đây, đợi thêm
       // Vẫn thử lại sau 1 giây để đáp ứng yêu cầu của người dùng
       setTimeout(() => {
         fetchWeatherData(true)
@@ -769,8 +763,6 @@ const WeatherWidget = ({ onPress }) => {
     }
 
     try {
-      console.log('Bắt đầu làm mới dữ liệu thời tiết...')
-
       // Xóa dữ liệu hiện tại để tránh hiển thị dữ liệu cũ
       setCurrentWeather(null)
       setForecast([])
@@ -778,13 +770,9 @@ const WeatherWidget = ({ onPress }) => {
       // Xóa cache thời tiết - thực hiện 2 lần để đảm bảo cache được xóa hoàn toàn
       try {
         await weatherService.clearWeatherCache()
-        console.log('Đã xóa cache thời tiết lần 1')
-
         // Đợi một chút trước khi xóa lần 2
         await new Promise((resolve) => setTimeout(resolve, 300))
-
         await weatherService.clearWeatherCache()
-        console.log('Đã xóa cache thời tiết lần 2')
       } catch (cacheError) {
         console.error('Lỗi khi xóa cache thời tiết:', cacheError)
         // Tiếp tục thực hiện ngay cả khi có lỗi xóa cache
@@ -796,9 +784,7 @@ const WeatherWidget = ({ onPress }) => {
       }
 
       // Tải lại dữ liệu thời tiết với tham số forceRefresh=true
-      console.log('Đang tải lại dữ liệu thời tiết...')
       await fetchWeatherData(true)
-      console.log('Đã tải lại dữ liệu thời tiết thành công')
     } catch (error) {
       console.error('Lỗi khi làm mới dữ liệu thời tiết:', error)
 
@@ -810,14 +796,9 @@ const WeatherWidget = ({ onPress }) => {
       // Nếu có lỗi, thử tải lại dữ liệu một lần nữa sau 1 giây
       setTimeout(async () => {
         try {
-          console.log('Thử tải lại dữ liệu thời tiết lần 2...')
           await fetchWeatherData(true)
-          console.log('Đã tải lại dữ liệu thời tiết lần 2 thành công')
         } catch (retryError) {
-          console.error(
-            'Lỗi khi thử tải lại dữ liệu thời tiết lần 2:',
-            retryError
-          )
+          // Retry failed - continue with error state
           setLoading(false)
           setRefreshing(false)
         }
@@ -853,11 +834,7 @@ const WeatherWidget = ({ onPress }) => {
       lastFetchTime.current !== 0 &&
       currentWeather !== null // Chỉ bỏ qua nếu đã có dữ liệu
     ) {
-      console.log(
-        `Đã gọi API gần đây (${Math.round(
-          timeSinceLastFetch / 1000
-        )}s trước). Bỏ qua.`
-      )
+      // API called recently - skip to avoid rate limiting
 
       // Nếu đang loading, hủy trạng thái loading
       setLoading(false)
@@ -879,12 +856,9 @@ const WeatherWidget = ({ onPress }) => {
     // Gọi hàm fetch dữ liệu
     fetchWeatherData()
   }, [
-    homeLocation,
-    workLocation,
-    locationPermissionGranted,
     currentWeather, // Thêm currentWeather vào dependencies để khi không có dữ liệu sẽ luôn thử lại
     fetchWeatherData, // Thêm fetchWeatherData vào dependencies
-    // Loại bỏ generateSmartAlert khỏi dependencies để tránh vòng lặp render
+    // Loại bỏ homeLocation, workLocation, locationPermissionGranted khỏi dependencies để tránh vòng lặp render
   ])
 
   // Cập nhật tham chiếu đến fetchWeatherData và rotateApiKeyAndRetry
@@ -908,7 +882,7 @@ const WeatherWidget = ({ onPress }) => {
         clearTimeout(currentAutoRetryTimeout)
       }
     }
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Tự động tải lại dữ liệu thời tiết khi cần thiết
   useEffect(() => {

@@ -348,7 +348,7 @@ export const translations = {
 
     // Weekly Status
     'Not Updated': 'Chưa cập nhật',
-    Status: 'Trạng thái',
+    'Status': 'Trạng thái',
     Shift: 'Ca làm việc',
     'Weekly Work Hours': 'Giờ làm việc',
     'Weekly OT Hours': 'Giờ làm thêm',
@@ -462,8 +462,8 @@ export const translations = {
     'Chọn thời gian': 'Chọn thời gian',
     'Chọn giờ vào': 'Chọn giờ vào',
     'Chọn giờ ra': 'Chọn giờ ra',
-    'Hủy': 'Hủy',
-    'Lưu': 'Lưu',
+    'Hủy bỏ': 'Hủy',
+    'Lưu lại': 'Lưu',
     'Đang lưu...': 'Đang lưu...',
     'Vui lòng chọn trạng thái': 'Vui lòng chọn trạng thái',
     'Vui lòng nhập thời gian check-in': 'Vui lòng nhập thời gian check-in',
@@ -921,7 +921,7 @@ export const translations = {
     'Xác nhận': 'Confirmation',
     'Bạn có chắc chắn muốn tạo dữ liệu mẫu ca làm việc? Dữ liệu hiện tại sẽ bị ghi đè.':
       'Are you sure you want to create sample work shifts? Current data will be overwritten.',
-    Hủy: 'Cancel',
+    'Hủy bỏ': 'Cancel',
     'Đồng ý': 'Confirm',
     'Thành công': 'Success',
     'Đã tạo {{count}} ca làm việc mẫu.':
@@ -958,8 +958,8 @@ export const translations = {
     'Chọn thời gian': 'Select Time',
     'Chọn giờ vào': 'Select Check-in Time',
     'Chọn giờ ra': 'Select Check-out Time',
-    'Hủy': 'Cancel',
-    'Lưu': 'Save',
+    'Hủy bỏ': 'Cancel',
+    'Lưu lại': 'Save',
     'Đang lưu...': 'Saving...',
     'Vui lòng chọn trạng thái': 'Please select a status',
     'Vui lòng nhập thời gian check-in': 'Please enter check-in time',
