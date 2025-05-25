@@ -13,6 +13,7 @@
 - ✅ Giao diện gọn gàng hơn, tiết kiệm không gian màn hình
 - ✅ **MỚI**: Thay thế React Native Picker bằng Custom Dropdown
 - ✅ **MỚI**: Full control styling và cross-platform consistency
+- ✅ **HOTFIX**: Sửa lỗi thừa view "Chọn giờ vào" chặn tương tác time picker
 
 ## Thay đổi chính:
 
@@ -36,6 +37,9 @@
 - **MỚI**: Dropdown list với absolute positioning
 - **MỚI**: Outside click overlay để đóng dropdown
 - **MỚI**: Full custom styling control
+- **HOTFIX**: Di chuyển time picker modals ra ngoài main modal
+- **HOTFIX**: Thêm React Fragment wrapper để tránh z-index conflicts
+- **HOTFIX**: Cải thiện modal hierarchy và presentationStyle
 
 ### 2. manualUpdateModal.js (styles)
 - Tăng minHeight cho modalContainer (height * 0.5)
@@ -59,6 +63,8 @@
 - **MỚI**: Thêm `dropdownOverlay` cho outside clicks
 - **MỚI**: Thêm `dropdownItem` với touch-friendly sizing
 - **MỚI**: Full dark mode support cho tất cả dropdown elements
+- **HOTFIX**: Tăng z-index cho `pickerOverlay` (9999) và `pickerContainer` (10000)
+- **HOTFIX**: Đảm bảo time picker hiển thị trên cùng, không bị chặn
 
 ### 3. Test Infrastructure
 - Tạo test-manual-update-modal.js để kiểm tra component

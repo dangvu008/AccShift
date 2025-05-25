@@ -349,12 +349,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
+    zIndex: 9999, // Ensure time picker is above everything
   },
   pickerContainer: {
     backgroundColor: COLORS.CARD_LIGHT,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingBottom: 20,
+    zIndex: 10000, // Ensure picker container is above overlay
   },
   darkPickerContainer: {
     backgroundColor: COLORS.CARD_DARK,

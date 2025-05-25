@@ -309,7 +309,8 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
   })
 
   return (
-    <Modal
+    <>
+      <Modal
       visible={visible}
       transparent={true}
       animationType="slide"
@@ -611,100 +612,105 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
+      </Modal>
 
-      {/* Time Pickers - Separate modals for better mobile support */}
-      {showCheckInPicker && (
-        <Modal
-          transparent={true}
-          animationType="slide"
-          visible={showCheckInPicker}
-          onRequestClose={() => setShowCheckInPicker(false)}
-        >
-          <View style={styles.pickerOverlay}>
-            <View style={[styles.pickerContainer, darkMode && styles.darkPickerContainer]}>
-              <View style={[
-                styles.pickerHeader,
-                darkMode && styles.darkPickerHeader
-              ]}>
-                <Text style={[styles.pickerTitle, darkMode && styles.darkText]}>
-                  {t('Chọn giờ vào')}
-                </Text>
-                <TouchableOpacity
-                  onPress={() => setShowCheckInPicker(false)}
-                  style={[
-                    styles.pickerCloseButton,
-                    darkMode && styles.darkPickerCloseButton
-                  ]}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons
-                    name="close"
-                    size={24}
-                    color={darkMode ? '#fff' : '#000'}
-                  />
-                </TouchableOpacity>
-              </View>
-              <DateTimePicker
-                value={createTimeDate(checkInTime)}
-                mode="time"
-                is24Hour={true}
-                display="spinner"
-                onChange={handleCheckInTimeChange}
-                themeVariant={darkMode ? 'dark' : 'light'}
-                style={styles.picker}
-              />
+    {/* Time Pickers - Separate modals outside main modal to avoid z-index conflicts */}
+    {showCheckInPicker && (
+      <Modal
+        transparent={true}
+        animationType="slide"
+        visible={showCheckInPicker}
+        onRequestClose={() => setShowCheckInPicker(false)}
+        statusBarTranslucent={false}
+        presentationStyle="overFullScreen"
+      >
+        <View style={styles.pickerOverlay}>
+          <View style={[styles.pickerContainer, darkMode && styles.darkPickerContainer]}>
+            <View style={[
+              styles.pickerHeader,
+              darkMode && styles.darkPickerHeader
+            ]}>
+              <Text style={[styles.pickerTitle, darkMode && styles.darkText]}>
+                {t('Chọn giờ vào')}
+              </Text>
+              <TouchableOpacity
+                onPress={() => setShowCheckInPicker(false)}
+                style={[
+                  styles.pickerCloseButton,
+                  darkMode && styles.darkPickerCloseButton
+                ]}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name="close"
+                  size={24}
+                  color={darkMode ? '#fff' : '#000'}
+                />
+              </TouchableOpacity>
             </View>
+            <DateTimePicker
+              value={createTimeDate(checkInTime)}
+              mode="time"
+              is24Hour={true}
+              display="spinner"
+              onChange={handleCheckInTimeChange}
+              themeVariant={darkMode ? 'dark' : 'light'}
+              style={styles.picker}
+            />
           </View>
-        </Modal>
-      )}
+        </View>
+      </Modal>
+    )}
 
-      {showCheckOutPicker && (
-        <Modal
-          transparent={true}
-          animationType="slide"
-          visible={showCheckOutPicker}
-          onRequestClose={() => setShowCheckOutPicker(false)}
-        >
-          <View style={styles.pickerOverlay}>
-            <View style={[styles.pickerContainer, darkMode && styles.darkPickerContainer]}>
-              <View style={[
-                styles.pickerHeader,
-                darkMode && styles.darkPickerHeader
-              ]}>
-                <Text style={[styles.pickerTitle, darkMode && styles.darkText]}>
-                  {t('Chọn giờ ra')}
-                </Text>
-                <TouchableOpacity
-                  onPress={() => setShowCheckOutPicker(false)}
-                  style={[
-                    styles.pickerCloseButton,
-                    darkMode && styles.darkPickerCloseButton
-                  ]}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons
-                    name="close"
-                    size={24}
-                    color={darkMode ? '#fff' : '#000'}
-                  />
-                </TouchableOpacity>
-              </View>
-              <DateTimePicker
-                value={createTimeDate(checkOutTime)}
-                mode="time"
-                is24Hour={true}
-                display="spinner"
-                onChange={handleCheckOutTimeChange}
-                themeVariant={darkMode ? 'dark' : 'light'}
-                style={styles.picker}
-              />
+    {showCheckOutPicker && (
+      <Modal
+        transparent={true}
+        animationType="slide"
+        visible={showCheckOutPicker}
+        onRequestClose={() => setShowCheckOutPicker(false)}
+        statusBarTranslucent={false}
+        presentationStyle="overFullScreen"
+      >
+        <View style={styles.pickerOverlay}>
+          <View style={[styles.pickerContainer, darkMode && styles.darkPickerContainer]}>
+            <View style={[
+              styles.pickerHeader,
+              darkMode && styles.darkPickerHeader
+            ]}>
+              <Text style={[styles.pickerTitle, darkMode && styles.darkText]}>
+                {t('Chọn giờ ra')}
+              </Text>
+              <TouchableOpacity
+                onPress={() => setShowCheckOutPicker(false)}
+                style={[
+                  styles.pickerCloseButton,
+                  darkMode && styles.darkPickerCloseButton
+                ]}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name="close"
+                  size={24}
+                  color={darkMode ? '#fff' : '#000'}
+                />
+              </TouchableOpacity>
             </View>
+            <DateTimePicker
+              value={createTimeDate(checkOutTime)}
+              mode="time"
+              is24Hour={true}
+              display="spinner"
+              onChange={handleCheckOutTimeChange}
+              themeVariant={darkMode ? 'dark' : 'light'}
+              style={styles.picker}
+            />
           </View>
-        </Modal>
-      )}
-    </Modal>
+        </View>
+      </Modal>
+    )}
+    </>
   )
 }
 
