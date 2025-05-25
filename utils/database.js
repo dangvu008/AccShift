@@ -26,6 +26,7 @@ export const initializeDatabase = async () => {
           reminderBefore: 15,
           reminderAfter: 15,
           breakTime: 60,
+          breakMinutes: 60, // Thêm breakMinutes để tương thích với logic tính toán
           roundUpMinutes: 30,
           showCheckInButton: true,
           showCheckInButtonWhileWorking: true,
@@ -42,6 +43,7 @@ export const initializeDatabase = async () => {
           reminderBefore: 15,
           reminderAfter: 15,
           breakTime: 60,
+          breakMinutes: 60, // Thêm breakMinutes để tương thích với logic tính toán
           roundUpMinutes: 30,
           showCheckInButton: true,
           showCheckInButtonWhileWorking: true,
@@ -58,6 +60,7 @@ export const initializeDatabase = async () => {
           reminderBefore: 15,
           reminderAfter: 15,
           breakTime: 60,
+          breakMinutes: 60, // Thêm breakMinutes để tương thích với logic tính toán
           roundUpMinutes: 30,
           showCheckInButton: true,
           showCheckInButtonWhileWorking: true,
@@ -69,7 +72,9 @@ export const initializeDatabase = async () => {
           name: 'Ca Hành Chính',
           startTime: '08:00',
           endTime: '17:00',
+          officeEndTime: '17:00', // Thêm officeEndTime
           breakTime: 60,
+          breakMinutes: 60, // Thêm breakMinutes để tương thích với logic tính toán
           daysApplied: ['T2', 'T3', 'T4', 'T5', 'T6'],
           isActive: true,
           isDefault: true,
@@ -249,6 +254,7 @@ export const getShifts = async () => {
         reminderBefore: 15,
         reminderAfter: 15,
         breakTime: 60,
+        breakMinutes: 60, // Thêm breakMinutes để tương thích với logic tính toán
         roundUpMinutes: 30,
         showCheckInButton: true,
         showCheckInButtonWhileWorking: true,
@@ -265,6 +271,7 @@ export const getShifts = async () => {
         reminderBefore: 15,
         reminderAfter: 15,
         breakTime: 60,
+        breakMinutes: 60, // Thêm breakMinutes để tương thích với logic tính toán
         roundUpMinutes: 30,
         showCheckInButton: true,
         showCheckInButtonWhileWorking: true,
@@ -281,6 +288,7 @@ export const getShifts = async () => {
         reminderBefore: 15,
         reminderAfter: 15,
         breakTime: 60,
+        breakMinutes: 60, // Thêm breakMinutes để tương thích với logic tính toán
         roundUpMinutes: 30,
         showCheckInButton: true,
         showCheckInButtonWhileWorking: true,
@@ -292,7 +300,9 @@ export const getShifts = async () => {
         name: 'Ca Hành Chính',
         startTime: '08:00',
         endTime: '17:00',
+        officeEndTime: '17:00', // Thêm officeEndTime
         breakTime: 60,
+        breakMinutes: 60, // Thêm breakMinutes để tương thích với logic tính toán
         daysApplied: ['T2', 'T3', 'T4', 'T5', 'T6'],
         isActive: true,
         isDefault: true,

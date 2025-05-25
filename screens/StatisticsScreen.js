@@ -264,6 +264,7 @@ const StatisticsScreen = ({ navigation }) => {
             startDate
           )} - ${formatFullDate(endDate)}`
         )
+        console.log(`[DEBUG] Tab hiện tại: ${selectedPeriod}`)
 
         // Lấy tất cả các key từ AsyncStorage
         const keys = await AsyncStorage.getAllKeys()
@@ -339,6 +340,17 @@ const StatisticsScreen = ({ navigation }) => {
         for (const date of allDatesInRange) {
           const dateStr = date.toISOString().split('T')[0]
           const statusEntry = statusMap[dateStr]
+
+          // Debug log cho từng ngày
+          if (statusEntry) {
+            console.log(`[DEBUG] Ngày ${dateStr}:`, {
+              status: statusEntry.status,
+              standardHours: statusEntry.standardHoursScheduled,
+              totalHours: statusEntry.totalHoursScheduled,
+              checkIn: statusEntry.vaoLogTime,
+              checkOut: statusEntry.raLogTime,
+            })
+          }
 
           // Tạo dữ liệu cho ngày này
           const dayData = {
@@ -553,6 +565,20 @@ const StatisticsScreen = ({ navigation }) => {
             1
           )}, Số ngày làm: ${workDays}`
         )
+
+        // Debug: Kiểm tra dữ liệu tổng hợp cho tab This Week
+        if (selectedPeriod === 'week') {
+          console.log('[DEBUG] === KIỂM TRA DỮ LIỆU TAB THIS WEEK ===')
+          console.log('Số ngày trong tuần:', processedData.length)
+          console.log('Dữ liệu chi tiết từng ngày:')
+          processedData.forEach((day, index) => {
+            console.log(`  ${day.dayOfWeek} ${day.date}: ${day.status} - ${day.totalHours}h (std: ${day.standardHours}h, ot: ${day.otHours}h)`)
+          })
+          console.log('Tổng kết:')
+          console.log(`  - Tổng giờ làm việc: ${recalculatedTotalWorkHours}h`)
+          console.log(`  - Tổng giờ OT: ${recalculatedTotalOtHours}h`)
+          console.log(`  - Số ngày làm việc: ${workDays}`)
+        }
       } catch (error) {
         console.error('[DEBUG] Lỗi khi tải dữ liệu thống kê:', error)
         setError(error.message || 'Đã xảy ra lỗi khi tải dữ liệu thống kê')

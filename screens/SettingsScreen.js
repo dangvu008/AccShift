@@ -9,10 +9,12 @@ import {
   Switch,
   ScrollView,
   Modal,
+  Alert,
 } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { AppContext } from '../context/AppContext'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { resetAllDataForTesting } from '../utils/resetShiftData'
 
 const SettingsScreen = ({ navigation }) => {
   // Log để debug
@@ -67,6 +69,41 @@ const SettingsScreen = ({ navigation }) => {
     setWeatherAlertsEnabled(value)
     // Save setting to AsyncStorage
     AsyncStorage.setItem('weatherAlertsEnabled', value.toString())
+  }
+
+  // Debug function để reset dữ liệu
+  const handleResetData = () => {
+    Alert.alert(
+      'Xác nhận Reset Dữ liệu',
+      'Bạn có chắc chắn muốn reset tất cả dữ liệu ca làm việc và trạng thái làm việc? Hành động này không thể hoàn tác.',
+      [
+        {
+          text: 'Hủy',
+          style: 'cancel',
+        },
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const result = await resetAllDataForTesting()
+              if (result) {
+                Alert.alert(
+                  'Thành công',
+                  'Đã reset tất cả dữ liệu thành công. Bây giờ bạn có thể kiểm tra tab "This Week" để xem dữ liệu mới.',
+                  [{ text: 'OK' }]
+                )
+              } else {
+                Alert.alert('Lỗi', 'Không thể reset dữ liệu', [{ text: 'OK' }])
+              }
+            } catch (error) {
+              console.error('Error resetting data:', error)
+              Alert.alert('Lỗi', 'Đã xảy ra lỗi khi reset dữ liệu', [{ text: 'OK' }])
+            }
+          },
+        },
+      ]
+    )
   }
 
   return (
@@ -230,6 +267,43 @@ const SettingsScreen = ({ navigation }) => {
             thumbColor={weatherAlertsEnabled ? '#fff' : '#f4f3f4'}
           />
         </View>
+      </View>
+
+      {/* 5. Debug Settings */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <MaterialIcons
+            name="bug-report"
+            size={24}
+            color={darkMode ? '#fff' : '#000'}
+          />
+          <Text style={[styles.sectionTitle, darkMode && styles.darkText]}>
+            {t('Debug Settings')}
+          </Text>
+        </View>
+
+        <TouchableOpacity
+          style={[styles.menuItem, darkMode && styles.darkCard]}
+          onPress={handleResetData}
+        >
+          <View style={styles.menuIconContainer}>
+            <MaterialIcons
+              name="refresh"
+              size={24}
+              color={darkMode ? '#fff' : '#000'}
+            />
+          </View>
+          <View style={styles.menuTextContainer}>
+            <Text style={[styles.menuTitle, darkMode && styles.darkText]}>
+              {t('Reset All Data')}
+            </Text>
+            <Text
+              style={[styles.menuDescription, darkMode && styles.darkSubtitle]}
+            >
+              {t('Reset shift data and work status for testing')}
+            </Text>
+          </View>
+        </TouchableOpacity>
       </View>
 
       {/* Language Selection Modal */}

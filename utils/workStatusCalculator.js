@@ -407,8 +407,8 @@ export const calculateDailyWorkStatus = async (date, shift) => {
         shiftOfficeEndTime.getTime() - shiftStartTime.getTime()
       const shiftDurationMinutes = Math.floor(shiftDurationMs / (1000 * 60))
 
-      // Trừ thời gian nghỉ
-      const breakMinutes = shift?.breakMinutes || 0
+      // Trừ thời gian nghỉ - kiểm tra cả breakMinutes và breakTime để tương thích ngược
+      const breakMinutes = shift?.breakMinutes || shift?.breakTime || 0
       const workMinutes = Math.max(0, shiftDurationMinutes - breakMinutes)
 
       // Tính thời gian OT theo lịch trình (nếu có)
@@ -1310,7 +1310,11 @@ export const updateWorkStatusManually = async (
 
         console.log(
           `[DEBUG] Đã tính toán giờ làm đủ công cho ngày ${date} theo lịch trình ca:`,
-          scheduledTimes
+          {
+            ...scheduledTimes,
+            shiftBreakMinutes: shift.breakMinutes || shift.breakTime || 0,
+            shiftName: shift.name
+          }
         )
       } else {
         console.warn(
@@ -1552,8 +1556,8 @@ const calculateDetailedWorkHours = (
     scheduledEndTime = new Date(scheduledOfficeEndTime)
   }
 
-  // Xác định thời gian nghỉ và phạt
-  const breakMinutes = shift.breakMinutes || 0
+  // Xác định thời gian nghỉ và phạt - kiểm tra cả breakMinutes và breakTime để tương thích ngược
+  const breakMinutes = shift.breakMinutes || shift.breakTime || 0
   const penaltyDeductionHours = (lateMinutes + earlyMinutes) / 60
 
   // Phân tách Giờ Hành chính (Standard) và Giờ Tăng ca (OT) Thực tế
@@ -1945,8 +1949,15 @@ export const calculateScheduledWorkTime = (shift, baseDate, userSettings) => {
       scheduledOfficeEndTime.getTime() - scheduledStartTime.getTime()
     const shiftDurationHours = shiftDurationMs / (1000 * 60 * 60)
 
-    // Trừ thời gian nghỉ
-    const breakHours = (shift.breakMinutes || 0) / 60
+    // Trừ thời gian nghỉ - kiểm tra cả breakMinutes và breakTime để tương thích ngược
+    const breakMinutes = shift.breakMinutes || shift.breakTime || 0
+    const breakHours = breakMinutes / 60
+    console.log(`[DEBUG] Tính toán giờ công theo lịch trình:`, {
+      shiftName: shift.name,
+      shiftDurationHours: shiftDurationHours.toFixed(2),
+      breakMinutes: breakMinutes,
+      breakHours: breakHours.toFixed(2),
+    })
     const standardHoursScheduled = Math.max(0, shiftDurationHours - breakHours)
 
     // Tính thời gian OT theo lịch trình (nếu có)

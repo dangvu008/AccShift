@@ -923,6 +923,7 @@ const AddEditShiftScreen = ({ route, navigation }) => {
                   officeEndTime: formattedOfficeEndTime,
                   endTime: formattedEndTime,
                   breakTime: parseInt(breakTime, 10) || 0,
+                  breakMinutes: parseInt(breakTime, 10) || 0, // Thêm breakMinutes để tương thích với logic tính toán
                   remindBeforeStart: parseInt(remindBeforeStart, 10) || 0,
                   remindAfterEnd: parseInt(remindAfterEnd, 10) || 0,
                   isActive: finalIsActive, // Sử dụng giá trị đã xử lý
