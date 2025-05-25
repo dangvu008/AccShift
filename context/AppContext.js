@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useState, useEffect, useCallback } from 'react'
+import { createContext, useState, useEffect, useCallback, useMemo } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as Notifications from 'expo-notifications'
 import * as Location from 'expo-location'
@@ -61,8 +61,8 @@ export const AppProvider = ({ children }) => {
   const [workStartTime, setWorkStartTime] = useState(null)
   const [alarmPermissionGranted, setAlarmPermissionGranted] = useState(false)
 
-  // Lấy theme dựa trên chế độ sáng/tối
-  const theme = getTheme(darkMode)
+  // Lấy theme dựa trên chế độ sáng/tối - sử dụng useMemo để cập nhật khi darkMode thay đổi
+  const theme = useMemo(() => getTheme(darkMode), [darkMode])
 
   // Location states
   const [homeLocation, setHomeLocation] = useState(null)
