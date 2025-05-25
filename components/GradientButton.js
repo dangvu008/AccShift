@@ -35,17 +35,17 @@ const GradientButton = ({
   ...props
 }) => {
   const defaultButtonStyle = {
-    width: 160,
-    height: 160,
-    borderRadius: 80,
+    width: 180, // Tăng kích thước như Analytics App
+    height: 180,
+    borderRadius: 90,
     justifyContent: 'center',
     alignItems: 'center',
-    // Shadow effects
-    elevation: 8,
+    // Enhanced shadow effects như Analytics App
+    elevation: 12,
     shadowColor: COLORS.SHADOW,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
   }
 
   const defaultTextStyle = {
@@ -90,10 +90,10 @@ const GradientButton = ({
           ) : (
             <>
               {iconName && (
-                <Ionicons 
-                  name={iconName} 
-                  size={iconSize} 
-                  color={COLORS.TEXT_DARK} 
+                <Ionicons
+                  name={iconName}
+                  size={iconSize}
+                  color={COLORS.TEXT_DARK}
                 />
               )}
               {title && (

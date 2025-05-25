@@ -8,6 +8,7 @@ import React, {
   useRef,
 } from 'react'
 import { View, Text, TouchableOpacity, ScrollView, Alert } from 'react-native'
+import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import { AppContext } from '../context/AppContext'
 import { getNotes, getShifts } from '../utils/database'
@@ -18,7 +19,7 @@ import styles from '../styles/components/workNotesSection'
 import timeManager from '../utils/timeManager'
 
 const WorkNotesSection = ({ navigation, route }) => {
-  const { t, darkMode, currentShift, shifts } = useContext(AppContext)
+  const { t, darkMode, currentShift, shifts, theme } = useContext(AppContext)
   const [filteredNotes, setFilteredNotes] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [expandedNoteId, setExpandedNoteId] = useState(null)
@@ -534,62 +535,70 @@ const WorkNotesSection = ({ navigation, route }) => {
   }
 
   return (
-    <View style={[styles.container, darkMode && styles.darkCard]}>
-      <View style={styles.header}>
-        <View style={styles.titleContainer}>
-          <Text style={[styles.title, darkMode && styles.darkText]}>
-            {t('Work Notes')}
-          </Text>
-          <TouchableOpacity
-            style={styles.maxNotesButton}
-            onPress={() => setShowMaxNotesOptions(!showMaxNotesOptions)}
-          >
-            <Text
-              style={[styles.maxNotesText, darkMode && styles.darkSubtitle]}
-            >
-              {t('Hiển thị')}: {maxNotesDisplay}
-            </Text>
-            <Ionicons
-              name={showMaxNotesOptions ? 'chevron-up' : 'chevron-down'}
-              size={16}
-              color={darkMode ? '#aaa' : '#666'}
-            />
-          </TouchableOpacity>
-        </View>
-        <View style={styles.headerActions}>
-          <TouchableOpacity
-            style={[styles.viewAllButton, darkMode && styles.darkViewAllButton]}
-            onPress={() => {
-              console.log('View All button pressed')
-              try {
-                // Điều hướng trực tiếp đến màn hình Notes trong SettingsStack
-                // Sử dụng cách điều hướng rõ ràng hơn để tránh xung đột
-                navigation.navigate('SettingsStack', {
-                  screen: 'Notes',
-                  initial: false,
-                })
-                console.log('Đã điều hướng đến SettingsStack -> Notes')
-              } catch (error) {
-                console.error('Lỗi khi điều hướng đến màn hình Notes:', error)
-              }
-            }}
-            activeOpacity={0.7}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <View style={styles.viewAllButtonContent}>
-              <Ionicons name="list" size={20} color="#8a56ff" />
-              <Text style={styles.viewAllButtonText}>{t('View All')}</Text>
+    <View style={styles.container}>
+      <LinearGradient
+        colors={theme.gradientCardDark}
+        style={styles.cardGradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <View style={styles.header}>
+          <View style={styles.titleContainer}>
+            <View style={styles.iconContainer}>
+              <Ionicons
+                name="document-text-outline"
+                size={24}
+                color="#FFFFFF"
+              />
             </View>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.addNoteButton}
-            onPress={handleAddNote}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="add" size={24} color="#8a56ff" />
-          </TouchableOpacity>
+            <View style={styles.titleContent}>
+              <Text style={styles.titleWhite}>
+                {t('Work Notes')}
+              </Text>
+              <TouchableOpacity
+                style={styles.maxNotesButton}
+                onPress={() => setShowMaxNotesOptions(!showMaxNotesOptions)}
+              >
+                <Text style={styles.maxNotesTextWhite}>
+                  {t('Hiển thị')}: {maxNotesDisplay}
+                </Text>
+                <Ionicons
+                  name={showMaxNotesOptions ? 'chevron-up' : 'chevron-down'}
+                  size={16}
+                  color="rgba(255, 255, 255, 0.8)"
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              style={styles.actionButtonWhite}
+              onPress={() => {
+                console.log('View All button pressed')
+                try {
+                  navigation.navigate('SettingsStack', {
+                    screen: 'Notes',
+                    initial: false,
+                  })
+                  console.log('Đã điều hướng đến SettingsStack -> Notes')
+                } catch (error) {
+                  console.error('Lỗi khi điều hướng đến màn hình Notes:', error)
+                }
+              }}
+              activeOpacity={0.7}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="list" size={20} color="rgba(255, 255, 255, 0.8)" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.actionButtonWhite}
+              onPress={handleAddNote}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="add" size={24} color="rgba(255, 255, 255, 0.8)" />
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
 
       {/* Tùy chọn số lượng ghi chú hiển thị */}
       {showMaxNotesOptions && (
@@ -731,6 +740,7 @@ const WorkNotesSection = ({ navigation, route }) => {
           </TouchableOpacity>
         </View>
       )}
+      </LinearGradient>
     </View>
   )
 }

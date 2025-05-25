@@ -81,12 +81,22 @@ export const getTheme = (darkMode) => {
     shadowMedium: COLORS.SHADOW_MEDIUM,
     shadowHeavy: COLORS.SHADOW_HEAVY,
 
-    // Gradient arrays - Cho LinearGradient components
+    // Gradient arrays - Analytics App Style
     gradientPrimary: COLORS.GRADIENT_PRIMARY,
     gradientAccent: COLORS.GRADIENT_ACCENT,
     gradientSuccess: COLORS.GRADIENT_SUCCESS,
     gradientCardLight: darkMode ? COLORS.GRADIENT_CARD_DARK : COLORS.GRADIENT_CARD_LIGHT,
     gradientCardDark: COLORS.GRADIENT_CARD_DARK,
+
+    // Background gradients - Như trong ảnh Analytics
+    gradientBackground: darkMode ? COLORS.GRADIENT_BACKGROUND_DARK : COLORS.GRADIENT_BACKGROUND_LIGHT,
+
+    // Card gradients đặc biệt - Cho các loại card khác nhau
+    gradientCardWater: COLORS.GRADIENT_CARD_WATER,
+    gradientCardHeating: COLORS.GRADIENT_CARD_HEATING,
+    gradientCardElectricity: COLORS.GRADIENT_CARD_ELECTRICITY,
+    gradientCardInternet: COLORS.GRADIENT_CARD_INTERNET,
+    gradientCardRenovation: COLORS.GRADIENT_CARD_RENOVATION,
   }
 }
 

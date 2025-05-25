@@ -47,20 +47,66 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
   },
-  // Thêm styles cho card components
+  // Analytics App Style Cards
   card: {
-    borderRadius: 16, // Tăng từ 12
-    padding: 20, // Tăng từ 16
-    marginBottom: 20, // Tăng từ 16
-    // Enhanced shadow
-    elevation: 4,
+    borderRadius: 20, // Tăng border radius như trong ảnh
+    marginBottom: 20,
+    // Enhanced shadow cho depth
+    elevation: 8,
     shadowColor: COLORS.SHADOW,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    // Border subtle
-    borderWidth: 1,
-    borderColor: COLORS.BORDER_LIGHT,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    overflow: 'hidden', // Để gradient không bị tràn
+  },
+  cardGradient: {
+    padding: 20,
+    borderRadius: 20,
+    position: 'relative',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  cardIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  cardContent: {
+    flex: 1,
+  },
+  cardTitleWhite: {
+    fontSize: FONT_SIZES.BODY_LARGE,
+    fontWeight: FONT_WEIGHTS.BOLD,
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  cardSubtitleWhite: {
+    fontSize: FONT_SIZES.BODY_SMALL,
+    fontWeight: FONT_WEIGHTS.MEDIUM,
+    color: 'rgba(255, 255, 255, 0.8)',
+  },
+  cardArrow: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+  },
+  cardActionButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  workingIconContainer: {
+    marginRight: 16,
   },
   cardTitle: {
     fontSize: FONT_SIZES.HEADER_3,

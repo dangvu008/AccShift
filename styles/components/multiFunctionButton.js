@@ -12,18 +12,18 @@ const styles = StyleSheet.create({
     marginBottom: 16, // Tăng spacing
   },
   mainButton: {
-    width: 160, // Tăng kích thước từ 140
-    height: 160, // Tăng kích thước từ 140
-    borderRadius: 80, // Tăng border radius
+    width: 180, // Analytics App style - larger button
+    height: 180,
+    borderRadius: 90,
     justifyContent: 'center',
     alignItems: 'center',
-    // Enhanced shadow effects
-    elevation: 8, // Tăng từ 5
+    // Analytics App shadow effects
+    elevation: 12,
     shadowColor: COLORS.SHADOW,
-    shadowOffset: { width: 0, height: 4 }, // Tăng từ 2
-    shadowOpacity: 0.3, // Tăng từ 0.25
-    shadowRadius: 6, // Tăng từ 3.84
-    padding: 12, // Tăng padding
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    padding: 16,
     // Gradient background sẽ được thêm qua LinearGradient component
   },
   darkButton: {

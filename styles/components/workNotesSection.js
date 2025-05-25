@@ -3,27 +3,65 @@ import { COLORS } from '../common/colors';
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
+    borderRadius: 20,
+    marginBottom: 20,
+    elevation: 8,
+    shadowColor: COLORS.SHADOW,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    overflow: 'hidden',
   },
-  darkCard: {
-    backgroundColor: '#1e1e1e',
+  cardGradient: {
+    padding: 20,
+    borderRadius: 20,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
   },
   titleContainer: {
-    flexDirection: 'column',
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  iconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  titleContent: {
+    flex: 1,
+  },
+  titleWhite: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  maxNotesTextWhite: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginRight: 4,
   },
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  actionButtonWhite: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
   },
   title: {
     fontSize: 18,

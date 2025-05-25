@@ -2,6 +2,7 @@
 
 import { useContext, useState, useEffect, useRef, useMemo } from 'react'
 import { View, Text, TouchableOpacity, ScrollView, Alert } from 'react-native'
+import { LinearGradient } from 'expo-linear-gradient'
 import styles from '../styles/screens/homeScreen'
 import { Ionicons } from '@expo/vector-icons'
 import { AppContext } from '../context/AppContext'
@@ -158,9 +159,16 @@ const HomeScreen = ({ navigation, route }) => {
   }, [currentTime, t])
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: theme.backgroundColor, padding: 16 }}
+    <LinearGradient
+      colors={theme.gradientBackground}
+      style={{ flex: 1 }}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
     >
+      <ScrollView
+        style={{ flex: 1, padding: 16 }}
+        showsVerticalScrollIndicator={false}
+      >
       {/* 1. Thanh trên cùng (Ngày/giờ) - Cải thiện typography */}
       <View style={styles.header}>
         <View style={styles.dateTimeContainer}>
@@ -182,76 +190,66 @@ const HomeScreen = ({ navigation, route }) => {
 
       {/* Vùng Cảnh báo Thời tiết (nếu có) - Đã được tích hợp vào WeatherWidget */}
 
-      {/* 3. Tên ca làm việc đang áp dụng - Cải thiện styling */}
+      {/* 3. Tên ca làm việc đang áp dụng - Analytics App Style */}
       <TouchableOpacity
-        style={[
-          styles.card,
-          { backgroundColor: theme.cardElevatedColor }
-        ]}
+        style={styles.card}
         onPress={() => navigation.navigate('ShiftsStack')}
+        activeOpacity={0.8}
       >
-        <Text
-          style={[styles.cardTitle, { color: theme.textColor }]}
+        <LinearGradient
+          colors={theme.gradientPrimary}
+          style={styles.cardGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
         >
-          {currentShift ? currentShift.name : t('No shift selected')}
-        </Text>
-        <Text style={[styles.cardSubtitle, { color: theme.subtextColor }]}>
-          {currentShift
-            ? `${currentShift.startTime} - ${currentShift.endTime}`
-            : ''}
-        </Text>
-        <View style={styles.shiftEditIcon}>
-          <Ionicons
-            name="chevron-forward"
-            size={24} // Tăng kích thước icon
-            color={theme.primaryColor} // Sử dụng primary color
-          />
-        </View>
+          <View style={styles.cardIconContainer}>
+            <Ionicons
+              name="time-outline"
+              size={24}
+              color={theme.textColor === theme.textColor ? '#FFFFFF' : theme.textColor}
+            />
+          </View>
+          <View style={styles.cardContent}>
+            <Text style={styles.cardTitleWhite}>
+              {currentShift ? currentShift.name : t('No shift selected')}
+            </Text>
+            <Text style={styles.cardSubtitleWhite}>
+              {currentShift
+                ? `${currentShift.startTime} - ${currentShift.endTime}`
+                : t('Tap to select shift')}
+            </Text>
+          </View>
+          <View style={styles.cardArrow}>
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color="rgba(255, 255, 255, 0.8)"
+            />
+          </View>
+        </LinearGradient>
       </TouchableOpacity>
 
-      {/* Hiển thị trạng thái làm việc nếu đang làm việc - Cải thiện styling */}
+      {/* Hiển thị trạng thái làm việc nếu đang làm việc - Analytics App Style */}
       {isWorking && (
-        <View
-          style={[
-            styles.card,
-            {
-              backgroundColor: theme.cardElevatedColor,
-              flexDirection: 'row',
-              alignItems: 'center',
-            }
-          ]}
-        >
-          <View
-            style={{
-              width: 44, // Tăng từ 36
-              height: 44, // Tăng từ 36
-              borderRadius: 22, // Tăng từ 18
-              backgroundColor: theme.successColor, // Sử dụng success color
-              justifyContent: 'center',
-              alignItems: 'center',
-              marginRight: 16, // Tăng từ 12
-              // Thêm shadow
-              elevation: 2,
-              shadowColor: theme.shadowLight,
-              shadowOffset: { width: 0, height: 1 },
-              shadowOpacity: 0.2,
-              shadowRadius: 2,
-            }}
+        <View style={styles.card}>
+          <LinearGradient
+            colors={theme.gradientSuccess}
+            style={[styles.cardGradient, { flexDirection: 'row', alignItems: 'center' }]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
           >
-            <Ionicons name="checkmark" size={26} color="#fff" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text
-              style={[styles.cardTitle, { color: theme.textColor, marginBottom: 4 }]}
-            >
-              {t('Working')} {currentShift ? currentShift.name : ''}
-            </Text>
-            <Text
-              style={[styles.cardSubtitle, { color: theme.subtextColor }]}
-            >
-              {t('Worked for')} {formatDuration(workDuration)}
-            </Text>
-          </View>
+            <View style={styles.workingIconContainer}>
+              <Ionicons name="checkmark-circle" size={28} color="#FFFFFF" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.cardTitleWhite}>
+                {t('Working')} {currentShift ? currentShift.name : ''}
+              </Text>
+              <Text style={styles.cardSubtitleWhite}>
+                {t('Worked for')} {formatDuration(workDuration)}
+              </Text>
+            </View>
+          </LinearGradient>
         </View>
       )}
 
@@ -260,43 +258,46 @@ const HomeScreen = ({ navigation, route }) => {
 
       {/* 6. Lịch sử bấm nút (được hiển thị trong MultiFunctionButton) */}
 
-      {/* 7. Lưới trạng thái tuần - Cải thiện styling */}
-      <View
-        style={[
-          styles.card,
-          { backgroundColor: theme.cardElevatedColor }
-        ]}
-      >
-        <View
-          style={{
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: 16, // Tăng từ 12
-          }}
+      {/* 7. Lưới trạng thái tuần - Analytics App Style */}
+      <View style={styles.card}>
+        <LinearGradient
+          colors={theme.gradientCardDark}
+          style={styles.cardGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
         >
-          <Text
-            style={[styles.cardTitle, { color: theme.textColor }]}
-          >
-            {t('Weekly Status')}
-          </Text>
-          <TouchableOpacity
-            style={styles.headerButton}
-            onPress={() => navigation.navigate('AttendanceStats')}
-          >
-            <Ionicons
-              name="analytics-outline"
-              size={20}
-              color={theme.primaryColor}
-            />
-          </TouchableOpacity>
-        </View>
-        <WeeklyStatusGrid />
+          <View style={styles.cardHeader}>
+            <View style={styles.cardIconContainer}>
+              <Ionicons
+                name="analytics-outline"
+                size={24}
+                color="#FFFFFF"
+              />
+            </View>
+            <View style={styles.cardContent}>
+              <Text style={styles.cardTitleWhite}>
+                {t('Weekly Status')}
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.cardActionButton}
+              onPress={() => navigation.navigate('AttendanceStats')}
+            >
+              <Ionicons
+                name="chevron-forward"
+                size={20}
+                color="rgba(255, 255, 255, 0.8)"
+              />
+            </TouchableOpacity>
+          </View>
+          <WeeklyStatusGrid />
+        </LinearGradient>
       </View>
 
       {/* 8. Khu vực Ghi Chú Công Việc */}
       <WorkNotesSection navigation={navigation} route={route} />
-    </ScrollView>
+      </ScrollView>
+    </LinearGradient>
   )
 }
 

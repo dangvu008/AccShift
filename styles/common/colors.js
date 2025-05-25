@@ -3,35 +3,41 @@
  * Cung cấp các màu sắc nhất quán và ấn tượng cho toàn bộ ứng dụng
  */
 
-// Màu sắc chính - Modern Color Palette
+// Màu sắc chính - Analytics App Inspired Purple Theme
 export const COLORS = {
-  // Màu chủ đạo - Gradient Blue to Purple
-  PRIMARY: '#6366f1', // Indigo-500 - Modern và professional
-  PRIMARY_DARK: '#4f46e5', // Indigo-600 - Đậm hơn cho contrast
-  PRIMARY_LIGHT: '#818cf8', // Indigo-400 - Sáng hơn cho highlights
-  PRIMARY_GRADIENT_START: '#6366f1',
-  PRIMARY_GRADIENT_END: '#8b5cf6', // Violet-500 - Tạo gradient đẹp
+  // Màu chủ đạo - Purple Gradient Theme (inspired by Analytics App)
+  PRIMARY: '#6B46C1', // Purple-700 - Chính từ ảnh Analytics
+  PRIMARY_DARK: '#553C9A', // Purple-800 - Đậm hơn cho contrast
+  PRIMARY_LIGHT: '#8B5CF6', // Purple-500 - Sáng hơn cho highlights
+  PRIMARY_GRADIENT_START: '#6B46C1', // Purple gradient start
+  PRIMARY_GRADIENT_END: '#8B5CF6', // Purple gradient end
 
-  // Màu accent
-  ACCENT: '#f59e0b', // Amber-500 - Màu nhấn ấm áp
-  ACCENT_LIGHT: '#fbbf24', // Amber-400
-  ACCENT_DARK: '#d97706', // Amber-600
+  // Gradient backgrounds cho cards (như trong ảnh)
+  CARD_GRADIENT_START: '#7C3AED', // Purple-600
+  CARD_GRADIENT_END: '#6B46C1', // Purple-700
+  CARD_GRADIENT_SECONDARY_START: '#8B5CF6', // Purple-500
+  CARD_GRADIENT_SECONDARY_END: '#7C3AED', // Purple-600
 
-  // Màu nền - Cải thiện contrast và độ sáng cho light mode
-  BACKGROUND_LIGHT: '#f1f5f9', // Slate-100 - Đậm hơn để tăng contrast
-  BACKGROUND_DARK: '#0f172a', // Slate-900 - Đậm và sang trọng
-  BACKGROUND_SECONDARY_LIGHT: '#e2e8f0', // Slate-200 - Đậm hơn cho secondary
-  BACKGROUND_SECONDARY_DARK: '#1e293b', // Slate-800
+  // Màu accent - Orange/Amber như trong ảnh
+  ACCENT: '#F59E0B', // Amber-500 - Màu cam/vàng từ ảnh
+  ACCENT_LIGHT: '#FCD34D', // Amber-300 - Sáng hơn
+  ACCENT_DARK: '#D97706', // Amber-600 - Đậm hơn
 
-  // Màu nền thẻ - Gradient và shadow effects
-  CARD_LIGHT: '#ffffff',
-  CARD_DARK: '#1e293b', // Slate-800 - Đậm hơn cho contrast tốt
-  CARD_ELEVATED_LIGHT: '#ffffff', // Với shadow
-  CARD_ELEVATED_DARK: '#334155', // Slate-700
+  // Màu nền - Analytics App Style với Purple Theme
+  BACKGROUND_LIGHT: '#F8FAFC', // Slate-50 - Sáng và clean
+  BACKGROUND_DARK: '#1E1B4B', // Indigo-900 - Purple dark background như ảnh
+  BACKGROUND_SECONDARY_LIGHT: '#F1F5F9', // Slate-100
+  BACKGROUND_SECONDARY_DARK: '#312E81', // Indigo-800 - Secondary purple background
 
-  // Màu nền thẻ thứ cấp
-  SECONDARY_CARD_LIGHT: '#e2e8f0', // Slate-200 - Đậm hơn để tăng contrast
-  SECONDARY_CARD_DARK: '#334155', // Slate-700 - Cân bằng
+  // Màu nền thẻ - Analytics App Card Style
+  CARD_LIGHT: '#FFFFFF', // Trắng tinh khiết
+  CARD_DARK: 'rgba(139, 92, 246, 0.15)', // Purple với opacity như trong ảnh
+  CARD_ELEVATED_LIGHT: '#FFFFFF',
+  CARD_ELEVATED_DARK: 'rgba(124, 58, 237, 0.2)', // Purple elevated với opacity cao hơn
+
+  // Màu nền thẻ thứ cấp - Gradient cards
+  SECONDARY_CARD_LIGHT: '#F8FAFC', // Slate-50
+  SECONDARY_CARD_DARK: 'rgba(107, 70, 193, 0.25)', // Primary purple với opacity
 
   // Màu văn bản - Font đậm và rõ ràng
   TEXT_LIGHT: '#0f172a', // Slate-900 - Đậm tối đa cho readability
@@ -79,12 +85,23 @@ export const COLORS = {
   SHADOW_MEDIUM: 'rgba(0, 0, 0, 0.15)',
   SHADOW_HEAVY: 'rgba(0, 0, 0, 0.25)',
 
-  // Màu gradient - Modern effects
-  GRADIENT_PRIMARY: ['#6366f1', '#8b5cf6'],
-  GRADIENT_ACCENT: ['#f59e0b', '#f97316'],
-  GRADIENT_SUCCESS: ['#10b981', '#059669'],
-  GRADIENT_CARD_LIGHT: ['#ffffff', '#f1f5f9'],
-  GRADIENT_CARD_DARK: ['#1e293b', '#0f172a'],
+  // Màu gradient - Analytics App Inspired
+  GRADIENT_PRIMARY: ['#6B46C1', '#8B5CF6'], // Purple gradient chính
+  GRADIENT_ACCENT: ['#F59E0B', '#FCD34D'], // Amber gradient
+  GRADIENT_SUCCESS: ['#10B981', '#34D399'], // Emerald gradient
+  GRADIENT_CARD_LIGHT: ['#FFFFFF', '#F8FAFC'], // Light card gradient
+  GRADIENT_CARD_DARK: ['rgba(107, 70, 193, 0.3)', 'rgba(139, 92, 246, 0.1)'], // Purple card gradient
+
+  // Gradient cho background chính (như trong ảnh Analytics)
+  GRADIENT_BACKGROUND_DARK: ['#1E1B4B', '#312E81'], // Purple background gradient
+  GRADIENT_BACKGROUND_LIGHT: ['#F8FAFC', '#F1F5F9'], // Light background gradient
+
+  // Gradient cho các card đặc biệt
+  GRADIENT_CARD_WATER: ['#3B82F6', '#1D4ED8'], // Blue gradient cho Water
+  GRADIENT_CARD_HEATING: ['#EF4444', '#DC2626'], // Red gradient cho Heating
+  GRADIENT_CARD_ELECTRICITY: ['#F59E0B', '#D97706'], // Orange gradient cho Electricity
+  GRADIENT_CARD_INTERNET: ['#10B981', '#059669'], // Green gradient cho Internet
+  GRADIENT_CARD_RENOVATION: ['#8B5CF6', '#7C3AED'], // Purple gradient cho Renovation
 }
 
 export default COLORS;
