@@ -14,10 +14,10 @@ import {
 } from 'react-native'
 
 import { Ionicons } from '@expo/vector-icons'
-import DateTimePicker from '@react-native-community/datetimepicker'
 import { AppContext } from '../context/AppContext'
 import { WORK_STATUS } from '../config/appConfig'
 import styles from '../styles/components/manualUpdateModal'
+import TimePickerModal from './TimePickerModal'
 
 // Screen dimensions available if needed
 // const { width: screenWidth, height: screenHeight } = Dimensions.get('window')
@@ -158,18 +158,10 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
   const handleCheckInTimeChange = (event, selectedTime) => {
     console.log('[ManualUpdateModal] Check-in time change:', { event: event?.type, selectedTime })
 
-    if (Platform.OS === 'android') {
-      setShowCheckInPicker(false)
-    }
-
     if (selectedTime && event?.type !== 'dismissed') {
       const timeString = selectedTime.toTimeString().slice(0, 5)
       console.log('[ManualUpdateModal] Setting check-in time:', timeString)
       setCheckInTime(timeString)
-    }
-
-    if (Platform.OS === 'ios' && event?.type === 'dismissed') {
-      setShowCheckInPicker(false)
     }
   }
 
@@ -181,18 +173,10 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
   const handleCheckOutTimeChange = (event, selectedTime) => {
     console.log('[ManualUpdateModal] Check-out time change:', { event: event?.type, selectedTime })
 
-    if (Platform.OS === 'android') {
-      setShowCheckOutPicker(false)
-    }
-
     if (selectedTime && event?.type !== 'dismissed') {
       const timeString = selectedTime.toTimeString().slice(0, 5)
       console.log('[ManualUpdateModal] Setting check-out time:', timeString)
       setCheckOutTime(timeString)
-    }
-
-    if (Platform.OS === 'ios' && event?.type === 'dismissed') {
-      setShowCheckOutPicker(false)
     }
   }
 
@@ -610,62 +594,24 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
       </SafeAreaView>
       </Modal>
 
-    {/* Time Pickers - Separate modals outside main modal to avoid z-index conflicts */}
-    {showCheckInPicker && (
-      <Modal
-        transparent={true}
-        animationType="slide"
-        visible={showCheckInPicker}
-        onRequestClose={() => setShowCheckInPicker(false)}
-        statusBarTranslucent={false}
-        presentationStyle="overFullScreen"
-      >
-        <View style={styles.pickerOverlay}>
-          <View style={[
-            styles.pickerContainer,
-            darkMode && styles.darkPickerContainer
-          ]}>
-            <DateTimePicker
-              value={createTimeDate(checkInTime)}
-              mode="time"
-              is24Hour={true}
-              display="spinner"
-              onChange={handleCheckInTimeChange}
-              themeVariant={darkMode ? 'dark' : 'light'}
-              style={styles.picker}
-            />
-          </View>
-        </View>
-      </Modal>
-    )}
+    {/* Time Pickers - Render outside main modal with higher z-index */}
+    <TimePickerModal
+      visible={showCheckInPicker}
+      value={createTimeDate(checkInTime)}
+      onTimeChange={handleCheckInTimeChange}
+      onClose={() => setShowCheckInPicker(false)}
+      title={t('Chọn thời gian vào')}
+      darkMode={darkMode}
+    />
 
-    {showCheckOutPicker && (
-      <Modal
-        transparent={true}
-        animationType="slide"
-        visible={showCheckOutPicker}
-        onRequestClose={() => setShowCheckOutPicker(false)}
-        statusBarTranslucent={false}
-        presentationStyle="overFullScreen"
-      >
-        <View style={styles.pickerOverlay}>
-          <View style={[
-            styles.pickerContainer,
-            darkMode && styles.darkPickerContainer
-          ]}>
-            <DateTimePicker
-              value={createTimeDate(checkOutTime)}
-              mode="time"
-              is24Hour={true}
-              display="spinner"
-              onChange={handleCheckOutTimeChange}
-              themeVariant={darkMode ? 'dark' : 'light'}
-              style={styles.picker}
-            />
-          </View>
-        </View>
-      </Modal>
-    )}
+    <TimePickerModal
+      visible={showCheckOutPicker}
+      value={createTimeDate(checkOutTime)}
+      onTimeChange={handleCheckOutTimeChange}
+      onClose={() => setShowCheckOutPicker(false)}
+      title={t('Chọn thời gian ra')}
+      darkMode={darkMode}
+    />
     </>
   )
 }
