@@ -602,6 +602,7 @@ const StatisticsScreen = ({ navigation }) => {
       getDayOfWeek,
       getStatusDisplay,
       statisticsData.length,
+      selectedPeriod,
     ]
   )
 
@@ -1219,9 +1220,7 @@ const styles = StyleSheet.create({
   workDaysValue: {
     color: '#2ecc71',
   },
-  actualWorkHoursValue: {
-    color: '#9b59b6',
-  },
+
   summaryLabel: {
     fontSize: 12,
     color: '#666',

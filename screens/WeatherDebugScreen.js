@@ -29,7 +29,7 @@ const WeatherDebugScreen = ({ navigation }) => {
 
   useEffect(() => {
     loadDebugInfo();
-  }, []);
+  }, [loadDebugInfo]);
 
   const loadDebugInfo = async () => {
     setLoading(true);
@@ -185,7 +185,7 @@ const WeatherDebugScreen = ({ navigation }) => {
           <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.textColor, marginBottom: 12 }}>
             📊 System Status
           </Text>
-          
+
           <View style={{ marginBottom: 8 }}>
             <Text style={{ color: theme.textColor }}>
               🏠 Home Location: {debugInfo.homeLocation ? '✅ Set' : '❌ Not set'}

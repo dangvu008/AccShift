@@ -25,7 +25,8 @@ import weatherAlertService from '../services/weatherAlertService'
 // Import STORAGE_KEYS
 import { STORAGE_KEYS } from '../utils/constants'
 // Import theme - Sử dụng theme mới với màu sắc hiện đại
-import { getTheme, COLORS } from '../styles/common/theme'
+import { getTheme } from '../styles/common/theme'
+import { COLORS } from '../styles/common/colors'
 // Import storage manager
 import { storage } from '../utils/storage'
 // Import timeManager

@@ -348,7 +348,6 @@ export const translations = {
 
     // Weekly Status
     'Not Updated': 'Chưa cập nhật',
-    'Status': 'Trạng thái',
     Shift: 'Ca làm việc',
     'Weekly Work Hours': 'Giờ làm việc',
     'Weekly OT Hours': 'Giờ làm thêm',
@@ -462,7 +461,6 @@ export const translations = {
     'Chọn thời gian': 'Chọn thời gian',
     'Chọn giờ vào': 'Chọn giờ vào',
     'Chọn giờ ra': 'Chọn giờ ra',
-    'Hủy bỏ': 'Hủy',
     'Lưu lại': 'Lưu',
     'Đang lưu...': 'Đang lưu...',
     'Vui lòng chọn trạng thái': 'Vui lòng chọn trạng thái',

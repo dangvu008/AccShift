@@ -90,6 +90,9 @@ export const getTheme = (darkMode) => {
   }
 }
 
+// Re-export COLORS for convenience
+export { COLORS };
+
 export default {
   getTheme,
   COLORS,

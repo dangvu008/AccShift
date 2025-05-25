@@ -869,12 +869,12 @@ const WeatherWidget = ({ onPress }) => {
   }, [rotateApiKeyAndRetry, fetchWeatherData])
 
   useEffect(() => {
+    // Lưu tham chiếu hiện tại vào biến cục bộ để tránh thay đổi khi cleanup function chạy
+    const currentFetchTimeout = fetchTimeoutRef.current
+    const currentAutoRetryTimeout = autoRetryTimeoutRef.current
+
     // Dọn dẹp timeout khi component unmount
     return () => {
-      // Lưu tham chiếu hiện tại vào biến cục bộ để tránh thay đổi khi cleanup function chạy
-      const currentFetchTimeout = fetchTimeoutRef.current
-      const currentAutoRetryTimeout = autoRetryTimeoutRef.current
-
       if (currentFetchTimeout) {
         clearTimeout(currentFetchTimeout)
       }

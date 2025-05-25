@@ -308,9 +308,7 @@ const MultiFunctionButton = () => {
           onPress={handleMultiFunctionButton}
           disabled={buttonConfig.disabled}
           description={buttonConfig.description}
-          style={[
-            darkMode && styles.darkButton,
-          ]}
+          style={darkMode ? styles.darkButton : undefined}
         >
           {/* Custom content với reset button */}
           <Ionicons name={buttonConfig.icon} size={36} color={COLORS.TEXT_DARK} />

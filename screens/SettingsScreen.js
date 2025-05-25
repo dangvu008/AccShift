@@ -392,9 +392,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
     padding: 16,
   },
-  darkContainer: {
-    backgroundColor: '#121212',
-  },
+
   darkText: {
     color: '#fff',
   },

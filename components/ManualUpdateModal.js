@@ -172,6 +172,34 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
     return selectedStatus && requiresTimeInput()
   }
 
+  // Lấy ca làm việc cho ngày được chọn
+  const getShiftForSelectedDay = async () => {
+    try {
+      if (!selectedDay || !selectedDay.date) return null
+
+      const { getCurrentShift } = require('../utils/database')
+      const currentShift = await getCurrentShift()
+
+      if (!currentShift) return null
+
+      // Kiểm tra xem ca làm việc có áp dụng cho ngày được chọn không
+      const dayOfWeek = selectedDay.date.getDay() // 0: CN, 1: T2, ..., 6: T7
+      const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']
+      const dayCode = dayNames[dayOfWeek]
+
+      // Kiểm tra daysApplied của ca làm việc
+      if (currentShift.daysApplied && currentShift.daysApplied.includes(dayCode)) {
+        return currentShift
+      }
+
+      // Nếu ca hiện tại không áp dụng cho ngày này, trả về null
+      return null
+    } catch (error) {
+      console.error('[ManualUpdateModal] Error getting shift for selected day:', error)
+      return null
+    }
+  }
+
   // Track selected status changes for time input requirements
   useEffect(() => {
     const handleStatusChange = async () => {
@@ -206,7 +234,7 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
     }
 
     handleStatusChange()
-  }, [selectedStatus, requiresTimeInput, selectedDay])
+  }, [selectedStatus, requiresTimeInput, selectedDay, getShiftForSelectedDay])
 
   /**
    * Format ngày hiển thị theo định dạng tiếng Việt
@@ -265,34 +293,6 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
     const date = new Date()
     date.setHours(hours, minutes, 0, 0)
     return date
-  }
-
-  // Lấy ca làm việc cho ngày được chọn
-  const getShiftForSelectedDay = async () => {
-    try {
-      if (!selectedDay || !selectedDay.date) return null
-
-      const { getCurrentShift } = require('../utils/database')
-      const currentShift = await getCurrentShift()
-
-      if (!currentShift) return null
-
-      // Kiểm tra xem ca làm việc có áp dụng cho ngày được chọn không
-      const dayOfWeek = selectedDay.date.getDay() // 0: CN, 1: T2, ..., 6: T7
-      const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']
-      const dayCode = dayNames[dayOfWeek]
-
-      // Kiểm tra daysApplied của ca làm việc
-      if (currentShift.daysApplied && currentShift.daysApplied.includes(dayCode)) {
-        return currentShift
-      }
-
-      // Nếu ca hiện tại không áp dụng cho ngày này, trả về null
-      return null
-    } catch (error) {
-      console.error('[ManualUpdateModal] Error getting shift for selected day:', error)
-      return null
-    }
   }
 
   // Validate form

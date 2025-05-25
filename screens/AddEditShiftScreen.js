@@ -21,7 +21,7 @@ import { AppContext } from '../context/AppContext'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { STORAGE_KEYS } from '../utils/constants'
 import { useFocusEffect } from '@react-navigation/native'
-import { COLORS } from '../styles/common/theme'
+import { COLORS } from '../styles/common/colors'
 
 const AddEditShiftScreen = ({ route, navigation }) => {
   const { t, darkMode, currentShift, setCurrentShift } = useContext(AppContext)
