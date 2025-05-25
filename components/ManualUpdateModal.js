@@ -578,30 +578,7 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
         presentationStyle="overFullScreen"
       >
         <View style={styles.pickerOverlay}>
-          <View style={[styles.pickerContainer, darkMode && styles.darkPickerContainer]}>
-            <View style={[
-              styles.pickerHeader,
-              darkMode && styles.darkPickerHeader
-            ]}>
-              <Text style={[styles.pickerTitle, darkMode && styles.darkText]}>
-                {t('Chọn giờ vào')}
-              </Text>
-              <TouchableOpacity
-                onPress={() => setShowCheckInPicker(false)}
-                style={[
-                  styles.pickerCloseButton,
-                  darkMode && styles.darkPickerCloseButton
-                ]}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                activeOpacity={0.7}
-              >
-                <Ionicons
-                  name="close"
-                  size={24}
-                  color={darkMode ? '#fff' : '#000'}
-                />
-              </TouchableOpacity>
-            </View>
+
             <DateTimePicker
               value={createTimeDate(checkInTime)}
               mode="time"
@@ -611,7 +588,7 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
               themeVariant={darkMode ? 'dark' : 'light'}
               style={styles.picker}
             />
-          </View>
+
         </View>
       </Modal>
     )}
@@ -625,31 +602,7 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
         statusBarTranslucent={false}
         presentationStyle="overFullScreen"
       >
-        <View style={styles.pickerOverlay}>
-          <View style={[styles.pickerContainer, darkMode && styles.darkPickerContainer]}>
-            <View style={[
-              styles.pickerHeader,
-              darkMode && styles.darkPickerHeader
-            ]}>
-              <Text style={[styles.pickerTitle, darkMode && styles.darkText]}>
-                {t('Chọn giờ ra')}
-              </Text>
-              <TouchableOpacity
-                onPress={() => setShowCheckOutPicker(false)}
-                style={[
-                  styles.pickerCloseButton,
-                  darkMode && styles.darkPickerCloseButton
-                ]}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                activeOpacity={0.7}
-              >
-                <Ionicons
-                  name="close"
-                  size={24}
-                  color={darkMode ? '#fff' : '#000'}
-                />
-              </TouchableOpacity>
-            </View>
+
             <DateTimePicker
               value={createTimeDate(checkOutTime)}
               mode="time"
