@@ -31,6 +31,7 @@ const WeeklyStatusGrid = () => {
   const {
     t,
     darkMode,
+    theme,
     attendanceLogs,
     buttonState,
     currentShift,
