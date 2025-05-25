@@ -595,23 +595,7 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
       </Modal>
 
     {/* Time Pickers - Render outside main modal with higher z-index */}
-    <TimePickerModal
-      visible={showCheckInPicker}
-      value={createTimeDate(checkInTime)}
-      onTimeChange={handleCheckInTimeChange}
-      onClose={() => setShowCheckInPicker(false)}
-      title={t('Chọn thời gian vào')}
-      darkMode={darkMode}
-    />
 
-    <TimePickerModal
-      visible={showCheckOutPicker}
-      value={createTimeDate(checkOutTime)}
-      onTimeChange={handleCheckOutTimeChange}
-      onClose={() => setShowCheckOutPicker(false)}
-      title={t('Chọn thời gian ra')}
-      darkMode={darkMode}
-    />
     </>
   )
 }
