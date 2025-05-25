@@ -355,6 +355,7 @@ const StatisticsScreen = ({ navigation }) => {
             sundayHours: statusEntry?.sundayHoursScheduled || 0.0,
             nightHours: statusEntry?.nightHoursScheduled || 0.0,
             totalHours: statusEntry?.totalHoursScheduled || 0.0,
+            actualWorkHours: statusEntry?.actualWorkHours || 0.0,
             status: statusEntry?.status
               ? getStatusDisplay(statusEntry.status)
               : '-',
@@ -1191,6 +1192,9 @@ const styles = StyleSheet.create({
   },
   workDaysValue: {
     color: '#2ecc71',
+  },
+  actualWorkHoursValue: {
+    color: '#9b59b6',
   },
   summaryLabel: {
     fontSize: 12,

@@ -8,11 +8,9 @@ import {
   TouchableOpacity,
   Switch,
   ScrollView,
-  TextInput,
   Modal,
-  Alert,
 } from 'react-native'
-import { Ionicons, Feather, MaterialIcons } from '@expo/vector-icons'
+import { MaterialIcons } from '@expo/vector-icons'
 import { AppContext } from '../context/AppContext'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
@@ -26,7 +24,6 @@ const SettingsScreen = ({ navigation }) => {
     language,
     notificationSound,
     notificationVibration,
-    alarmPermissionGranted,
     onlyGoWorkMode,
     // Functions
     toggleDarkMode,
@@ -34,7 +31,6 @@ const SettingsScreen = ({ navigation }) => {
     toggleNotificationSound,
     toggleNotificationVibration,
     toggleOnlyGoWorkMode,
-    requestAlarmPermission,
   } = useContext(AppContext)
 
   const languages = [
@@ -234,109 +230,6 @@ const SettingsScreen = ({ navigation }) => {
             thumbColor={weatherAlertsEnabled ? '#fff' : '#f4f3f4'}
           />
         </View>
-      </View>
-
-      {/* 5. Developer Settings */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <MaterialIcons
-            name="developer-mode"
-            size={24}
-            color={darkMode ? '#fff' : '#000'}
-          />
-          <Text style={[styles.sectionTitle, darkMode && styles.darkText]}>
-            {t('Developer Settings')}
-          </Text>
-        </View>
-
-        <TouchableOpacity
-          style={[styles.menuItem, darkMode && styles.darkCard]}
-          onPress={async () => {
-            try {
-              // Hiển thị xác nhận
-              Alert.alert(
-                t('Xác nhận'),
-                t(
-                  'Bạn có chắc chắn muốn tạo dữ liệu mẫu ca làm việc? Dữ liệu hiện tại sẽ bị ghi đè.'
-                ),
-                [
-                  {
-                    text: t('Hủy'),
-                    style: 'cancel',
-                  },
-                  {
-                    text: t('Đồng ý'),
-                    onPress: async () => {
-                      // Import hàm tạo dữ liệu mẫu
-                      const {
-                        createSampleShifts,
-                      } = require('../utils/sampleData')
-
-                      // Tạo dữ liệu mẫu
-                      const shifts = await createSampleShifts()
-
-                      // Thông báo thành công
-                      Alert.alert(
-                        t('Thành công'),
-                        t('Đã tạo {{count}} ca làm việc mẫu.', {
-                          count: shifts.length,
-                        }),
-                        [{ text: t('OK') }]
-                      )
-                    },
-                  },
-                ]
-              )
-            } catch (error) {
-              console.error('Lỗi khi tạo dữ liệu mẫu ca làm việc:', error)
-              Alert.alert(
-                t('Lỗi'),
-                t('Đã xảy ra lỗi khi tạo dữ liệu mẫu ca làm việc.')
-              )
-            }
-          }}
-        >
-          <View style={styles.menuIconContainer}>
-            <MaterialIcons
-              name="data-usage"
-              size={24}
-              color={darkMode ? '#fff' : '#000'}
-            />
-          </View>
-          <View style={styles.menuTextContainer}>
-            <Text style={[styles.menuTitle, darkMode && styles.darkText]}>
-              {t('Tạo dữ liệu mẫu')}
-            </Text>
-            <Text
-              style={[styles.menuDescription, darkMode && styles.darkSubtitle]}
-            >
-              {t('Tạo dữ liệu mẫu ca làm việc')}
-            </Text>
-          </View>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.menuItem, darkMode && styles.darkCard]}
-          onPress={() => navigation.navigate('WorkStatusUpdate')}
-        >
-          <View style={styles.menuIconContainer}>
-            <MaterialIcons
-              name="bug-report"
-              size={24}
-              color={darkMode ? '#fff' : '#000'}
-            />
-          </View>
-          <View style={styles.menuTextContainer}>
-            <Text style={[styles.menuTitle, darkMode && styles.darkText]}>
-              {t('Test Cập Nhật Trạng Thái')}
-            </Text>
-            <Text
-              style={[styles.menuDescription, darkMode && styles.darkSubtitle]}
-            >
-              {t('Test chức năng cập nhật trạng thái làm việc')}
-            </Text>
-          </View>
-        </TouchableOpacity>
       </View>
 
       {/* Language Selection Modal */}

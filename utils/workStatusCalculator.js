@@ -1121,6 +1121,45 @@ export const calculateAndSaveDailyWorkStatus = async (date, shift) => {
 }
 
 /**
+ * Tính toán thời gian làm việc thực tế từ thời gian check-in và check-out
+ * @param {string} checkInTime - Thời gian check-in (HH:MM)
+ * @param {string} checkOutTime - Thời gian check-out (HH:MM)
+ * @param {number} breakMinutes - Thời gian nghỉ (phút), mặc định 60 phút
+ * @returns {number} Thời gian làm việc thực tế (phút)
+ */
+const calculateActualWorkMinutes = (checkInTime, checkOutTime, breakMinutes = 60) => {
+  try {
+    if (!checkInTime || !checkOutTime) return 0
+
+    // Parse thời gian check-in
+    const [checkInHours, checkInMinutes] = checkInTime.split(':').map(Number)
+    const checkInDate = new Date()
+    checkInDate.setHours(checkInHours, checkInMinutes, 0, 0)
+
+    // Parse thời gian check-out
+    const [checkOutHours, checkOutMinutes] = checkOutTime.split(':').map(Number)
+    const checkOutDate = new Date()
+    checkOutDate.setHours(checkOutHours, checkOutMinutes, 0, 0)
+
+    // Nếu check-out trước check-in, có thể là ca qua đêm
+    if (checkOutDate <= checkInDate) {
+      checkOutDate.setDate(checkOutDate.getDate() + 1)
+    }
+
+    // Tính tổng thời gian (phút)
+    const totalMinutes = (checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60)
+
+    // Trừ thời gian nghỉ
+    const actualWorkMinutes = Math.max(0, totalMinutes - breakMinutes)
+
+    return Math.round(actualWorkMinutes)
+  } catch (error) {
+    console.error('Lỗi khi tính toán thời gian làm việc thực tế:', error)
+    return 0
+  }
+}
+
+/**
  * Cập nhật trạng thái làm việc thủ công
  *
  * Hàm này cập nhật trạng thái làm việc thủ công cho một ngày cụ thể.
@@ -1153,6 +1192,19 @@ export const updateWorkStatusManually = async (
       status,
       isManuallyUpdated: true,
       updatedAt: new Date().toISOString(),
+    }
+
+    // Tính toán thời gian làm việc thực tế từ check-in/check-out
+    if (updatedStatus.vaoLogTime && updatedStatus.raLogTime) {
+      const actualWorkMinutes = calculateActualWorkMinutes(
+        updatedStatus.vaoLogTime,
+        updatedStatus.raLogTime
+      )
+      updatedStatus.actualWorkMinutes = actualWorkMinutes
+      updatedStatus.actualWorkHours = Math.round((actualWorkMinutes / 60) * 10) / 10
+    } else {
+      updatedStatus.actualWorkMinutes = 0
+      updatedStatus.actualWorkHours = 0
     }
 
     // Kiểm tra xem thời gian check-out có trước check-in không
@@ -1202,12 +1254,22 @@ export const updateWorkStatusManually = async (
     }
 
     // Nếu trạng thái là DU_CONG, đảm bảo giờ công được tính dựa trên lịch trình ca
-    if (
-      status === WORK_STATUS.DU_CONG &&
-      !updatedStatus.standardHoursScheduled
-    ) {
-      // Lấy ca làm việc
-      const shift = await storage.getShiftById(updatedStatus.shiftId)
+    if (status === WORK_STATUS.DU_CONG) {
+      // Lấy ca làm việc hiện tại nếu chưa có shiftId
+      let shift = null
+      if (updatedStatus.shiftId) {
+        shift = await storage.getShiftById(updatedStatus.shiftId)
+      }
+
+      // Nếu không có shift hoặc không tìm thấy, lấy ca làm việc hiện tại
+      if (!shift) {
+        const { getCurrentShift } = require('./database')
+        shift = await getCurrentShift()
+        if (shift) {
+          updatedStatus.shiftId = shift.id
+          updatedStatus.shiftName = shift.name
+        }
+      }
 
       if (shift) {
         // Tính toán giờ công dựa trên lịch trình ca
@@ -1221,7 +1283,7 @@ export const updateWorkStatusManually = async (
           userSettings
         )
 
-        // Cập nhật giờ công
+        // Cập nhật giờ công - luôn tính đủ công theo lịch trình ca
         updatedStatus.standardHoursScheduled =
           scheduledTimes.standardHoursScheduled
         updatedStatus.otHoursScheduled = scheduledTimes.otHoursScheduled
@@ -1247,13 +1309,19 @@ export const updateWorkStatusManually = async (
         }
 
         console.log(
-          `[DEBUG] Đã tính toán giờ làm cho ngày ${date} theo lịch trình ca:`,
+          `[DEBUG] Đã tính toán giờ làm đủ công cho ngày ${date} theo lịch trình ca:`,
           scheduledTimes
         )
       } else {
         console.warn(
-          `Không tìm thấy ca làm việc với ID ${updatedStatus.shiftId}`
+          `Không tìm thấy ca làm việc để tính toán giờ công cho trạng thái DU_CONG`
         )
+        // Fallback với giờ công mặc định 8 giờ
+        updatedStatus.standardHoursScheduled = 8.0
+        updatedStatus.totalHoursScheduled = 8.0
+        updatedStatus.otHoursScheduled = 0
+        updatedStatus.sundayHoursScheduled = 0
+        updatedStatus.nightHoursScheduled = 0
       }
     }
 

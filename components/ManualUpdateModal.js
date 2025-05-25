@@ -29,8 +29,8 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
   const [selectedStatus, setSelectedStatus] = useState('')
   const [checkInTime, setCheckInTime] = useState('')
   const [checkOutTime, setCheckOutTime] = useState('')
-  const [showCheckInPicker, setShowCheckInPicker] = useState(false)
-  const [showCheckOutPicker, setShowCheckOutPicker] = useState(false)
+  const [showCheckInPicker, setShowCheckInPicker] = useState(true)
+  const [showCheckOutPicker, setShowCheckOutPicker] = useState(true)
   const [showStatusDropdown, setShowStatusDropdown] = useState(false)
   const [loading, setLoading] = useState(false)
 
@@ -125,14 +125,53 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
 
   // Kiểm tra xem trạng thái có cần thời gian không
   const requiresTimeInput = () => {
+    // Chỉ hiển thị time input khi đã chọn trạng thái và trạng thái đó cần thời gian
+    if (!selectedStatus) return false
+
     const option = statusOptions.find(opt => opt.key === selectedStatus)
     return option?.requiresTime || false
   }
 
+  // Kiểm tra xem có nên hiển thị time input container không
+  const shouldShowTimeInput = () => {
+    return selectedStatus && requiresTimeInput()
+  }
+
   // Track selected status changes for time input requirements
   useEffect(() => {
-    // Status changed, check if time input is required
-  }, [selectedStatus, requiresTimeInput])
+    const handleStatusChange = async () => {
+      // Khi thay đổi trạng thái, reset thời gian nếu không cần thiết
+      if (!requiresTimeInput()) {
+        setCheckInTime('')
+        setCheckOutTime('')
+        setShowCheckInPicker(false)
+        setShowCheckOutPicker(false)
+      } else if (selectedStatus === WORK_STATUS.DU_CONG && selectedDay) {
+        // Nếu chọn "Đủ công", tự động điền thời gian ca làm việc cho ngày được chọn
+        try {
+          const shiftForDay = await getShiftForSelectedDay()
+
+          if (shiftForDay) {
+            console.log('[ManualUpdateModal] Auto-filling shift times for DU_CONG:', shiftForDay)
+            setCheckInTime(shiftForDay.startTime || '08:00')
+            setCheckOutTime(shiftForDay.officeEndTime || shiftForDay.endTime || '17:00')
+          } else {
+            // Fallback nếu không có ca làm việc cho ngày này
+            console.log('[ManualUpdateModal] No shift found for selected day, using default times')
+            setCheckInTime('08:00')
+            setCheckOutTime('17:00')
+          }
+        } catch (error) {
+          console.error('[ManualUpdateModal] Error getting shift for selected day:', error)
+          // Fallback với thời gian mặc định
+          setCheckInTime('08:00')
+          setCheckOutTime('17:00')
+        }
+      }
+    }
+
+    handleStatusChange()
+  }, [selectedStatus, requiresTimeInput, selectedDay])
 
   /**
    * Format ngày hiển thị theo định dạng tiếng Việt
@@ -193,20 +232,59 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
     return date
   }
 
+  // Lấy ca làm việc cho ngày được chọn
+  const getShiftForSelectedDay = async () => {
+    try {
+      if (!selectedDay || !selectedDay.date) return null
+
+      const { getCurrentShift } = require('../utils/database')
+      const currentShift = await getCurrentShift()
+
+      if (!currentShift) return null
+
+      // Kiểm tra xem ca làm việc có áp dụng cho ngày được chọn không
+      const dayOfWeek = selectedDay.date.getDay() // 0: CN, 1: T2, ..., 6: T7
+      const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']
+      const dayCode = dayNames[dayOfWeek]
+
+      // Kiểm tra daysApplied của ca làm việc
+      if (currentShift.daysApplied && currentShift.daysApplied.includes(dayCode)) {
+        return currentShift
+      }
+
+      // Nếu ca hiện tại không áp dụng cho ngày này, trả về null
+      return null
+    } catch (error) {
+      console.error('[ManualUpdateModal] Error getting shift for selected day:', error)
+      return null
+    }
+  }
+
   // Validate form
-  const validateForm = () => {
+  const validateForm = async () => {
     if (!selectedStatus) {
       Alert.alert(t('Lỗi'), t('Vui lòng chọn trạng thái'))
       return false
     }
 
-    if (requiresTimeInput()) {
+    if (shouldShowTimeInput()) {
       if (!checkInTime) {
         Alert.alert(t('Lỗi'), t('Vui lòng nhập thời gian check-in'))
         return false
       }
       if (!checkOutTime) {
         Alert.alert(t('Lỗi'), t('Vui lòng nhập thời gian check-out'))
+        return false
+      }
+
+      // Kiểm tra định dạng thời gian hợp lệ
+      const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/
+      if (!timeRegex.test(checkInTime)) {
+        Alert.alert(t('Lỗi'), t('Định dạng thời gian check-in không hợp lệ'))
+        return false
+      }
+      if (!timeRegex.test(checkOutTime)) {
+        Alert.alert(t('Lỗi'), t('Định dạng thời gian check-out không hợp lệ'))
         return false
       }
 
@@ -217,6 +295,53 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
       if (checkOut <= checkIn) {
         Alert.alert(t('Lỗi'), t('Thời gian check-out phải sau thời gian check-in'))
         return false
+      }
+
+      // Kiểm tra khoảng cách thời gian hợp lý (ít nhất 30 phút)
+      const timeDiffMinutes = (checkOut.getTime() - checkIn.getTime()) / (1000 * 60)
+      if (timeDiffMinutes < 30) {
+        Alert.alert(t('Lỗi'), t('Khoảng cách giữa check-in và check-out phải ít nhất 30 phút'))
+        return false
+      }
+
+      // Kiểm tra thời gian không quá 24 giờ
+      if (timeDiffMinutes > 24 * 60) {
+        Alert.alert(t('Lỗi'), t('Khoảng cách giữa check-in và check-out không được quá 24 giờ'))
+        return false
+      }
+
+      // Kiểm tra thời gian có phù hợp với ca làm việc không
+      const shiftForDay = await getShiftForSelectedDay()
+      if (shiftForDay) {
+        const shiftStartTime = createTimeDate(shiftForDay.startTime)
+        const shiftEndTime = createTimeDate(shiftForDay.endTime || shiftForDay.officeEndTime)
+
+        // Xử lý ca qua đêm
+        if (shiftEndTime <= shiftStartTime) {
+          shiftEndTime.setDate(shiftEndTime.getDate() + 1)
+        }
+
+        // Cho phép linh hoạt 2 giờ trước và sau ca làm việc
+        const flexibleStartTime = new Date(shiftStartTime.getTime() - 2 * 60 * 60 * 1000)
+        const flexibleEndTime = new Date(shiftEndTime.getTime() + 2 * 60 * 60 * 1000)
+
+        // Kiểm tra thời gian check-in quá sớm
+        if (checkIn < flexibleStartTime) {
+          Alert.alert(
+            t('Cảnh báo'),
+            t(`Thời gian check-in (${checkInTime}) quá sớm so với ca làm việc (${shiftForDay.startTime}). Thời gian hợp lệ từ ${shiftForDay.startTime} (có thể sớm hơn 2 giờ).`)
+          )
+          return false
+        }
+
+        // Kiểm tra thời gian check-out quá muộn
+        if (checkOut > flexibleEndTime) {
+          Alert.alert(
+            t('Cảnh báo'),
+            t(`Thời gian check-out (${checkOutTime}) quá muộn so với ca làm việc (${shiftForDay.endTime || shiftForDay.officeEndTime}). Thời gian hợp lệ đến ${shiftForDay.endTime || shiftForDay.officeEndTime} (có thể muộn hơn 2 giờ).`)
+          )
+          return false
+        }
       }
     }
 
@@ -233,7 +358,8 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
       requiresTimeInput: requiresTimeInput()
     })
 
-    if (!validateForm()) return
+    const isValid = await validateForm()
+    if (!isValid) return
 
     setLoading(true)
     try {
@@ -243,8 +369,8 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
       // Chuẩn bị dữ liệu
       const dateKey = selectedDay.date.toISOString().split('T')[0]
       const additionalData = {
-        vaoLogTime: requiresTimeInput() ? checkInTime : null,
-        raLogTime: requiresTimeInput() ? checkOutTime : null,
+        vaoLogTime: shouldShowTimeInput() ? checkInTime : null,
+        raLogTime: shouldShowTimeInput() ? checkOutTime : null,
       }
 
       console.log('[ManualUpdateModal] Updating status:', { dateKey, selectedStatus, additionalData })
@@ -466,7 +592,7 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
                 </View>
 
                 {/* Thời gian check-in/check-out */}
-                {requiresTimeInput() && (
+                {shouldShowTimeInput() && (
                   <View style={styles.timeInputContainer}>
                     <Text style={[
                       styles.statusOptionTitle,
@@ -599,7 +725,7 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
       visible={showCheckInPicker}
       value={createTimeDate(checkInTime)}
       onTimeChange={handleCheckInTimeChange}
-      onClose={() => setShowCheckInPicker(true)}
+      onClose={() => setShowCheckInPicker(false)}
       title={t('Chọn thời gian vào')}
       darkMode={darkMode}
     />
@@ -608,7 +734,7 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
       visible={showCheckOutPicker}
       value={createTimeDate(checkOutTime)}
       onTimeChange={handleCheckOutTimeChange}
-      onClose={() => setShowCheckOutPicker(true)}
+      onClose={() => setShowCheckOutPicker(false)}
       title={t('Chọn thời gian ra')}
       darkMode={darkMode}
     />
