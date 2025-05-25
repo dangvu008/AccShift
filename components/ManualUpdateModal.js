@@ -677,7 +677,8 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
                         <Text style={[
                           styles.timeInputText,
                           darkMode && styles.darkText,
-                          !checkInTime && styles.placeholderText
+                          !checkInTime && styles.placeholderText,
+                          !checkInTime && darkMode && styles.darkPlaceholderText
                         ]}>
                           {checkInTime || t('Chọn thời gian')}
                         </Text>
@@ -711,7 +712,8 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
                         <Text style={[
                           styles.timeInputText,
                           darkMode && styles.darkText,
-                          !checkOutTime && styles.placeholderText
+                          !checkOutTime && styles.placeholderText,
+                          !checkOutTime && darkMode && styles.darkPlaceholderText
                         ]}>
                           {checkOutTime || t('Chọn thời gian')}
                         </Text>
