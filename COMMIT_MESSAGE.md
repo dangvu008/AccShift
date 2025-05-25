@@ -14,6 +14,7 @@
 - ✅ **MỚI**: Thay thế React Native Picker bằng Custom Dropdown
 - ✅ **MỚI**: Full control styling và cross-platform consistency
 - ✅ **HOTFIX**: Sửa lỗi thừa view "Chọn giờ vào" chặn tương tác time picker
+- ✅ **HOTFIX**: Sửa conflict giữa time picker của WeeklyStatusGrid và ManualUpdateModal
 
 ## Thay đổi chính:
 
@@ -66,9 +67,17 @@
 - **HOTFIX**: Tăng z-index cho `pickerOverlay` (9999) và `pickerContainer` (10000)
 - **HOTFIX**: Đảm bảo time picker hiển thị trên cùng, không bị chặn
 
-### 3. Test Infrastructure
+### 3. WeeklyStatusGrid.js (conflict fix)
+- **HOTFIX**: Thêm useEffect để đóng time picker khi ManualUpdateModal mở
+- **HOTFIX**: Đóng time picker trong handleStatusUpdated callback
+- **HOTFIX**: Đóng time picker trong onClose của ManualUpdateModal
+- **HOTFIX**: Debug logging để track modal lifecycle
+- **HOTFIX**: Đảm bảo chỉ 1 time picker hiển thị tại 1 thời điểm
+
+### 4. Test Infrastructure
 - Tạo test-manual-update-modal.js để kiểm tra component
 - Comprehensive checks cho mobile compatibility
+- **HOTFIX**: Tạo test-time-picker-conflict-fix.js để verify conflict resolution
 - Validation cho required props và usage patterns
 - **MỚI**: Tạo test-picker-implementation.js để kiểm tra Picker
 - **MỚI**: Kiểm tra package dependencies (@react-native-picker/picker)

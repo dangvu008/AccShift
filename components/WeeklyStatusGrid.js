@@ -278,6 +278,16 @@ const WeeklyStatusGrid = () => {
     loadDailyStatuses()
   }, [loadDailyStatuses])
 
+  // Đảm bảo đóng time picker của WeeklyStatusGrid khi ManualUpdateModal mở
+  useEffect(() => {
+    if (manualUpdateModalVisible) {
+      console.log('[DEBUG] ManualUpdateModal mở, đóng time picker của WeeklyStatusGrid')
+      setTimePickerVisible(false)
+      setShowCheckInTimePicker(false)
+      setShowCheckOutTimePicker(false)
+    }
+  }, [manualUpdateModalVisible])
+
   // Xử lý khi trạng thái được cập nhật từ ManualUpdateModal
   const handleStatusUpdated = useCallback(
     (updatedStatus) => {
@@ -302,8 +312,9 @@ const WeeklyStatusGrid = () => {
         notifyWorkStatusUpdate(updatedStatus)
       }
 
-      // Đóng modal
+      // Đóng modal và time picker
       setManualUpdateModalVisible(false)
+      setTimePickerVisible(false)
     },
     [refreshData, loadDailyStatuses, notifyWorkStatusUpdate]
   )
@@ -3125,7 +3136,11 @@ const WeeklyStatusGrid = () => {
       {/* Manual Update Modal */}
       <ManualUpdateModal
         visible={manualUpdateModalVisible}
-        onClose={() => setManualUpdateModalVisible(false)}
+        onClose={() => {
+          setManualUpdateModalVisible(false)
+          // Đảm bảo đóng time picker của WeeklyStatusGrid khi đóng modal
+          setTimePickerVisible(false)
+        }}
         selectedDay={selectedDay}
         onStatusUpdated={handleStatusUpdated}
       />
