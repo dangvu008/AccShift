@@ -13,7 +13,7 @@ import {
   Dimensions,
   SafeAreaView,
 } from 'react-native'
-import { Picker } from '@react-native-picker/picker'
+
 import { Ionicons } from '@expo/vector-icons'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import { AppContext } from '../context/AppContext'
@@ -31,6 +31,7 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
   const [checkOutTime, setCheckOutTime] = useState('')
   const [showCheckInPicker, setShowCheckInPicker] = useState(false)
   const [showCheckOutPicker, setShowCheckOutPicker] = useState(false)
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false)
   const [loading, setLoading] = useState(false)
 
   // Debug logs
@@ -368,7 +369,7 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
                 </View>
 
                 {/* Chọn trạng thái */}
-                <View style={styles.statusPickerContainer}>
+                <View style={styles.statusDropdownContainer}>
                   <Text style={[
                     styles.statusOptionTitle,
                     darkMode && styles.darkText
@@ -376,63 +377,106 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
                     {t('Chọn trạng thái')}
                   </Text>
 
-                  <View style={[
-                    styles.pickerWrapper,
-                    darkMode && styles.darkPickerWrapper
-                  ]}>
-                    <Picker
-                      selectedValue={selectedStatus}
-                      onValueChange={(itemValue) => {
-                        console.log('[ManualUpdateModal] Picker value changed:', itemValue)
-                        setSelectedStatus(itemValue)
-                      }}
-                      style={[
-                        styles.statusPicker,
-                        darkMode && styles.darkStatusPicker
-                      ]}
-                      dropdownIconColor={darkMode ? '#fff' : '#666'}
-                    >
-                      <Picker.Item
-                        label={t('-- Chọn trạng thái --')}
-                        value=""
+                  {/* Custom Dropdown */}
+                  <TouchableOpacity
+                    style={[
+                      styles.dropdownButton,
+                      darkMode && styles.darkDropdownButton,
+                      showStatusDropdown && styles.dropdownButtonActive
+                    ]}
+                    onPress={() => {
+                      console.log('[ManualUpdateModal] Dropdown button pressed')
+                      setShowStatusDropdown(!showStatusDropdown)
+                    }}
+                    activeOpacity={0.7}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    <View style={styles.dropdownButtonContent}>
+                      {selectedStatus ? (
+                        <View style={styles.selectedStatusDisplay}>
+                          {(() => {
+                            const selectedOption = statusOptions.find(opt => opt.key === selectedStatus)
+                            return selectedOption ? (
+                              <>
+                                <Ionicons
+                                  name={selectedOption.icon}
+                                  size={20}
+                                  color={selectedOption.color}
+                                  style={styles.dropdownIcon}
+                                />
+                                <Text style={[
+                                  styles.dropdownButtonText,
+                                  darkMode && styles.darkText,
+                                  { color: selectedOption.color }
+                                ]}>
+                                  {selectedOption.label}
+                                </Text>
+                              </>
+                            ) : null
+                          })()}
+                        </View>
+                      ) : (
+                        <Text style={[
+                          styles.dropdownButtonText,
+                          styles.placeholderText,
+                          darkMode && styles.darkPlaceholderText
+                        ]}>
+                          {t('-- Chọn trạng thái --')}
+                        </Text>
+                      )}
+                      <Ionicons
+                        name={showStatusDropdown ? "chevron-up" : "chevron-down"}
+                        size={20}
+                        color={darkMode ? '#fff' : '#666'}
+                        style={styles.dropdownArrow}
                       />
-                      {statusOptions.map((option) => (
-                        <Picker.Item
-                          key={option.key}
-                          label={option.label}
-                          value={option.key}
-                        />
-                      ))}
-                    </Picker>
-                  </View>
+                    </View>
+                  </TouchableOpacity>
 
-                  {/* Hiển thị icon và màu của trạng thái đã chọn */}
-                  {selectedStatus && (
-                    <View style={[
-                      styles.selectedStatusIndicator,
-                      darkMode && styles.darkSelectedStatusIndicator
-                    ]}>
-                      {(() => {
-                        const selectedOption = statusOptions.find(opt => opt.key === selectedStatus)
-                        return selectedOption ? (
-                          <View style={styles.statusIndicatorRow}>
+                  {/* Dropdown List */}
+                  {showStatusDropdown && (
+                    <>
+                      {/* Overlay để đóng dropdown khi click bên ngoài */}
+                      <TouchableOpacity
+                        style={styles.dropdownOverlay}
+                        onPress={() => setShowStatusDropdown(false)}
+                        activeOpacity={1}
+                      />
+                      <View style={[
+                        styles.dropdownList,
+                        darkMode && styles.darkDropdownList
+                      ]}>
+                        {statusOptions.map((option, index) => (
+                          <TouchableOpacity
+                            key={option.key}
+                            style={[
+                              styles.dropdownItem,
+                              darkMode && styles.darkDropdownItem,
+                              index === statusOptions.length - 1 && styles.lastDropdownItem
+                            ]}
+                            onPress={() => {
+                              console.log('[ManualUpdateModal] Status selected:', option.key)
+                              setSelectedStatus(option.key)
+                              setShowStatusDropdown(false)
+                            }}
+                            activeOpacity={0.7}
+                          >
                             <Ionicons
-                              name={selectedOption.icon}
+                              name={option.icon}
                               size={20}
-                              color={selectedOption.color}
-                              style={styles.selectedStatusIcon}
+                              color={option.color}
+                              style={styles.dropdownItemIcon}
                             />
                             <Text style={[
-                              styles.selectedStatusText,
-                              darkMode && styles.darkText,
-                              { color: selectedOption.color }
+                              styles.dropdownItemText,
+                              darkMode && styles.darkText
                             ]}>
-                              {selectedOption.label}
+                              {option.label}
                             </Text>
-                          </View>
-                        ) : null
-                      })()}
-                    </View>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </>
                   )}
                 </View>
 

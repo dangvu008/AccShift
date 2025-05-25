@@ -1,4 +1,4 @@
-# Thay đổi giao diện chọn trạng thái từ TouchableOpacity List sang Picker Component
+# Thay đổi giao diện chọn trạng thái thành Custom Dropdown List
 
 ## Vấn đề đã khắc phục:
 - ✅ Sửa lỗi cấu trúc JSX trong ScrollView component
@@ -9,8 +9,10 @@
 - ✅ Thêm debug logs để theo dõi component lifecycle
 - ✅ Loại bỏ thừa view trong Time Picker
 - ✅ Thêm nút đóng (X) ở góc phải Time Picker
-- ✅ **MỚI**: Thay thế TouchableOpacity list bằng Picker component
-- ✅ **MỚI**: Giao diện gọn gàng hơn, tiết kiệm không gian màn hình
+- ✅ Thay thế TouchableOpacity list bằng Picker component
+- ✅ Giao diện gọn gàng hơn, tiết kiệm không gian màn hình
+- ✅ **MỚI**: Thay thế React Native Picker bằng Custom Dropdown
+- ✅ **MỚI**: Full control styling và cross-platform consistency
 
 ## Thay đổi chính:
 
@@ -22,11 +24,18 @@
 - Redesign Time Picker với layout gọn gàng hơn
 - Thay thế 3 buttons (Hủy-Title-Xong) bằng Title + nút X
 - Thêm nút đóng với icon X ở góc phải
-- **MỚI**: Import Picker từ @react-native-picker/picker
-- **MỚI**: Thay thế statusOptions.map() TouchableOpacity list
-- **MỚI**: Implement Picker component với dropdown interface
-- **MỚI**: Thêm selectedStatusIndicator với icon và màu sắc
-- **MỚI**: Dark mode support cho Picker component
+- Import Picker từ @react-native-picker/picker (sau đó removed)
+- Thay thế statusOptions.map() TouchableOpacity list
+- Implement Picker component với dropdown interface
+- Thêm selectedStatusIndicator với icon và màu sắc
+- Dark mode support cho Picker component
+- **MỚI**: Xóa React Native Picker import
+- **MỚI**: Thêm showStatusDropdown state
+- **MỚI**: Implement Custom TouchableOpacity Dropdown
+- **MỚI**: Dropdown button với icon, text và chevron arrow
+- **MỚI**: Dropdown list với absolute positioning
+- **MỚI**: Outside click overlay để đóng dropdown
+- **MỚI**: Full custom styling control
 
 ### 2. manualUpdateModal.js (styles)
 - Tăng minHeight cho modalContainer (height * 0.5)
@@ -37,12 +46,19 @@
 - Thêm `pickerCloseButton` style cho nút X
 - Cải thiện `pickerHeader` layout (center title)
 - Thêm dark mode support cho picker components
-- **MỚI**: Thêm `statusPickerContainer` style
-- **MỚI**: Thêm `pickerWrapper` với borders và shadows
-- **MỚI**: Thêm `statusPicker` với height 56px
-- **MỚI**: Thêm `selectedStatusIndicator` styles
-- **MỚI**: Thêm `statusIndicatorRow` layout
-- **MỚI**: Xóa các styles cũ không sử dụng (statusOption, etc.)
+- Thêm `statusPickerContainer` style (sau đó replaced)
+- Thêm `pickerWrapper` với borders và shadows (sau đó replaced)
+- Thêm `statusPicker` với height 56px (sau đó replaced)
+- Thêm `selectedStatusIndicator` styles (sau đó replaced)
+- Thêm `statusIndicatorRow` layout (sau đó replaced)
+- Xóa các styles cũ không sử dụng (statusOption, etc.)
+- **MỚI**: Thêm `statusDropdownContainer` với z-index
+- **MỚI**: Thêm `dropdownButton` với active states
+- **MỚI**: Thêm `dropdownButtonContent` layout
+- **MỚI**: Thêm `dropdownList` với absolute positioning
+- **MỚI**: Thêm `dropdownOverlay` cho outside clicks
+- **MỚI**: Thêm `dropdownItem` với touch-friendly sizing
+- **MỚI**: Full dark mode support cho tất cả dropdown elements
 
 ### 3. Test Infrastructure
 - Tạo test-manual-update-modal.js để kiểm tra component

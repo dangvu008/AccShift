@@ -95,56 +95,108 @@ const styles = StyleSheet.create({
   statusOptionsContainer: {
     marginBottom: 16,
   },
-  statusPickerContainer: {
+  statusDropdownContainer: {
     marginBottom: 16,
+    position: 'relative',
+    zIndex: 1000,
   },
-  pickerWrapper: {
+  dropdownButton: {
     backgroundColor: COLORS.BACKGROUND_LIGHT,
     borderRadius: 12,
     borderWidth: 2,
     borderColor: COLORS.BORDER_LIGHT,
     marginTop: 8,
-    overflow: 'hidden',
+    minHeight: 56,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
-  darkPickerWrapper: {
+  darkDropdownButton: {
     backgroundColor: COLORS.BACKGROUND_DARK,
     borderColor: COLORS.BORDER_DARK,
   },
-  statusPicker: {
-    height: 56,
-    color: COLORS.TEXT_LIGHT,
+  dropdownButtonActive: {
+    borderColor: COLORS.PRIMARY,
+    borderWidth: 2,
   },
-  darkStatusPicker: {
-    color: COLORS.TEXT_DARK,
-  },
-  selectedStatusIndicator: {
-    marginTop: 12,
-    padding: 12,
-    backgroundColor: COLORS.BACKGROUND_LIGHT,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: COLORS.BORDER_LIGHT,
-  },
-  darkSelectedStatusIndicator: {
-    backgroundColor: COLORS.BACKGROUND_DARK,
-    borderColor: COLORS.BORDER_DARK,
-  },
-  statusIndicatorRow: {
+  dropdownButtonContent: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 32,
   },
-  selectedStatusIcon: {
+  selectedStatusDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  dropdownIcon: {
     marginRight: 8,
   },
-  selectedStatusText: {
+  dropdownButtonText: {
     fontSize: 16,
-    fontWeight: '600',
     color: COLORS.TEXT_LIGHT,
+    flex: 1,
+  },
+  dropdownArrow: {
+    marginLeft: 8,
+  },
+  dropdownOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: -1000,
+    right: -1000,
+    bottom: -1000,
+    zIndex: 999,
+  },
+  dropdownList: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    backgroundColor: COLORS.BACKGROUND_LIGHT,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: COLORS.BORDER_LIGHT,
+    marginTop: 4,
+    maxHeight: 240,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
+    zIndex: 1001,
+  },
+  darkDropdownList: {
+    backgroundColor: COLORS.BACKGROUND_DARK,
+    borderColor: COLORS.BORDER_DARK,
+  },
+  dropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.BORDER_LIGHT,
+    minHeight: 50,
+  },
+  darkDropdownItem: {
+    borderBottomColor: COLORS.BORDER_DARK,
+  },
+  lastDropdownItem: {
+    borderBottomWidth: 0,
+  },
+  dropdownItemIcon: {
+    marginRight: 12,
+  },
+  dropdownItemText: {
+    fontSize: 16,
+    color: COLORS.TEXT_LIGHT,
+    flex: 1,
   },
   statusOptionTitle: {
     fontSize: 16,
