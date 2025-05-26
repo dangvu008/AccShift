@@ -7,6 +7,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { AppContext } from '../context/AppContext';
 import weatherService from '../services/weatherService';
@@ -172,9 +173,24 @@ const WeatherDebugScreen = ({ navigation }) => {
   };
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: theme.backgroundColor, padding: 16 }}
+    <LinearGradient
+      colors={theme.gradientBackground}
+      style={{ flex: 1 }}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
     >
+      <ScrollView
+        style={{ flex: 1, padding: 16 }}
+        showsVerticalScrollIndicator={true}
+        showsHorizontalScrollIndicator={false}
+        bounces={true}
+        alwaysBounceVertical={false}
+        keyboardShouldPersistTaps="handled"
+        nestedScrollEnabled={true}
+        scrollEventThrottle={16}
+        decelerationRate="normal"
+        indicatorStyle={darkMode ? 'white' : 'black'}
+      >
       <View style={{ marginBottom: 20 }}>
         <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme.textColor, marginBottom: 16 }}>
           🔍 Weather Debug
@@ -295,8 +311,12 @@ const WeatherDebugScreen = ({ navigation }) => {
             ))}
           </View>
         )}
+
+        {/* Spacer để đảm bảo có đủ không gian cuộn */}
+        <View style={{ height: 30 }} />
       </View>
-    </ScrollView>
+      </ScrollView>
+    </LinearGradient>
   );
 };
 

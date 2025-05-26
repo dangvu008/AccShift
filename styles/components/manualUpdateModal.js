@@ -61,11 +61,13 @@ const styles = StyleSheet.create({
   modalContent: {
     flex: 1,
     minHeight: 200,
+    maxHeight: height * 0.6, // Giới hạn chiều cao để đảm bảo có thể cuộn
   },
   scrollContent: {
     padding: 20,
-    paddingBottom: 20,
+    paddingBottom: 30, // Tăng padding bottom để tránh bị che bởi buttons
     flexGrow: 1,
+    minHeight: 300, // Đảm bảo có đủ không gian cho nội dung
   },
   title: {
     fontSize: 18,
@@ -128,7 +130,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   statusDropdownContainer: {
-    marginBottom: 16,
+    marginBottom: 24, // Tăng spacing giữa các sections
     position: 'relative',
     zIndex: 1000,
   },
@@ -274,7 +276,7 @@ const styles = StyleSheet.create({
     borderWidth: 1, // Thêm viền để tăng độ tương phản trong chế độ tối
   },
   timeInputContainer: {
-    marginBottom: 16,
+    marginBottom: 24, // Tăng spacing giữa các sections
   },
   timeInputRow: {
     flexDirection: 'row',

@@ -500,9 +500,15 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
               <ScrollView
                 style={styles.modalContent}
                 contentContainerStyle={styles.scrollContent}
-                showsVerticalScrollIndicator={false}
-                bounces={false}
+                showsVerticalScrollIndicator={true}
+                showsHorizontalScrollIndicator={false}
+                bounces={true}
+                alwaysBounceVertical={false}
                 keyboardShouldPersistTaps="handled"
+                nestedScrollEnabled={true}
+                scrollEventThrottle={16}
+                decelerationRate="normal"
+                indicatorStyle={darkMode ? 'white' : 'black'}
               >
                 {/* Thông tin ngày */}
                 <View style={[
@@ -726,6 +732,9 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
                     </View>
                   </View>
                 )}
+
+                {/* Spacer để đảm bảo có đủ không gian cuộn */}
+                <View style={{ height: 20 }} />
               </ScrollView>
 
               {/* Buttons - Fixed at bottom */}

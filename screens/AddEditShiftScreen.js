@@ -1118,7 +1118,18 @@ const AddEditShiftScreen = ({ route, navigation }) => {
         </View>
       )}
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={true}
+        showsHorizontalScrollIndicator={false}
+        bounces={true}
+        alwaysBounceVertical={false}
+        keyboardShouldPersistTaps="handled"
+        nestedScrollEnabled={true}
+        scrollEventThrottle={16}
+        decelerationRate="normal"
+        indicatorStyle={darkMode ? 'white' : 'black'}
+      >
         <View
           style={[styles.formContainer, darkMode && styles.darkFormContainer]}
         >
@@ -1777,6 +1788,9 @@ const AddEditShiftScreen = ({ route, navigation }) => {
               )}
             </View>
           )}
+
+          {/* Spacer để đảm bảo có đủ không gian cuộn */}
+          <View style={{ height: 30 }} />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -1794,6 +1808,8 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     padding: 16,
+    paddingBottom: 30, // Thêm padding bottom để tránh bị che bởi keyboard
+    minHeight: 600, // Đảm bảo có đủ không gian cho nội dung
   },
   formContainer: {
     backgroundColor: COLORS.CARD_LIGHT,
