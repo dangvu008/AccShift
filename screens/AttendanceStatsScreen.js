@@ -10,13 +10,14 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native'
+import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import { AppContext } from '../context/AppContext'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { WORK_STATUS } from '../config/appConfig'
 
 const AttendanceStatsScreen = ({ navigation }) => {
-  const { t, darkMode } = useContext(AppContext)
+  const { t, darkMode, theme } = useContext(AppContext)
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
   const [timeRange, setTimeRange] = useState('month') // 'week', 'month', 'year'
@@ -642,9 +643,15 @@ const AttendanceStatsScreen = ({ navigation }) => {
   }
 
   return (
-    <ScrollView style={[styles.container, darkMode && styles.darkContainer]}>
-      {/* Time Range Selector */}
-      <View style={styles.timeRangeSelector}>
+    <LinearGradient
+      colors={theme.gradientBackground}
+      style={{ flex: 1 }}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+    >
+      <ScrollView style={styles.container}>
+        {/* Time Range Selector */}
+        <View style={styles.timeRangeSelector}>
         <TouchableOpacity
           style={[
             styles.timeRangeButton,
@@ -832,18 +839,15 @@ const AttendanceStatsScreen = ({ navigation }) => {
           </View>
         </>
       )}
-    </ScrollView>
+      </ScrollView>
+    </LinearGradient>
   )
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
     padding: 16,
-  },
-  darkContainer: {
-    backgroundColor: '#121212',
   },
   darkText: {
     color: '#fff',

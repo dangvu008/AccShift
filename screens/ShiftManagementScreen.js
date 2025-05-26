@@ -13,13 +13,14 @@ import {
   Alert,
   ScrollView,
 } from 'react-native'
+import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import { AppContext } from '../context/AppContext'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { STORAGE_KEYS } from '../config/appConfig'
 
 const ShiftManagementScreen = ({ navigation }) => {
-  const { t, darkMode, setCurrentShift, currentShift } = useContext(AppContext)
+  const { t, darkMode, setCurrentShift, currentShift, theme } = useContext(AppContext)
   const [shifts, setShifts] = useState([])
   const [modalVisible, setModalVisible] = useState(false)
   const [editingShift, setEditingShift] = useState(null)
@@ -297,9 +298,15 @@ const ShiftManagementScreen = ({ navigation }) => {
   )
 
   return (
-    <View style={[styles.container, darkMode && styles.darkContainer]}>
-      {/* Header */}
-      <View style={styles.header}>
+    <LinearGradient
+      colors={theme.gradientBackground}
+      style={{ flex: 1 }}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+    >
+      <View style={styles.container}>
+        {/* Header */}
+        <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
@@ -307,7 +314,7 @@ const ShiftManagementScreen = ({ navigation }) => {
           <Ionicons
             name="arrow-back"
             size={24}
-            color={darkMode ? '#fff' : '#000'}
+            color={theme.textColor}
           />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, darkMode && styles.darkText]}>
@@ -317,7 +324,7 @@ const ShiftManagementScreen = ({ navigation }) => {
           <Ionicons
             name="add-circle"
             size={24}
-            color={darkMode ? '#8a56ff' : '#8a56ff'}
+            color={theme.primaryColor}
           />
         </TouchableOpacity>
       </View>
@@ -455,18 +462,15 @@ const ShiftManagementScreen = ({ navigation }) => {
           </View>
         </View>
       </Modal>
-    </View>
+      </View>
+    </LinearGradient>
   )
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
     padding: 16,
-  },
-  darkContainer: {
-    backgroundColor: '#121212',
   },
   header: {
     flexDirection: 'row',

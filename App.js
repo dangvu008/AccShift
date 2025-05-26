@@ -64,22 +64,22 @@ function HomeStack() {
     <Stack.Navigator
       screenOptions={{
         headerStyle: {
-          backgroundColor: theme.cardElevatedColor,
-          elevation: 4, // Thêm shadow cho Android
-          shadowColor: theme.shadowMedium, // Shadow cho iOS
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 4,
-          borderBottomWidth: 1,
-          borderBottomColor: theme.borderColor,
+          backgroundColor: theme.primaryColor, // Sử dụng primary color
+          elevation: 8, // Tăng shadow
+          shadowColor: theme.shadowMedium,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.3,
+          shadowRadius: 8,
+          borderBottomWidth: 0, // Loại bỏ border
         },
-        headerTintColor: theme.textColor,
+        headerTintColor: '#FFFFFF', // Text màu trắng
         headerTitleStyle: {
           fontWeight: theme.fontWeights.BOLD,
           fontSize: theme.fontSizes.HEADER_4,
           letterSpacing: 0.3,
+          color: '#FFFFFF',
         },
-        headerBackTitleVisible: false, // Ẩn back title trên iOS
+        headerBackTitleVisible: false,
       }}
     >
       <Stack.Screen
@@ -145,20 +145,20 @@ function ShiftsStack() {
     <Stack.Navigator
       screenOptions={{
         headerStyle: {
-          backgroundColor: theme.cardElevatedColor,
-          elevation: 4,
+          backgroundColor: theme.primaryColor,
+          elevation: 8,
           shadowColor: theme.shadowMedium,
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 4,
-          borderBottomWidth: 1,
-          borderBottomColor: theme.borderColor,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.3,
+          shadowRadius: 8,
+          borderBottomWidth: 0,
         },
-        headerTintColor: theme.textColor,
+        headerTintColor: '#FFFFFF',
         headerTitleStyle: {
           fontWeight: theme.fontWeights.BOLD,
           fontSize: theme.fontSizes.HEADER_4,
           letterSpacing: 0.3,
+          color: '#FFFFFF',
         },
         headerBackTitleVisible: false,
       }}
@@ -190,20 +190,20 @@ function StatisticsStack() {
     <Stack.Navigator
       screenOptions={{
         headerStyle: {
-          backgroundColor: theme.cardElevatedColor,
-          elevation: 4,
+          backgroundColor: theme.primaryColor,
+          elevation: 8,
           shadowColor: theme.shadowMedium,
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 4,
-          borderBottomWidth: 1,
-          borderBottomColor: theme.borderColor,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.3,
+          shadowRadius: 8,
+          borderBottomWidth: 0,
         },
-        headerTintColor: theme.textColor,
+        headerTintColor: '#FFFFFF',
         headerTitleStyle: {
           fontWeight: theme.fontWeights.BOLD,
           fontSize: theme.fontSizes.HEADER_4,
           letterSpacing: 0.3,
+          color: '#FFFFFF',
         },
         headerBackTitleVisible: false,
       }}
@@ -254,20 +254,20 @@ function SettingsStack() {
     <Stack.Navigator
       screenOptions={{
         headerStyle: {
-          backgroundColor: theme.cardElevatedColor,
-          elevation: 4,
+          backgroundColor: theme.primaryColor,
+          elevation: 8,
           shadowColor: theme.shadowMedium,
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 4,
-          borderBottomWidth: 1,
-          borderBottomColor: theme.borderColor,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.3,
+          shadowRadius: 8,
+          borderBottomWidth: 0,
         },
-        headerTintColor: theme.textColor,
+        headerTintColor: '#FFFFFF',
         headerTitleStyle: {
           fontWeight: theme.fontWeights.BOLD,
           fontSize: theme.fontSizes.HEADER_4,
           letterSpacing: 0.3,
+          color: '#FFFFFF',
         },
         headerBackTitleVisible: false,
       }}
@@ -430,26 +430,25 @@ function AppContent(props) {
     <>
       <Tab.Navigator
         screenOptions={{
-          tabBarActiveTintColor: theme.tabBarActiveColor,
-          tabBarInactiveTintColor: theme.tabBarInactiveColor,
+          tabBarActiveTintColor: '#FFFFFF', // Màu trắng cho active
+          tabBarInactiveTintColor: 'rgba(255, 255, 255, 0.6)', // Màu trắng mờ cho inactive
           tabBarStyle: {
-            backgroundColor: theme.tabBarBackgroundColor,
-            borderTopColor: theme.tabBarBorderColor,
-            borderTopWidth: 1,
-            // Enhanced tab bar styling
-            height: 65, // Tăng chiều cao
-            paddingBottom: 8, // Thêm padding bottom
-            paddingTop: 8, // Thêm padding top
-            elevation: 8, // Thêm shadow cho Android
-            shadowColor: theme.shadowMedium, // Shadow cho iOS
-            shadowOffset: { width: 0, height: -2 },
-            shadowOpacity: 0.1,
-            shadowRadius: 4,
+            backgroundColor: theme.primaryColor, // Sử dụng primary color
+            borderTopWidth: 0, // Loại bỏ border
+            // Enhanced tab bar styling với Analytics App theme
+            height: 70, // Tăng chiều cao hơn
+            paddingBottom: 10,
+            paddingTop: 10,
+            elevation: 12, // Tăng shadow
+            shadowColor: theme.shadowMedium,
+            shadowOffset: { width: 0, height: -4 },
+            shadowOpacity: 0.3,
+            shadowRadius: 8,
           },
           tabBarLabelStyle: {
-            fontSize: theme.fontSizes.CAPTION, // Sử dụng typography system
-            fontWeight: theme.fontWeights.MEDIUM,
-            marginTop: 2,
+            fontSize: theme.fontSizes.CAPTION,
+            fontWeight: theme.fontWeights.BOLD, // Đậm hơn
+            marginTop: 4,
           },
           tabBarIconStyle: {
             marginBottom: 2,

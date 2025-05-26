@@ -11,6 +11,7 @@ import {
   Modal,
   Alert,
 } from 'react-native'
+import { LinearGradient } from 'expo-linear-gradient'
 import { MaterialIcons } from '@expo/vector-icons'
 import { AppContext } from '../context/AppContext'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -108,14 +109,20 @@ const SettingsScreen = ({ navigation }) => {
   }
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.backgroundColor }]}>
-      {/* 1. General Settings */}
-      <View style={styles.section}>
+    <LinearGradient
+      colors={theme.gradientBackground}
+      style={{ flex: 1 }}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+    >
+      <ScrollView style={styles.container}>
+        {/* 1. General Settings */}
+        <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <MaterialIcons
             name="settings"
             size={24}
-            color={theme.textColor}
+            color={theme.primaryColor}
           />
           <Text style={[styles.sectionTitle, { color: theme.textColor }]}>
             {t('General Settings')}
@@ -146,7 +153,7 @@ const SettingsScreen = ({ navigation }) => {
             <MaterialIcons
               name="language"
               size={24}
-              color={darkMode ? '#fff' : '#000'}
+              color={theme.primaryColor}
             />
           </View>
           <View style={styles.menuTextContainer}>
@@ -168,9 +175,9 @@ const SettingsScreen = ({ navigation }) => {
           <MaterialIcons
             name="work"
             size={24}
-            color={darkMode ? '#fff' : '#000'}
+            color={theme.primaryColor}
           />
-          <Text style={[styles.sectionTitle, darkMode && styles.darkText]}>
+          <Text style={[styles.sectionTitle, { color: theme.textColor }]}>
             {t('Work Settings')}
           </Text>
         </View>
@@ -206,9 +213,9 @@ const SettingsScreen = ({ navigation }) => {
           <MaterialIcons
             name="notifications"
             size={24}
-            color={darkMode ? '#fff' : '#000'}
+            color={theme.primaryColor}
           />
-          <Text style={[styles.sectionTitle, darkMode && styles.darkText]}>
+          <Text style={[styles.sectionTitle, { color: theme.textColor }]}>
             {t('Notification Settings')}
           </Text>
         </View>
@@ -248,9 +255,9 @@ const SettingsScreen = ({ navigation }) => {
           <MaterialIcons
             name="cloud"
             size={24}
-            color={darkMode ? '#fff' : '#000'}
+            color={theme.primaryColor}
           />
-          <Text style={[styles.sectionTitle, darkMode && styles.darkText]}>
+          <Text style={[styles.sectionTitle, { color: theme.textColor }]}>
             {t('Weather Settings')}
           </Text>
         </View>
@@ -276,9 +283,9 @@ const SettingsScreen = ({ navigation }) => {
           <MaterialIcons
             name="bug-report"
             size={24}
-            color={darkMode ? '#fff' : '#000'}
+            color={theme.primaryColor}
           />
-          <Text style={[styles.sectionTitle, darkMode && styles.darkText]}>
+          <Text style={[styles.sectionTitle, { color: theme.textColor }]}>
             {t('Debug Settings')}
           </Text>
         </View>
@@ -291,7 +298,7 @@ const SettingsScreen = ({ navigation }) => {
             <MaterialIcons
               name="cloud"
               size={24}
-              color={darkMode ? '#fff' : '#000'}
+              color={theme.primaryColor}
             />
           </View>
           <View style={styles.menuTextContainer}>
@@ -314,7 +321,7 @@ const SettingsScreen = ({ navigation }) => {
             <MaterialIcons
               name="refresh"
               size={24}
-              color={darkMode ? '#fff' : '#000'}
+              color={theme.primaryColor}
             />
           </View>
           <View style={styles.menuTextContainer}>
@@ -368,7 +375,7 @@ const SettingsScreen = ({ navigation }) => {
                   {lang.name}
                 </Text>
                 {language === lang.id && (
-                  <MaterialIcons name="check" size={24} color="#8a56ff" />
+                  <MaterialIcons name="check" size={24} color={theme.primaryColor} />
                 )}
               </TouchableOpacity>
             ))}
@@ -382,14 +389,14 @@ const SettingsScreen = ({ navigation }) => {
           </View>
         </View>
       </Modal>
-    </ScrollView>
+      </ScrollView>
+    </LinearGradient>
   )
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
     padding: 16,
   },
 

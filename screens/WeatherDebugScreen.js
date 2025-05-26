@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
 import {
   View,
   Text,
@@ -27,11 +27,7 @@ const WeatherDebugScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [testResults, setTestResults] = useState([]);
 
-  useEffect(() => {
-    loadDebugInfo();
-  }, [loadDebugInfo]);
-
-  const loadDebugInfo = async () => {
+  const loadDebugInfo = useCallback(async () => {
     setLoading(true);
     const info = {
       homeLocation: homeLocation || null,
@@ -59,7 +55,11 @@ const WeatherDebugScreen = ({ navigation }) => {
 
     setDebugInfo(info);
     setLoading(false);
-  };
+  }, [homeLocation, workLocation, locationPermissionGranted]);
+
+  useEffect(() => {
+    loadDebugInfo();
+  }, [loadDebugInfo]);
 
   const testWeatherAPI = async () => {
     setLoading(true);

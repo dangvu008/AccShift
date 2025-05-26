@@ -575,6 +575,7 @@ const WeatherWidget = ({ onPress }) => {
       setRefreshing,
       loading,
       refreshing,
+      generateSmartAlert,
     ]
   )
 

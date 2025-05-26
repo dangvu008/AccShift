@@ -3429,13 +3429,13 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   dropdownItemTextSelected: {
-    color: '#8a56ff',
+    color: '#6B46C1', // Sử dụng primary color
     fontWeight: 'bold',
   },
 
   // Styles cho nút Lưu (biểu tượng)
   saveIconButton: {
-    backgroundColor: '#8a56ff',
+    backgroundColor: '#6B46C1', // Sử dụng primary color
     borderRadius: 50,
     width: 50,
     height: 50,
@@ -3486,7 +3486,7 @@ const styles = StyleSheet.create({
     borderColor: '#ddd',
   },
   confirmSaveButton: {
-    backgroundColor: '#8a56ff',
+    backgroundColor: '#6B46C1', // Sử dụng primary color
   },
   confirmButtonText: {
     fontSize: 16,
@@ -3517,7 +3517,7 @@ const styles = StyleSheet.create({
   },
   pickerButtonText: {
     fontSize: 16,
-    color: '#8a56ff',
+    color: '#6B46C1', // Sử dụng primary color
   },
   doneButton: {
     fontWeight: 'bold',

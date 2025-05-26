@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native'
+import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import { AppContext } from '../context/AppContext'
 import { getNotes } from '../utils/database'
@@ -17,7 +18,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { STORAGE_KEYS } from '../utils/constants'
 
 const NotesScreen = ({ navigation, route }) => {
-  const { t, darkMode } = useContext(AppContext)
+  const { t, darkMode, theme } = useContext(AppContext)
   const [notes, setNotes] = useState([])
   const [filteredNotes, setFilteredNotes] = useState([])
   const [isLoading, setIsLoading] = useState(true)
@@ -305,8 +306,14 @@ const NotesScreen = ({ navigation, route }) => {
   )
 
   return (
-    <View style={[styles.container, darkMode && styles.darkContainer]}>
-      <View style={styles.header}>
+    <LinearGradient
+      colors={theme.gradientBackground}
+      style={{ flex: 1 }}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+    >
+      <View style={styles.container}>
+        <View style={styles.header}>
         <Text style={[styles.title, darkMode && styles.darkText]}>
           {t('Ghi chú công việc')}
         </Text>
@@ -318,7 +325,7 @@ const NotesScreen = ({ navigation, route }) => {
             <Ionicons
               name="funnel-outline"
               size={22}
-              color={darkMode ? '#fff' : '#333'}
+              color={theme.textColor}
             />
           </TouchableOpacity>
           <TouchableOpacity
@@ -328,7 +335,7 @@ const NotesScreen = ({ navigation, route }) => {
             <Ionicons
               name="bug-outline"
               size={22}
-              color={darkMode ? '#fff' : '#333'}
+              color={theme.textColor}
             />
           </TouchableOpacity>
         </View>
@@ -354,10 +361,8 @@ const NotesScreen = ({ navigation, route }) => {
               size={18}
               color={
                 sortOption === 'updatedAt'
-                  ? '#8a56ff'
-                  : darkMode
-                  ? '#aaa'
-                  : '#666'
+                  ? theme.primaryColor
+                  : theme.subtextColor
               }
             />
             <Text
@@ -383,10 +388,8 @@ const NotesScreen = ({ navigation, route }) => {
               size={18}
               color={
                 sortOption === 'priority'
-                  ? '#8a56ff'
-                  : darkMode
-                  ? '#aaa'
-                  : '#666'
+                  ? theme.primaryColor
+                  : theme.subtextColor
               }
             />
             <Text
@@ -411,7 +414,7 @@ const NotesScreen = ({ navigation, route }) => {
               name="text-outline"
               size={18}
               color={
-                sortOption === 'abc' ? '#8a56ff' : darkMode ? '#aaa' : '#666'
+                sortOption === 'abc' ? theme.primaryColor : theme.subtextColor
               }
             />
             <Text
@@ -498,17 +501,14 @@ const NotesScreen = ({ navigation, route }) => {
       <TouchableOpacity style={styles.addButton} onPress={handleAddNote}>
         <Ionicons name="add" size={30} color="#fff" />
       </TouchableOpacity>
-    </View>
+      </View>
+    </LinearGradient>
   )
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  darkContainer: {
-    backgroundColor: '#121212',
   },
   header: {
     paddingHorizontal: 16,

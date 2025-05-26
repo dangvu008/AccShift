@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useContext, useEffect } from 'react'
+import React, { useState, useContext, useEffect, useCallback } from 'react'
 import {
   View,
   Text,
@@ -159,21 +159,21 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
   }, [visible, selectedDay])
 
   // Kiểm tra xem trạng thái có cần thời gian không
-  const requiresTimeInput = () => {
+  const requiresTimeInput = useCallback(() => {
     // Chỉ hiển thị time input khi đã chọn trạng thái và trạng thái đó cần thời gian
     if (!selectedStatus) return false
 
     const option = statusOptions.find(opt => opt.key === selectedStatus)
     return option?.requiresTime || false
-  }
+  }, [selectedStatus, statusOptions])
 
   // Kiểm tra xem có nên hiển thị time input container không
-  const shouldShowTimeInput = () => {
+  const shouldShowTimeInput = useCallback(() => {
     return selectedStatus && requiresTimeInput()
-  }
+  }, [selectedStatus, requiresTimeInput])
 
   // Lấy ca làm việc cho ngày được chọn
-  const getShiftForSelectedDay = async () => {
+  const getShiftForSelectedDay = useCallback(async () => {
     try {
       if (!selectedDay || !selectedDay.date) return null
 
@@ -198,7 +198,7 @@ const ManualUpdateModal = ({ visible, onClose, selectedDay, onStatusUpdated }) =
       console.error('[ManualUpdateModal] Error getting shift for selected day:', error)
       return null
     }
-  }
+  }, [selectedDay])
 
   // Track selected status changes for time input requirements
   useEffect(() => {
