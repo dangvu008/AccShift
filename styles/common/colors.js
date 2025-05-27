@@ -23,21 +23,21 @@ export const COLORS = {
   ACCENT_LIGHT: '#FCD34D', // Amber-300 - Sáng hơn
   ACCENT_DARK: '#D97706', // Amber-600 - Đậm hơn
 
-  // Màu nền - Analytics App Style với Purple Theme
+  // Màu nền - Unified Background System
   BACKGROUND_LIGHT: '#F8FAFC', // Slate-50 - Sáng và clean
-  BACKGROUND_DARK: '#1E1B4B', // Indigo-900 - Purple dark background như ảnh
+  BACKGROUND_DARK: '#0F0F23', // Darker purple - Đậm hơn để tránh conflict
   BACKGROUND_SECONDARY_LIGHT: '#F1F5F9', // Slate-100
-  BACKGROUND_SECONDARY_DARK: '#312E81', // Indigo-800 - Secondary purple background
+  BACKGROUND_SECONDARY_DARK: '#1A1A2E', // Darker secondary - Đồng bộ hơn
 
-  // Màu nền thẻ - Analytics App Card Style
+  // Màu nền thẻ - Unified Card System
   CARD_LIGHT: '#FFFFFF', // Trắng tinh khiết
-  CARD_DARK: 'rgba(139, 92, 246, 0.15)', // Purple với opacity như trong ảnh
+  CARD_DARK: '#16213E', // Solid dark card - Không dùng opacity để tránh chồng màu
   CARD_ELEVATED_LIGHT: '#FFFFFF',
-  CARD_ELEVATED_DARK: 'rgba(124, 58, 237, 0.2)', // Purple elevated với opacity cao hơn
+  CARD_ELEVATED_DARK: '#1E3A8A', // Solid elevated dark - Đồng bộ với theme
 
-  // Màu nền thẻ thứ cấp - Gradient cards
+  // Màu nền thẻ thứ cấp - Consistent Secondary Cards
   SECONDARY_CARD_LIGHT: '#F8FAFC', // Slate-50
-  SECONDARY_CARD_DARK: 'rgba(107, 70, 193, 0.25)', // Primary purple với opacity
+  SECONDARY_CARD_DARK: '#0F172A', // Solid secondary dark - Không dùng opacity
 
   // Màu văn bản - Font đậm và rõ ràng
   TEXT_LIGHT: '#0f172a', // Slate-900 - Đậm tối đa cho readability
@@ -90,10 +90,10 @@ export const COLORS = {
   GRADIENT_ACCENT: ['#F59E0B', '#FCD34D'], // Amber gradient
   GRADIENT_SUCCESS: ['#10B981', '#34D399'], // Emerald gradient
   GRADIENT_CARD_LIGHT: ['#FFFFFF', '#F8FAFC'], // Light card gradient
-  GRADIENT_CARD_DARK: ['rgba(107, 70, 193, 0.3)', 'rgba(139, 92, 246, 0.1)'], // Purple card gradient
+  GRADIENT_CARD_DARK: ['#16213E', '#1E3A8A'], // Solid dark card gradient - Không dùng opacity
 
-  // Gradient cho background chính (như trong ảnh Analytics)
-  GRADIENT_BACKGROUND_DARK: ['#1E1B4B', '#312E81'], // Purple background gradient
+  // Gradient cho background chính - Unified System
+  GRADIENT_BACKGROUND_DARK: ['#0F0F23', '#1A1A2E'], // Unified dark background gradient
   GRADIENT_BACKGROUND_LIGHT: ['#F8FAFC', '#F1F5F9'], // Light background gradient
 
   // Gradient cho các card đặc biệt

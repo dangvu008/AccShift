@@ -125,17 +125,17 @@ class TimeManager {
 
   /**
    * Tính toán thời điểm reset button về "Đi Làm"
-   * Reset 1 giờ trước departureTime của ngày làm việc tiếp theo
+   * Reset 2 giờ trước departureTime của ngày làm việc tiếp theo
    */
   getButtonResetTime(shift = null) {
     const departureTime = this.getDepartureTime(shift)
     if (!departureTime) return null
 
     const resetTime = new Date(departureTime)
-    resetTime.setHours(resetTime.getHours() - 1) // 1 giờ trước departureTime
+    resetTime.setHours(resetTime.getHours() - 2) // 2 giờ trước departureTime
 
     const now = new Date()
-    
+
     // Nếu thời gian reset đã qua, tính cho ngày làm việc tiếp theo
     if (resetTime <= now) {
       const nextWorkDay = this.getNextWorkDay(shift)
@@ -151,31 +151,47 @@ class TimeManager {
 
   /**
    * Tính toán thời điểm ẩn button
-   * Ẩn 2 giờ sau scheduledEndTime
+   * Ẩn 4 giờ sau scheduledEndTime (mở rộng từ 2 giờ)
    */
   getButtonHideTime(shift = null) {
     const endTime = this.getScheduledEndTime(shift)
     if (!endTime) return null
 
     const hideTime = new Date(endTime)
-    hideTime.setHours(hideTime.getHours() + 2) // 2 giờ sau scheduledEndTime
+    hideTime.setHours(hideTime.getHours() + 4) // 4 giờ sau scheduledEndTime
 
     return hideTime
   }
 
   /**
    * Kiểm tra xem button có nên được hiển thị không
-   * Dựa trên cửa sổ hoạt động: [resetTime, hideTime]
+   * Dựa trên cửa sổ hoạt động: [resetTime, hideTime] với logic fallback
    */
   shouldShowButton(shift = null) {
     const now = new Date()
     const resetTime = this.getButtonResetTime(shift)
     const hideTime = this.getButtonHideTime(shift)
 
-    if (!resetTime || !hideTime) return true // Mặc định hiển thị nếu không tính được
+    if (!resetTime || !hideTime) {
+      return true // Mặc định hiển thị nếu không tính được
+    }
 
     // Kiểm tra trong cửa sổ hoạt động
-    return now >= resetTime && now <= hideTime
+    const inActiveWindow = now >= resetTime && now <= hideTime
+
+    // Logic fallback: Nếu ngoài cửa sổ hoạt động, kiểm tra xem có phải giờ làm việc bình thường không
+    if (!inActiveWindow && shift) {
+      const currentHour = now.getHours()
+
+      // Nếu trong khoảng giờ làm việc bình thường (6:00 - 22:00), vẫn hiển thị nút
+      const inWorkingHours = currentHour >= 6 && currentHour <= 22
+
+      if (inWorkingHours) {
+        return true
+      }
+    }
+
+    return inActiveWindow
   }
 
   /**
@@ -273,7 +289,7 @@ class TimeManager {
       const now = new Date()
       const timeDiff = note.nextReminderTime.getTime() - now.getTime()
       const hoursDiff = timeDiff / (1000 * 60 * 60)
-      
+
       // Càng gần thời gian nhắc, độ ưu tiên càng cao
       if (hoursDiff <= 1) priority += 20
       else if (hoursDiff <= 6) priority += 10

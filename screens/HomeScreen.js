@@ -2,7 +2,6 @@
 
 import { useContext, useState, useEffect, useRef, useMemo } from 'react'
 import { View, Text, TouchableOpacity, ScrollView, Alert } from 'react-native'
-import { LinearGradient } from 'expo-linear-gradient'
 import styles from '../styles/screens/homeScreen'
 import { Ionicons } from '@expo/vector-icons'
 import { AppContext } from '../context/AppContext'
@@ -11,6 +10,7 @@ import MultiFunctionButton from '../components/MultiFunctionButton'
 import WeeklyStatusGrid from '../components/WeeklyStatusGrid'
 // import WeatherWidget from '../components/WeatherWidget' // TẠM THỜI ẨN
 import WorkNotesSection from '../components/WorkNotesSection'
+import ScreenWrapper from '../components/ScreenWrapper'
 import timeManager from '../utils/timeManager'
 
 const HomeScreen = ({ navigation, route }) => {
@@ -159,12 +159,7 @@ const HomeScreen = ({ navigation, route }) => {
   }, [currentTime, t])
 
   return (
-    <LinearGradient
-      colors={theme.gradientBackground}
-      style={{ flex: 1 }}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-    >
+    <ScreenWrapper>
       <ScrollView
         style={{ flex: 1, padding: 16 }}
         showsVerticalScrollIndicator={false}
@@ -297,7 +292,7 @@ const HomeScreen = ({ navigation, route }) => {
       {/* 8. Khu vực Ghi Chú Công Việc */}
       <WorkNotesSection navigation={navigation} route={route} />
       </ScrollView>
-    </LinearGradient>
+    </ScreenWrapper>
   )
 }
 

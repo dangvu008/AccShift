@@ -73,11 +73,18 @@ export const initializeDatabase = async () => {
           startTime: '08:00',
           endTime: '17:00',
           officeEndTime: '17:00', // Thêm officeEndTime
+          departureTime: '07:30', // Thêm departureTime
           breakTime: 60,
           breakMinutes: 60, // Thêm breakMinutes để tương thích với logic tính toán
           daysApplied: ['T2', 'T3', 'T4', 'T5', 'T6'],
+          reminderBefore: 15,
+          reminderAfter: 15,
+          showCheckInButton: true,
+          showCheckInButtonWhileWorking: true,
           isActive: true,
           isDefault: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         },
       ]
 
@@ -301,11 +308,18 @@ export const getShifts = async () => {
         startTime: '08:00',
         endTime: '17:00',
         officeEndTime: '17:00', // Thêm officeEndTime
+        departureTime: '07:30', // Thêm departureTime
         breakTime: 60,
         breakMinutes: 60, // Thêm breakMinutes để tương thích với logic tính toán
         daysApplied: ['T2', 'T3', 'T4', 'T5', 'T6'],
+        reminderBefore: 15,
+        reminderAfter: 15,
+        showCheckInButton: true,
+        showCheckInButtonWhileWorking: true,
         isActive: true,
         isDefault: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       },
     ]
 

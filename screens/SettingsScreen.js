@@ -11,11 +11,12 @@ import {
   Modal,
   Alert,
 } from 'react-native'
-import { LinearGradient } from 'expo-linear-gradient'
 import { MaterialIcons } from '@expo/vector-icons'
 import { AppContext } from '../context/AppContext'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { resetAllDataForTesting } from '../utils/resetShiftData'
+import ScreenWrapper from '../components/ScreenWrapper'
+import CardWrapper from '../components/CardWrapper'
 
 const SettingsScreen = ({ navigation }) => {
   // Log để debug
@@ -109,12 +110,7 @@ const SettingsScreen = ({ navigation }) => {
   }
 
   return (
-    <LinearGradient
-      colors={theme.gradientBackground}
-      style={{ flex: 1 }}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-    >
+    <ScreenWrapper>
       <ScrollView style={styles.container}>
         {/* 1. General Settings */}
         <View style={styles.section}>
@@ -145,9 +141,10 @@ const SettingsScreen = ({ navigation }) => {
         </View>
 
         {/* Language Setting */}
-        <TouchableOpacity
-          style={[styles.menuItem, darkMode && styles.darkCard]}
+        <CardWrapper
           onPress={() => setShowLanguageModal(true)}
+          padding={16}
+          marginBottom={16}
         >
           <View style={styles.menuIconContainer}>
             <MaterialIcons
@@ -157,16 +154,14 @@ const SettingsScreen = ({ navigation }) => {
             />
           </View>
           <View style={styles.menuTextContainer}>
-            <Text style={[styles.menuTitle, darkMode && styles.darkText]}>
+            <Text style={[styles.menuTitle, { color: theme.textColor }]}>
               {t('Language')}
             </Text>
-            <Text
-              style={[styles.menuDescription, darkMode && styles.darkSubtitle]}
-            >
+            <Text style={[styles.menuDescription, { color: theme.subtextColor }]}>
               {languages.find((lang) => lang.id === language)?.name}
             </Text>
           </View>
-        </TouchableOpacity>
+        </CardWrapper>
       </View>
 
       {/* 2. Work Settings */}
@@ -290,9 +285,10 @@ const SettingsScreen = ({ navigation }) => {
           </Text>
         </View>
 
-        <TouchableOpacity
-          style={[styles.menuItem, darkMode && styles.darkCard]}
+        <CardWrapper
           onPress={() => navigation.navigate('WeatherDebug')}
+          padding={16}
+          marginBottom={16}
         >
           <View style={styles.menuIconContainer}>
             <MaterialIcons
@@ -302,20 +298,19 @@ const SettingsScreen = ({ navigation }) => {
             />
           </View>
           <View style={styles.menuTextContainer}>
-            <Text style={[styles.menuTitle, darkMode && styles.darkText]}>
+            <Text style={[styles.menuTitle, { color: theme.textColor }]}>
               {t('Weather Debug')}
             </Text>
-            <Text
-              style={[styles.menuDescription, darkMode && styles.darkSubtitle]}
-            >
+            <Text style={[styles.menuDescription, { color: theme.subtextColor }]}>
               {t('Debug weather API and location issues')}
             </Text>
           </View>
-        </TouchableOpacity>
+        </CardWrapper>
 
-        <TouchableOpacity
-          style={[styles.menuItem, darkMode && styles.darkCard]}
+        <CardWrapper
           onPress={handleResetData}
+          padding={16}
+          marginBottom={16}
         >
           <View style={styles.menuIconContainer}>
             <MaterialIcons
@@ -325,16 +320,14 @@ const SettingsScreen = ({ navigation }) => {
             />
           </View>
           <View style={styles.menuTextContainer}>
-            <Text style={[styles.menuTitle, darkMode && styles.darkText]}>
+            <Text style={[styles.menuTitle, { color: theme.textColor }]}>
               {t('Reset All Data')}
             </Text>
-            <Text
-              style={[styles.menuDescription, darkMode && styles.darkSubtitle]}
-            >
+            <Text style={[styles.menuDescription, { color: theme.subtextColor }]}>
               {t('Reset shift data and work status for testing')}
             </Text>
           </View>
-        </TouchableOpacity>
+        </CardWrapper>
       </View>
 
       {/* Language Selection Modal */}
@@ -345,10 +338,8 @@ const SettingsScreen = ({ navigation }) => {
         onRequestClose={() => setShowLanguageModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <View
-            style={[styles.modalContent, darkMode && styles.darkModalContent]}
-          >
-            <Text style={[styles.modalTitle, darkMode && styles.darkText]}>
+          <View style={[styles.modalContent, { backgroundColor: theme.cardColor }]}>
+            <Text style={[styles.modalTitle, { color: theme.textColor }]}>
               {t('Select Language')}
             </Text>
 
@@ -357,21 +348,12 @@ const SettingsScreen = ({ navigation }) => {
                 key={lang.id}
                 style={[
                   styles.languageOption,
-                  darkMode && styles.darkLanguageOption,
-                  language === lang.id && styles.selectedLanguageOption,
-                  language === lang.id &&
-                    darkMode &&
-                    styles.darkSelectedLanguageOption,
+                  { backgroundColor: theme.backgroundSecondaryColor },
+                  language === lang.id && { backgroundColor: theme.primaryColor + '20' },
                 ]}
                 onPress={() => handleLanguageChange(lang.id)}
               >
-                <Text
-                  style={[
-                    styles.languageText,
-                    darkMode && styles.darkText,
-                    language === lang.id && styles.selectedLanguageText,
-                  ]}
-                >
+                <Text style={[styles.languageText, { color: theme.textColor }]}>
                   {lang.name}
                 </Text>
                 {language === lang.id && (
@@ -381,16 +363,16 @@ const SettingsScreen = ({ navigation }) => {
             ))}
 
             <TouchableOpacity
-              style={[styles.cancelButton, darkMode && styles.darkCancelButton]}
+              style={[styles.cancelButton, { backgroundColor: theme.backgroundSecondaryColor }]}
               onPress={() => setShowLanguageModal(false)}
             >
-              <Text style={styles.cancelButtonText}>{t('Cancel')}</Text>
+              <Text style={[styles.cancelButtonText, { color: theme.textColor }]}>{t('Cancel')}</Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
       </ScrollView>
-    </LinearGradient>
+    </ScreenWrapper>
   )
 }
 
@@ -398,13 +380,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
-  },
-
-  darkText: {
-    color: '#fff',
-  },
-  darkSubtitle: {
-    color: '#aaa',
   },
   section: {
     marginBottom: 24,
@@ -417,11 +392,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#000',
     marginLeft: 8,
-  },
-  darkCard: {
-    backgroundColor: '#1e1e1e',
   },
   settingItem: {
     flexDirection: 'row',
@@ -429,34 +400,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: 'rgba(0,0,0,0.1)',
   },
   settingLabelContainer: {
     flex: 1,
   },
   settingLabel: {
     fontSize: 16,
-    color: '#000',
     marginBottom: 4,
   },
   settingDescription: {
     fontSize: 12,
-    color: '#666',
-  },
-
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
   },
   menuIconContainer: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: 'rgba(0,0,0,0.05)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
@@ -467,12 +427,10 @@ const styles = StyleSheet.create({
   menuTitle: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#000',
     marginBottom: 4,
   },
   menuDescription: {
     fontSize: 14,
-    color: '#666',
   },
 
   modalOverlay: {
@@ -488,7 +446,6 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     width: '80%',
-    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 20,
     elevation: 5,
@@ -498,16 +455,11 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     maxHeight: '80%',
   },
-
-  darkModalContent: {
-    backgroundColor: '#2a2a2a',
-  },
   modalTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 16,
     textAlign: 'center',
-    color: '#333',
   },
   languageOption: {
     flexDirection: 'row',
@@ -517,41 +469,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 8,
     marginBottom: 8,
-    backgroundColor: '#f0f0f0',
-  },
-  darkLanguageOption: {
-    backgroundColor: '#3a3a3a',
-  },
-  selectedLanguageOption: {
-    backgroundColor: '#e6e0ff',
-  },
-  darkSelectedLanguageOption: {
-    backgroundColor: '#4a3b80',
   },
   languageText: {
     fontSize: 16,
-    color: '#333',
   },
   selectedLanguageText: {
     fontWeight: 'bold',
-    color: '#8a56ff',
   },
-
   cancelButton: {
-    flex: 1,
-    marginRight: 8,
+    marginTop: 16,
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 8,
-    backgroundColor: '#f0f0f0',
     alignItems: 'center',
-  },
-  darkCancelButton: {
-    backgroundColor: '#3a3a3a',
   },
   cancelButtonText: {
     fontSize: 16,
-    color: '#8a56ff',
     fontWeight: 'bold',
   },
 })

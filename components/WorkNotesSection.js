@@ -8,7 +8,6 @@ import React, {
   useRef,
 } from 'react'
 import { View, Text, TouchableOpacity, ScrollView, Alert } from 'react-native'
-import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import { AppContext } from '../context/AppContext'
 import { getNotes, getShifts } from '../utils/database'
@@ -16,6 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { STORAGE_KEYS } from '../utils/constants'
 import { useFocusEffect } from '@react-navigation/native'
 import styles from '../styles/components/workNotesSection'
+import CardWrapper from './CardWrapper'
 import timeManager from '../utils/timeManager'
 
 const WorkNotesSection = ({ navigation, route }) => {
@@ -535,13 +535,12 @@ const WorkNotesSection = ({ navigation, route }) => {
   }
 
   return (
-    <View style={styles.container}>
-      <LinearGradient
-        colors={theme.gradientCardDark}
-        style={styles.cardGradient}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
+    <CardWrapper
+      useGradient={true}
+      gradientColors={theme.gradientCardDark}
+      padding={0}
+      style={styles.container}
+    >
         <View style={styles.header}>
           <View style={styles.titleContainer}>
             <View style={styles.iconContainer}>
@@ -740,8 +739,7 @@ const WorkNotesSection = ({ navigation, route }) => {
           </TouchableOpacity>
         </View>
       )}
-      </LinearGradient>
-    </View>
+    </CardWrapper>
   )
 }
 
