@@ -92,9 +92,17 @@ export const COLORS = {
   GRADIENT_CARD_LIGHT: ['#FFFFFF', '#F8FAFC'], // Light card gradient
   GRADIENT_CARD_DARK: ['#16213E', '#1E3A8A'], // Solid dark card gradient - Không dùng opacity
 
-  // Gradient cho background chính - Unified System
-  GRADIENT_BACKGROUND_DARK: ['#0F0F23', '#1A1A2E'], // Unified dark background gradient
-  GRADIENT_BACKGROUND_LIGHT: ['#F8FAFC', '#F1F5F9'], // Light background gradient
+  // Gradient cho background chính - Unified System với pattern
+  GRADIENT_BACKGROUND_DARK: ['#0F0F23', '#1A1A2E', '#16213E'], // Multi-stop dark gradient
+  GRADIENT_BACKGROUND_LIGHT: ['#F8FAFC', '#F1F5F9', '#E2E8F0'], // Multi-stop light gradient
+
+  // Background patterns cho texture
+  PATTERN_BACKGROUND_DARK: ['#0F0F23', '#1A1A2E', '#16213E', '#1E3A8A'], // 4-stop dark pattern
+  PATTERN_BACKGROUND_LIGHT: ['#F8FAFC', '#F1F5F9', '#E2E8F0', '#CBD5E1'], // 4-stop light pattern
+
+  // Radial gradient backgrounds cho depth effect
+  RADIAL_BACKGROUND_DARK: ['#1A1A2E', '#0F0F23'], // Radial dark
+  RADIAL_BACKGROUND_LIGHT: ['#F1F5F9', '#F8FAFC'], // Radial light
 
   // Gradient cho các card đặc biệt
   GRADIENT_CARD_WATER: ['#3B82F6', '#1D4ED8'], // Blue gradient cho Water

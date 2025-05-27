@@ -15,8 +15,7 @@ import { MaterialIcons } from '@expo/vector-icons'
 import { AppContext } from '../context/AppContext'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { resetAllDataForTesting } from '../utils/resetShiftData'
-import ScreenWrapper from '../components/ScreenWrapper'
-import CardWrapper from '../components/CardWrapper'
+import { ScreenWrapper, CardWrapper, ViewWrapper } from '../components'
 
 const SettingsScreen = ({ navigation }) => {
   // Log để debug
@@ -110,11 +109,25 @@ const SettingsScreen = ({ navigation }) => {
   }
 
   return (
-    <ScreenWrapper>
+    <ScreenWrapper
+      backgroundType="pattern"
+      patternType="grid"
+      patternOpacity={0.06}
+      overlay={true}
+      overlayOpacity={0.03}
+    >
       <ScrollView style={styles.container}>
         {/* 1. General Settings */}
-        <View style={styles.section}>
-        <View style={styles.sectionHeader}>
+        <ViewWrapper
+          style={styles.section}
+          backgroundType="solid"
+          useThemeBackground={false}
+        >
+        <ViewWrapper
+          style={styles.sectionHeader}
+          backgroundType="solid"
+          useThemeBackground={false}
+        >
           <MaterialIcons
             name="settings"
             size={24}
@@ -123,7 +136,7 @@ const SettingsScreen = ({ navigation }) => {
           <Text style={[styles.sectionTitle, { color: theme.textColor }]}>
             {t('General Settings')}
           </Text>
-        </View>
+        </ViewWrapper>
 
         {/* Dark Mode Setting */}
         <View style={styles.settingItem}>
@@ -145,6 +158,9 @@ const SettingsScreen = ({ navigation }) => {
           onPress={() => setShowLanguageModal(true)}
           padding={16}
           marginBottom={16}
+          backgroundType="gradient"
+          overlay={true}
+          overlayOpacity={0.05}
         >
           <View style={styles.menuIconContainer}>
             <MaterialIcons
@@ -162,7 +178,7 @@ const SettingsScreen = ({ navigation }) => {
             </Text>
           </View>
         </CardWrapper>
-      </View>
+      </ViewWrapper>
 
       {/* 2. Work Settings */}
       <View style={styles.section}>

@@ -88,8 +88,10 @@ export const getTheme = (darkMode) => {
     gradientCardLight: darkMode ? COLORS.GRADIENT_CARD_DARK : COLORS.GRADIENT_CARD_LIGHT,
     gradientCardDark: COLORS.GRADIENT_CARD_DARK,
 
-    // Background gradients - Như trong ảnh Analytics
+    // Background gradients - Unified pattern system
     gradientBackground: darkMode ? COLORS.GRADIENT_BACKGROUND_DARK : COLORS.GRADIENT_BACKGROUND_LIGHT,
+    patternBackground: darkMode ? COLORS.PATTERN_BACKGROUND_DARK : COLORS.PATTERN_BACKGROUND_LIGHT,
+    radialBackground: darkMode ? COLORS.RADIAL_BACKGROUND_DARK : COLORS.RADIAL_BACKGROUND_LIGHT,
 
     // Card gradients đặc biệt - Cho các loại card khác nhau
     gradientCardWater: COLORS.GRADIENT_CARD_WATER,

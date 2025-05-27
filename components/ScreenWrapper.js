@@ -1,57 +1,61 @@
 import React, { useContext } from 'react';
-import { View, StatusBar } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { StatusBar } from 'react-native';
 import { AppContext } from '../context/AppContext';
+import BackgroundWrapper from './BackgroundWrapper';
 
 /**
  * ScreenWrapper - Component wrapper để đảm bảo tất cả screen có background đồng nhất
- * Tự động áp dụng theme background và status bar phù hợp
+ * Sử dụng BackgroundWrapper để tạo hình nền thống nhất và status bar phù hợp
  */
-const ScreenWrapper = ({ 
-  children, 
-  style = {}, 
-  useGradient = true,
-  gradientColors = null,
-  statusBarStyle = null 
+const ScreenWrapper = ({
+  children,
+  style = {},
+  backgroundType = 'gradient', // 'gradient', 'pattern', 'radial', 'solid'
+  customColors = null,
+  statusBarStyle = null,
+  overlay = false,
+  overlayOpacity = 0.1,
+  ...props
 }) => {
   const { theme, darkMode } = useContext(AppContext);
 
   // Xác định màu status bar
   const statusBarStyleToUse = statusBarStyle || (darkMode ? 'light-content' : 'dark-content');
-  
-  // Xác định gradient colors
-  const gradientColorsToUse = gradientColors || theme.gradientBackground;
 
-  if (useGradient) {
-    return (
-      <>
-        <StatusBar 
-          barStyle={statusBarStyleToUse}
-          backgroundColor={gradientColorsToUse[0]}
-          translucent={false}
-        />
-        <LinearGradient
-          colors={gradientColorsToUse}
-          style={[{ flex: 1 }, style]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
-          {children}
-        </LinearGradient>
-      </>
-    );
-  }
+  // Xác định background color cho status bar
+  const getStatusBarColor = () => {
+    if (customColors) return customColors[0];
+
+    switch (backgroundType) {
+      case 'pattern':
+        return theme.patternBackground[0];
+      case 'radial':
+        return theme.radialBackground[0];
+      case 'solid':
+        return theme.backgroundColor;
+      case 'gradient':
+      default:
+        return theme.gradientBackground[0];
+    }
+  };
 
   return (
     <>
-      <StatusBar 
+      <StatusBar
         barStyle={statusBarStyleToUse}
-        backgroundColor={theme.backgroundColor}
+        backgroundColor={getStatusBarColor()}
         translucent={false}
       />
-      <View style={[{ flex: 1, backgroundColor: theme.backgroundColor }, style]}>
+      <BackgroundWrapper
+        backgroundType={backgroundType}
+        customColors={customColors}
+        style={style}
+        overlay={overlay}
+        overlayOpacity={overlayOpacity}
+        {...props}
+      >
         {children}
-      </View>
+      </BackgroundWrapper>
     </>
   );
 };

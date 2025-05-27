@@ -11,7 +11,7 @@ import MultiFunctionButton from '../components/MultiFunctionButton'
 import WeeklyStatusGrid from '../components/WeeklyStatusGrid'
 // import WeatherWidget from '../components/WeatherWidget' // TẠM THỜI ẨN
 import WorkNotesSection from '../components/WorkNotesSection'
-import ScreenWrapper from '../components/ScreenWrapper'
+import { ScreenWrapper, CardWrapper, ViewWrapper } from '../components'
 import timeManager from '../utils/timeManager'
 
 const HomeScreen = ({ navigation, route }) => {
@@ -160,13 +160,23 @@ const HomeScreen = ({ navigation, route }) => {
   }, [currentTime, t])
 
   return (
-    <ScreenWrapper>
+    <ScreenWrapper
+      backgroundType="pattern"
+      patternType="dots"
+      patternOpacity={0.08}
+      overlay={true}
+      overlayOpacity={0.05}
+    >
       <ScrollView
         style={{ flex: 1, padding: 16 }}
         showsVerticalScrollIndicator={false}
       >
       {/* 1. Thanh trên cùng (Ngày/giờ) - Cải thiện typography */}
-      <View style={styles.header}>
+      <ViewWrapper
+        style={styles.header}
+        backgroundType="solid"
+        useThemeBackground={false}
+      >
         <View style={styles.dateTimeContainer}>
           <Text
             style={[styles.timeText, { color: theme.textColor }]}
@@ -179,7 +189,7 @@ const HomeScreen = ({ navigation, route }) => {
             {formattedDate}
           </Text>
         </View>
-      </View>
+      </ViewWrapper>
 
       {/* 2. Khu vực Thời tiết Hiện tại & Dự báo Ngắn hạn - TẠM THỜI ẨN */}
       {/* <WeatherWidget onPress={() => navigation.navigate('WeatherDetail')} /> */}
@@ -187,22 +197,20 @@ const HomeScreen = ({ navigation, route }) => {
       {/* Vùng Cảnh báo Thời tiết (nếu có) - Đã được tích hợp vào WeatherWidget */}
 
       {/* 3. Tên ca làm việc đang áp dụng - Analytics App Style */}
-      <TouchableOpacity
+      <CardWrapper
         style={styles.card}
+        backgroundType="gradient"
+        customColors={theme.gradientPrimary}
         onPress={() => navigation.navigate('ShiftsStack')}
-        activeOpacity={0.8}
+        overlay={true}
+        overlayOpacity={0.1}
       >
-        <LinearGradient
-          colors={theme.gradientPrimary}
-          style={styles.cardGradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
+        <View style={styles.cardGradient}>
           <View style={styles.cardIconContainer}>
             <Ionicons
               name="time-outline"
               size={24}
-              color={theme.textColor === theme.textColor ? '#FFFFFF' : theme.textColor}
+              color="#FFFFFF"
             />
           </View>
           <View style={styles.cardContent}>
@@ -222,18 +230,19 @@ const HomeScreen = ({ navigation, route }) => {
               color="rgba(255, 255, 255, 0.8)"
             />
           </View>
-        </LinearGradient>
-      </TouchableOpacity>
+        </View>
+      </CardWrapper>
 
       {/* Hiển thị trạng thái làm việc nếu đang làm việc - Analytics App Style */}
       {isWorking && (
-        <View style={styles.card}>
-          <LinearGradient
-            colors={theme.gradientSuccess}
-            style={[styles.cardGradient, { flexDirection: 'row', alignItems: 'center' }]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
+        <CardWrapper
+          style={styles.card}
+          backgroundType="gradient"
+          customColors={theme.gradientSuccess}
+          overlay={true}
+          overlayOpacity={0.1}
+        >
+          <View style={[styles.cardGradient, { flexDirection: 'row', alignItems: 'center' }]}>
             <View style={styles.workingIconContainer}>
               <Ionicons name="checkmark-circle" size={28} color="#FFFFFF" />
             </View>
@@ -245,8 +254,8 @@ const HomeScreen = ({ navigation, route }) => {
                 {t('Worked for')} {formatDuration(workDuration)}
               </Text>
             </View>
-          </LinearGradient>
-        </View>
+          </View>
+        </CardWrapper>
       )}
 
       {/* 4. Nút Đa Năng lớn */}
@@ -255,13 +264,14 @@ const HomeScreen = ({ navigation, route }) => {
       {/* 6. Lịch sử bấm nút (được hiển thị trong MultiFunctionButton) */}
 
       {/* 7. Lưới trạng thái tuần - Analytics App Style */}
-      <View style={styles.card}>
-        <LinearGradient
-          colors={theme.gradientCardDark}
-          style={styles.cardGradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
+      <CardWrapper
+        style={styles.card}
+        backgroundType="gradient"
+        customColors={theme.gradientCardDark}
+        overlay={true}
+        overlayOpacity={0.1}
+      >
+        <View style={styles.cardGradient}>
           <View style={styles.cardHeader}>
             <View style={styles.cardIconContainer}>
               <Ionicons
@@ -287,8 +297,8 @@ const HomeScreen = ({ navigation, route }) => {
             </TouchableOpacity>
           </View>
           <WeeklyStatusGrid />
-        </LinearGradient>
-      </View>
+        </View>
+      </CardWrapper>
 
       {/* 8. Khu vực Ghi Chú Công Việc */}
       <WorkNotesSection navigation={navigation} route={route} />
