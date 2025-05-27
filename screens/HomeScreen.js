@@ -2,6 +2,7 @@
 
 import { useContext, useState, useEffect, useRef, useMemo } from 'react'
 import { View, Text, TouchableOpacity, ScrollView, Alert } from 'react-native'
+import { LinearGradient } from 'expo-linear-gradient'
 import styles from '../styles/screens/homeScreen'
 import { Ionicons } from '@expo/vector-icons'
 import { AppContext } from '../context/AppContext'
