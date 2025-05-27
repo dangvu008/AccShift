@@ -36,6 +36,8 @@ import LogHistoryScreen from './screens/LogHistoryScreen'
 import LogHistoryDetailScreen from './screens/LogHistoryDetailScreen'
 import ImageViewerScreen from './screens/ImageViewerScreen'
 import AlarmScreen from './screens/AlarmScreen'
+import EnhancedAlarmScreen from './screens/EnhancedAlarmScreen'
+import ReminderSettingsScreen from './screens/ReminderSettingsScreen'
 import MapPickerScreen from './screens/MapPickerScreen'
 import WeatherDebugScreen from './screens/WeatherDebugScreen'
 
@@ -110,6 +112,16 @@ function HomeStack() {
       <Stack.Screen
         name="AlarmScreen"
         component={AlarmScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="EnhancedAlarmScreen"
+        component={EnhancedAlarmScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="ReminderSettings"
+        component={ReminderSettingsScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen
@@ -313,6 +325,16 @@ function SettingsStack() {
         name="WeatherDebug"
         component={WeatherDebugScreen}
         options={{ title: t('Weather Debug') }}
+      />
+      <Stack.Screen
+        name="EnhancedAlarmScreen"
+        component={EnhancedAlarmScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="ReminderSettings"
+        component={ReminderSettingsScreen}
+        options={{ headerShown: false }}
       />
       {/* Removed test screen WorkStatusUpdate */}
     </Stack.Navigator>

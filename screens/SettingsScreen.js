@@ -258,6 +258,59 @@ const SettingsScreen = ({ navigation }) => {
             thumbColor={notificationVibration ? '#fff' : '#f4f3f4'}
           />
         </View>
+
+        {/* Reminder Settings Card */}
+        <CardWrapper
+          onPress={() => navigation.navigate('ReminderSettings')}
+          padding={16}
+          marginBottom={16}
+          backgroundType="gradient"
+          overlay={true}
+          overlayOpacity={0.05}
+        >
+          <View style={styles.menuIconContainer}>
+            <MaterialIcons
+              name="alarm"
+              size={24}
+              color={theme.primaryColor}
+            />
+          </View>
+          <View style={styles.menuTextContainer}>
+            <Text style={[styles.menuTitle, { color: theme.textColor }]}>
+              {t('Reminder Settings')}
+            </Text>
+            <Text style={[styles.menuDescription, { color: theme.subtextColor }]}>
+              {t('Configure work reminders and notifications')}
+            </Text>
+          </View>
+        </CardWrapper>
+
+        {/* Active Reminders Card */}
+        <CardWrapper
+          onPress={() => navigation.navigate('EnhancedAlarmScreen')}
+          padding={16}
+          marginBottom={16}
+          backgroundType="gradient"
+          customColors={theme.gradientAccent}
+          overlay={true}
+          overlayOpacity={0.05}
+        >
+          <View style={styles.menuIconContainer}>
+            <MaterialIcons
+              name="notifications-active"
+              size={24}
+              color={theme.primaryColor}
+            />
+          </View>
+          <View style={styles.menuTextContainer}>
+            <Text style={[styles.menuTitle, { color: theme.textColor }]}>
+              {t('Active Reminders')}
+            </Text>
+            <Text style={[styles.menuDescription, { color: theme.subtextColor }]}>
+              {t('View and manage scheduled reminders')}
+            </Text>
+          </View>
+        </CardWrapper>
       </View>
 
       {/* 4. Weather Settings */}

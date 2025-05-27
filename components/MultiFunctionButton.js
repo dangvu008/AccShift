@@ -8,6 +8,7 @@ import { formatTimeDisplay } from '../utils/helpers'
 import { COLORS } from '../styles/common/colors'
 import styles from '../styles/components/multiFunctionButton'
 import timeManager from '../utils/timeManager'
+import reminderManager from '../utils/reminderManager'
 import GradientButton from './GradientButton'
 
 const MultiFunctionButton = () => {
@@ -69,6 +70,69 @@ const MultiFunctionButton = () => {
       unsubscribe()
     }
   }, [currentShift, buttonState, setButtonState])
+
+  // Effect để khởi tạo và quản lý nhắc nhở
+  useEffect(() => {
+    const initializeReminders = async () => {
+      try {
+        // Khởi tạo ReminderManager
+        await reminderManager.initialize()
+
+        // Lên lịch nhắc nhở cho ca hiện tại nếu có
+        if (currentShift && buttonState === BUTTON_STATES.GO_WORK) {
+          console.log('[MultiFunctionButton] Scheduling reminders for current shift')
+          await reminderManager.scheduleAllShiftReminders(currentShift)
+        }
+      } catch (error) {
+        console.error('[MultiFunctionButton] Failed to initialize reminders:', error)
+      }
+    }
+
+    initializeReminders()
+  }, [currentShift])
+
+  // Effect để quản lý nhắc nhở khi button state thay đổi
+  useEffect(() => {
+    const handleButtonStateChange = async () => {
+      if (!currentShift) return
+
+      try {
+        switch (buttonState) {
+          case BUTTON_STATES.GO_WORK:
+            // Lên lịch tất cả nhắc nhở cho ca làm việc
+            await reminderManager.scheduleAllShiftReminders(currentShift)
+            break
+
+          case BUTTON_STATES.CHECK_IN:
+            // Hủy nhắc nhở check-in vì đã check-in
+            const checkInReminders = reminderManager.getActiveReminders(currentShift.id)
+              .filter(r => r.type.includes('check_in'))
+            for (const reminder of checkInReminders) {
+              await reminderManager.cancelReminder(reminder.id)
+            }
+            break
+
+          case BUTTON_STATES.CHECK_OUT:
+            // Hủy nhắc nhở check-out vì đã check-out
+            const checkOutReminders = reminderManager.getActiveReminders(currentShift.id)
+              .filter(r => r.type.includes('check_out'))
+            for (const reminder of checkOutReminders) {
+              await reminderManager.cancelReminder(reminder.id)
+            }
+            break
+
+          case BUTTON_STATES.COMPLETED:
+            // Hủy tất cả nhắc nhở của ca này vì đã hoàn thành
+            await reminderManager.cancelShiftReminders(currentShift.id)
+            break
+        }
+      } catch (error) {
+        console.error('[MultiFunctionButton] Failed to manage reminders:', error)
+      }
+    }
+
+    handleButtonStateChange()
+  }, [buttonState, currentShift])
 
   // Nếu button không nên hiển thị, return null
   if (!shouldShowButton) {

@@ -22,6 +22,97 @@ export const NOTIFICATION_CONFIG = {
   LIGHT_COLOR: '#8a56ff',
 }
 
+// Alarm types and configurations
+export const ALARM_TYPES = {
+  // Nhắc nhở đi làm
+  GO_TO_WORK: 'go_to_work',
+  DEPARTURE_REMINDER: 'departure_reminder',
+
+  // Nhắc nhở chấm công
+  CHECK_IN_REMINDER: 'check_in_reminder',
+  CHECK_IN_URGENT: 'check_in_urgent',
+  CHECK_OUT_REMINDER: 'check_out_reminder',
+  CHECK_OUT_URGENT: 'check_out_urgent',
+
+  // Nhắc nhở ca làm việc
+  SHIFT_START: 'shift_start',
+  SHIFT_END: 'shift_end',
+  SHIFT_BREAK: 'shift_break',
+  SHIFT_RETURN: 'shift_return',
+
+  // Nhắc nhở làm thêm giờ
+  OVERTIME_START: 'overtime_start',
+  OVERTIME_WARNING: 'overtime_warning',
+  OVERTIME_LIMIT: 'overtime_limit',
+
+  // Nhắc nhở ghi chú và công việc
+  NOTE_REMINDER: 'note_reminder',
+  TASK_REMINDER: 'task_reminder',
+
+  // Nhắc nhở thời tiết
+  WEATHER_WARNING: 'weather_warning',
+  WEATHER_PREPARATION: 'weather_preparation',
+
+  // Nhắc nhở hệ thống
+  MISSED_CHECK_IN: 'missed_check_in',
+  MISSED_CHECK_OUT: 'missed_check_out',
+  SHIFT_CHANGE: 'shift_change',
+  WEEKLY_SUMMARY: 'weekly_summary',
+}
+
+// Reminder timing configurations
+export const REMINDER_TIMINGS = {
+  // Thời gian nhắc nhở trước sự kiện (phút)
+  DEPARTURE: {
+    DEFAULT: 30,
+    MIN: 5,
+    MAX: 120,
+  },
+  CHECK_IN: {
+    DEFAULT: 15,
+    URGENT: 5,
+    MIN: 1,
+    MAX: 60,
+  },
+  CHECK_OUT: {
+    DEFAULT: 15,
+    URGENT: 5,
+    MIN: 1,
+    MAX: 60,
+  },
+  BREAK: {
+    DEFAULT: 5,
+    MIN: 1,
+    MAX: 30,
+  },
+  OVERTIME: {
+    WARNING: 30, // Cảnh báo trước 30 phút
+    LIMIT: 60,   // Cảnh báo giới hạn
+  },
+  WEATHER: {
+    PREPARATION: 60, // Chuẩn bị thời tiết trước 1 giờ
+    WARNING: 30,     // Cảnh báo thời tiết trước 30 phút
+  },
+}
+
+// Reminder priorities
+export const REMINDER_PRIORITIES = {
+  LOW: 'low',
+  NORMAL: 'normal',
+  HIGH: 'high',
+  URGENT: 'urgent',
+  CRITICAL: 'critical',
+}
+
+// Reminder repeat patterns
+export const REMINDER_PATTERNS = {
+  ONCE: 'once',
+  DAILY: 'daily',
+  WEEKDAYS: 'weekdays',
+  WEEKLY: 'weekly',
+  CUSTOM: 'custom',
+}
+
 // App constants
 export const APP_CONSTANTS = {
   DEFAULT_BREAK_TIME: 60, // minutes
