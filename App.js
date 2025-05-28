@@ -40,6 +40,7 @@ import EnhancedAlarmScreen from './screens/EnhancedAlarmScreen'
 import ReminderSettingsScreen from './screens/ReminderSettingsScreen'
 import MapPickerScreen from './screens/MapPickerScreen'
 import WeatherDebugScreen from './screens/WeatherDebugScreen'
+import DesignSystemDemoScreen from './screens/DesignSystemDemoScreen'
 
 // Set up notification handler
 try {
@@ -335,6 +336,11 @@ function SettingsStack() {
         name="ReminderSettings"
         component={ReminderSettingsScreen}
         options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="DesignSystemDemo"
+        component={DesignSystemDemoScreen}
+        options={{ title: t('Design System Demo') }}
       />
       {/* Removed test screen WorkStatusUpdate */}
     </Stack.Navigator>

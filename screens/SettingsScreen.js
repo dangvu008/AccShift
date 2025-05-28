@@ -15,7 +15,11 @@ import { MaterialIcons } from '@expo/vector-icons'
 import { AppContext } from '../context/AppContext'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { resetAllDataForTesting } from '../utils/resetShiftData'
+// Legacy components
 import { ScreenWrapper, CardWrapper, ViewWrapper } from '../components'
+// Design System components
+import { Card, ElevatedCard, Button, Icon } from '../components'
+import { COLORS, SPACING, TEXT_STYLES, ICON_NAMES } from '../styles'
 
 const SettingsScreen = ({ navigation }) => {
   // Log để debug
@@ -116,69 +120,104 @@ const SettingsScreen = ({ navigation }) => {
       overlay={true}
       overlayOpacity={0.03}
     >
-      <ScrollView style={styles.container}>
-        {/* 1. General Settings */}
-        <ViewWrapper
-          style={styles.section}
-          backgroundType="solid"
-          useThemeBackground={false}
-        >
-        <ViewWrapper
-          style={styles.sectionHeader}
-          backgroundType="solid"
-          useThemeBackground={false}
-        >
-          <MaterialIcons
-            name="settings"
-            size={24}
-            color={theme.primaryColor}
-          />
-          <Text style={[styles.sectionTitle, { color: theme.textColor }]}>
-            {t('General Settings')}
-          </Text>
-        </ViewWrapper>
-
-        {/* Dark Mode Setting */}
-        <View style={styles.settingItem}>
-          <View style={styles.settingLabelContainer}>
-            <Text style={[styles.settingLabel, darkMode && styles.darkText]}>
-              {t('Dark Mode')}
-            </Text>
-          </View>
-          <Switch
-            value={darkMode}
-            onValueChange={toggleDarkMode}
-            trackColor={{ false: '#767577', true: theme.primaryColor }}
-            thumbColor={darkMode ? '#fff' : '#f4f3f4'}
-          />
-        </View>
-
-        {/* Language Setting */}
-        <CardWrapper
-          onPress={() => setShowLanguageModal(true)}
-          padding={16}
-          marginBottom={16}
-          backgroundType="gradient"
-          overlay={true}
-          overlayOpacity={0.05}
-        >
-          <View style={styles.menuIconContainer}>
-            <MaterialIcons
-              name="language"
-              size={24}
+      <ScrollView style={{ flex: 1, padding: SPACING.MD }}>
+        {/* 1. General Settings - Design System */}
+        <View style={{ marginBottom: SPACING.XL }}>
+          <View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginBottom: SPACING.MD,
+          }}>
+            <Icon
+              name={ICON_NAMES.SETTINGS}
+              size="LG"
               color={theme.primaryColor}
             />
-          </View>
-          <View style={styles.menuTextContainer}>
-            <Text style={[styles.menuTitle, { color: theme.textColor }]}>
-              {t('Language')}
+            <Text style={[
+              TEXT_STYLES.header2,
+              {
+                color: theme.textColor,
+                marginLeft: SPACING.SM,
+              }
+            ]}>
+              {t('General Settings')}
             </Text>
-            <Text style={[styles.menuDescription, { color: theme.subtextColor }]}>
-              {languages.find((lang) => lang.id === language)?.name}
-            </Text>
           </View>
-        </CardWrapper>
-      </ViewWrapper>
+
+          {/* Dark Mode Setting - Design System */}
+          <ElevatedCard style={{ marginBottom: SPACING.MD }}>
+            <View style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}>
+              <View style={{ flex: 1 }}>
+                <Text style={[
+                  TEXT_STYLES.body,
+                  { color: theme.textColor }
+                ]}>
+                  {t('Dark Mode')}
+                </Text>
+              </View>
+              <Switch
+                value={darkMode}
+                onValueChange={toggleDarkMode}
+                trackColor={{ false: '#767577', true: theme.primaryColor }}
+                thumbColor={darkMode ? '#fff' : '#f4f3f4'}
+              />
+            </View>
+          </ElevatedCard>
+
+          {/* Language Setting - Design System */}
+          <ElevatedCard
+            interactive
+            onPress={() => setShowLanguageModal(true)}
+            style={{ marginBottom: SPACING.MD }}
+          >
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+            }}>
+              <View style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                backgroundColor: `${theme.primaryColor}15`,
+                justifyContent: 'center',
+                alignItems: 'center',
+                marginRight: SPACING.MD,
+              }}>
+                <Icon
+                  name={ICON_NAMES.LANGUAGE || 'language'}
+                  size="MD"
+                  color={theme.primaryColor}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[
+                  TEXT_STYLES.body,
+                  { color: theme.textColor }
+                ]}>
+                  {t('Language')}
+                </Text>
+                <Text style={[
+                  TEXT_STYLES.caption,
+                  {
+                    color: theme.subtextColor,
+                    marginTop: SPACING.XXS,
+                  }
+                ]}>
+                  {languages.find((lang) => lang.id === language)?.name}
+                </Text>
+              </View>
+              <Icon
+                name={ICON_NAMES.RIGHT}
+                size="SM"
+                color={theme.subtextColor}
+              />
+            </View>
+          </ElevatedCard>
+        </View>
 
       {/* 2. Work Settings */}
       <View style={styles.section}>
@@ -353,6 +392,55 @@ const SettingsScreen = ({ navigation }) => {
             {t('Debug Settings')}
           </Text>
         </View>
+
+        <ElevatedCard
+          interactive
+          onPress={() => navigation.navigate('DesignSystemDemo')}
+          style={{ marginBottom: SPACING.MD }}
+        >
+          <View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+          }}>
+            <View style={{
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              backgroundColor: `${theme.primaryColor}15`,
+              justifyContent: 'center',
+              alignItems: 'center',
+              marginRight: SPACING.MD,
+            }}>
+              <Icon
+                name="color-palette"
+                size="MD"
+                color={theme.primaryColor}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[
+                TEXT_STYLES.body,
+                { color: theme.textColor }
+              ]}>
+                Design System Demo
+              </Text>
+              <Text style={[
+                TEXT_STYLES.caption,
+                {
+                  color: theme.subtextColor,
+                  marginTop: SPACING.XXS,
+                }
+              ]}>
+                Showcase all design system components
+              </Text>
+            </View>
+            <Icon
+              name={ICON_NAMES.RIGHT}
+              size="SM"
+              color={theme.subtextColor}
+            />
+          </View>
+        </ElevatedCard>
 
         <CardWrapper
           onPress={() => navigation.navigate('WeatherDebug')}

@@ -9,7 +9,11 @@ import { COLORS } from '../styles/common/colors'
 import styles from '../styles/components/multiFunctionButton'
 import timeManager from '../utils/timeManager'
 import reminderManager from '../utils/reminderManager'
+// Legacy component
 import GradientButton from './GradientButton'
+// Design System components
+import { Button, Card, Icon } from '../components'
+import { SPACING, TEXT_STYLES, ICON_NAMES } from '../styles'
 
 const MultiFunctionButton = () => {
   const {
@@ -361,62 +365,105 @@ const MultiFunctionButton = () => {
   }
 
   return (
-    <View style={styles.container}>
-      {/* Main Multi-Function Button với Gradient */}
-      <View style={styles.buttonContainer}>
-        <GradientButton
-          title={buttonConfig.text}
-          iconName={buttonConfig.icon}
-          iconSize={36} // Tăng kích thước icon
-          gradientColors={getGradientColors()}
-          onPress={handleMultiFunctionButton}
-          disabled={buttonConfig.disabled}
-          description={buttonConfig.description}
-          style={darkMode ? styles.darkButton : undefined}
-        >
-          {/* Custom content với reset button */}
-          <Ionicons name={buttonConfig.icon} size={36} color={COLORS.TEXT_DARK} />
-          <Text style={styles.mainButtonText}>{buttonConfig.text}</Text>
+    <View style={{ marginBottom: SPACING.LG }}>
+      {/* Main Multi-Function Button với Design System */}
+      <View style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: SPACING.SM,
+      }}>
+        {/* Main Button */}
+        <View style={{ flex: 1 }}>
+          <Button
+            title={buttonConfig.text}
+            iconName={buttonConfig.icon}
+            iconPosition="left"
+            variant="gradient"
+            size="xlarge"
+            onPress={handleMultiFunctionButton}
+            disabled={buttonConfig.disabled}
+            style={{
+              minHeight: 80,
+            }}
+            buttonStyle={{
+              paddingVertical: SPACING.LG,
+              paddingHorizontal: SPACING.XL,
+            }}
+            textStyle={{
+              ...TEXT_STYLES.header3,
+              color: COLORS.TEXT.INVERSE,
+            }}
+          />
 
           {/* Button description */}
           {buttonConfig.description && (
-            <Text style={styles.buttonDescription}>
+            <Text style={[
+              TEXT_STYLES.caption,
+              {
+                color: theme.subtextColor,
+                textAlign: 'center',
+                marginTop: SPACING.XS,
+              }
+            ]}>
               {buttonConfig.description}
             </Text>
           )}
+        </View>
 
-          {/* Reset button (only show if there are logs) */}
-          {attendanceLogs.length > 0 && (
-            <TouchableOpacity
-              style={styles.resetButton}
-              onPress={confirmReset}
-              hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
-            >
-              <Ionicons name="refresh" size={20} color={COLORS.TEXT_DARK} />
-            </TouchableOpacity>
-          )}
-        </GradientButton>
-
-        {/* Punch Button (only show in WORKING state if enabled) */}
-        {shouldShowPunchButton && (
-          <TouchableOpacity
-            style={styles.punchButton}
-            onPress={handlePunchButton}
-          >
-            <Ionicons name="finger-print" size={24} color="#fff" />
-            <Text style={styles.punchButtonText}>{t('Ký Công')}</Text>
-          </TouchableOpacity>
+        {/* Reset button (only show if there are logs) */}
+        {attendanceLogs.length > 0 && (
+          <Button
+            iconName={ICON_NAMES.REFRESH}
+            iconPosition="only"
+            variant="outline"
+            size="medium"
+            onPress={confirmReset}
+            style={{
+              width: 56,
+              height: 56,
+              borderRadius: 28,
+            }}
+          />
         )}
       </View>
 
-      {/* Attendance Logs History */}
+      {/* Punch Button (only show in WORKING state if enabled) */}
+      {shouldShowPunchButton && (
+        <View style={{ marginTop: SPACING.MD }}>
+          <Button
+            title={t('Ký Công')}
+            iconName={ICON_NAMES.FINGERPRINT || 'finger-print'}
+            iconPosition="left"
+            variant="secondary"
+            size="large"
+            onPress={handlePunchButton}
+          />
+        </View>
+      )}
+
+      {/* Attendance Logs History - Design System */}
       {attendanceLogs.length > 0 && (
-        <View
-          style={[styles.logsContainer, darkMode && styles.darkLogsContainer]}
-        >
-          <Text style={[styles.logsTitle, darkMode && styles.darkText]}>
-            {t("Today's Attendance")}
-          </Text>
+        <Card style={{ marginTop: SPACING.LG }}>
+          <View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginBottom: SPACING.MD,
+          }}>
+            <Icon
+              name={ICON_NAMES.TIME}
+              size="MD"
+              color={theme.primaryColor}
+            />
+            <Text style={[
+              TEXT_STYLES.header3,
+              {
+                color: theme.textColor,
+                marginLeft: SPACING.SM,
+              }
+            ]}>
+              {t("Today's Attendance")}
+            </Text>
+          </View>
           <View style={styles.timelineContainer}>
             {/* Lọc log để mỗi loại chỉ hiển thị một lần (lấy log mới nhất của mỗi loại) */}
             {(() => {
@@ -503,7 +550,7 @@ const MultiFunctionButton = () => {
               })
             })()}
           </View>
-        </View>
+        </Card>
       )}
     </View>
   )

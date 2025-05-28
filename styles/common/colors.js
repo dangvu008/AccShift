@@ -110,6 +110,59 @@ export const COLORS = {
   GRADIENT_CARD_ELECTRICITY: ['#F59E0B', '#D97706'], // Orange gradient cho Electricity
   GRADIENT_CARD_INTERNET: ['#10B981', '#059669'], // Green gradient cho Internet
   GRADIENT_CARD_RENOVATION: ['#8B5CF6', '#7C3AED'], // Purple gradient cho Renovation
+
+  // === SEMANTIC COLORS - Màu sắc theo ngữ nghĩa ===
+
+  // Interactive states - Trạng thái tương tác
+  INTERACTIVE: {
+    DEFAULT: '#6B46C1',
+    HOVER: '#553C9A',
+    ACTIVE: '#4C1D95',
+    FOCUS: '#8B5CF6',
+    DISABLED: '#D1D5DB',
+  },
+
+  // Component states - Trạng thái component
+  COMPONENT: {
+    BACKGROUND_PRIMARY: '#FFFFFF',
+    BACKGROUND_SECONDARY: '#F8FAFC',
+    BACKGROUND_TERTIARY: '#F1F5F9',
+    SURFACE_ELEVATED: '#FFFFFF',
+    SURFACE_OVERLAY: 'rgba(0, 0, 0, 0.5)',
+  },
+
+  // Feedback colors - Màu phản hồi
+  FEEDBACK: {
+    SUCCESS_BG: '#ECFDF5',
+    SUCCESS_BORDER: '#A7F3D0',
+    WARNING_BG: '#FFFBEB',
+    WARNING_BORDER: '#FDE68A',
+    ERROR_BG: '#FEF2F2',
+    ERROR_BORDER: '#FECACA',
+    INFO_BG: '#EFF6FF',
+    INFO_BORDER: '#BFDBFE',
+  },
+
+  // Text colors semantic - Màu văn bản theo ngữ nghĩa
+  TEXT: {
+    PRIMARY: '#0F172A',
+    SECONDARY: '#475569',
+    TERTIARY: '#64748B',
+    DISABLED: '#94A3B8',
+    INVERSE: '#FFFFFF',
+    LINK: '#3B82F6',
+    LINK_HOVER: '#2563EB',
+  },
+
+  // Border colors semantic - Màu viền theo ngữ nghĩa
+  BORDER: {
+    DEFAULT: '#E2E8F0',
+    STRONG: '#CBD5E1',
+    SUBTLE: '#F1F5F9',
+    FOCUS: '#3B82F6',
+    ERROR: '#EF4444',
+    SUCCESS: '#10B981',
+  },
 }
 
 export default COLORS;
