@@ -5,7 +5,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  Switch,
   ScrollView,
   Alert,
   StatusBar,
@@ -29,7 +28,6 @@ import {
   Modal,
   SelectionModal,
   ConfirmationModal,
-  Switch,
   SettingSwitch
 } from '../components'
 import { COLORS, SPACING, TEXT_STYLES, ICON_NAMES, SHADOWS, BORDER_RADIUS } from '../styles'
