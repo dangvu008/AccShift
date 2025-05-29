@@ -956,7 +956,6 @@ export const translations = {
     'Chọn thời gian': 'Select Time',
     'Chọn giờ vào': 'Select Check-in Time',
     'Chọn giờ ra': 'Select Check-out Time',
-    'Hủy bỏ': 'Cancel',
     'Lưu lại': 'Save',
     'Đang lưu...': 'Saving...',
     'Vui lòng chọn trạng thái': 'Please select a status',

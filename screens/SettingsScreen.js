@@ -534,10 +534,6 @@ const SettingsScreen = ({ navigation }) => {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
-  },
   section: {
     marginBottom: 24,
   },
@@ -629,9 +625,6 @@ const styles = StyleSheet.create({
   },
   languageText: {
     fontSize: 16,
-  },
-  selectedLanguageText: {
-    fontWeight: 'bold',
   },
   cancelButton: {
     marginTop: 16,

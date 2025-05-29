@@ -44,7 +44,7 @@ const ReminderSettingsScreen = ({ navigation }) => {
   // Load settings khi component mount
   useEffect(() => {
     loadSettings();
-  }, []);
+  }, [loadSettings]);
 
   /**
    * Load cài đặt từ storage
