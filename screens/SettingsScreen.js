@@ -4,22 +4,35 @@ import { useContext, useState, useEffect } from 'react'
 import {
   View,
   Text,
-  StyleSheet,
   TouchableOpacity,
   Switch,
   ScrollView,
-  Modal,
   Alert,
+  StatusBar,
 } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
 import { AppContext } from '../context/AppContext'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { resetAllDataForTesting } from '../utils/resetShiftData'
-// Legacy components
-import { ScreenWrapper, CardWrapper, ViewWrapper } from '../components'
-// Design System components
-import { Card, ElevatedCard, Button, Icon } from '../components'
-import { COLORS, SPACING, TEXT_STYLES, ICON_NAMES } from '../styles'
+// Enhanced Design System components
+import {
+  Card,
+  ElevatedCard,
+  StatusCard,
+  SectionCard,
+  ActionCard,
+  Button,
+  PrimaryButton,
+  SecondaryButton,
+  IconButton,
+  Icon,
+  ScreenWrapper,
+  Modal,
+  SelectionModal,
+  ConfirmationModal,
+  Switch,
+  SettingSwitch
+} from '../components'
+import { COLORS, SPACING, TEXT_STYLES, ICON_NAMES, SHADOWS, BORDER_RADIUS } from '../styles'
 
 const SettingsScreen = ({ navigation }) => {
   // Log để debug
@@ -46,14 +59,22 @@ const SettingsScreen = ({ navigation }) => {
     { id: 'en', name: 'English' },
   ]
 
+  // === ENHANCED STATE MANAGEMENT ===
   const [showLanguageModal, setShowLanguageModal] = useState(false)
+  const [showResetModal, setShowResetModal] = useState(false)
+  const [showExportModal, setShowExportModal] = useState(false)
+  const [weatherAlertsEnabled, setWeatherAlertsEnabled] = useState(true)
+
+  // === LANGUAGE OPTIONS ===
+  const languageOptions = [
+    { value: 'vi', label: 'Tiếng Việt' },
+    { value: 'en', label: 'English' },
+  ]
 
   const handleLanguageChange = (langId) => {
     changeLanguage(langId)
     setShowLanguageModal(false)
   }
-
-  const [weatherAlertsEnabled, setWeatherAlertsEnabled] = useState(true)
 
   useEffect(() => {
     // Load weather alerts setting
@@ -113,530 +134,646 @@ const SettingsScreen = ({ navigation }) => {
   }
 
   return (
-    <ScreenWrapper
-      backgroundType="pattern"
-      patternType="grid"
-      patternOpacity={0.06}
-      overlay={true}
-      overlayOpacity={0.03}
-    >
-      <ScrollView style={{ flex: 1, padding: SPACING.MD }}>
-        {/* 1. General Settings - Design System */}
-        <View style={{ marginBottom: SPACING.XL }}>
-          <View style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            marginBottom: SPACING.MD,
-          }}>
-            <Icon
-              name={ICON_NAMES.SETTINGS}
-              size="LG"
-              color={theme.primaryColor}
-            />
-            <Text style={[
-              TEXT_STYLES.header2,
-              {
-                color: theme.textColor,
-                marginLeft: SPACING.SM,
-              }
-            ]}>
-              {t('General Settings')}
-            </Text>
-          </View>
-
-          {/* Dark Mode Setting - Design System */}
-          <ElevatedCard style={{ marginBottom: SPACING.MD }}>
-            <View style={{
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}>
-              <View style={{ flex: 1 }}>
-                <Text style={[
-                  TEXT_STYLES.body,
-                  { color: theme.textColor }
-                ]}>
-                  {t('Dark Mode')}
-                </Text>
-              </View>
-              <Switch
-                value={darkMode}
-                onValueChange={toggleDarkMode}
-                trackColor={{ false: '#767577', true: theme.primaryColor }}
-                thumbColor={darkMode ? '#fff' : '#f4f3f4'}
-              />
-            </View>
-          </ElevatedCard>
-
-          {/* Language Setting - Design System */}
+    <>
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor={COLORS.PRIMARY_700}
+        translucent={false}
+      />
+      <ScreenWrapper
+        backgroundType="gradient"
+        gradientColors={theme.gradientBackground}
+        overlay={true}
+        overlayOpacity={0.02}
+      >
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ padding: SPACING.MD }}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* === ENHANCED HEADER === */}
           <ElevatedCard
-            interactive
-            onPress={() => setShowLanguageModal(true)}
-            style={{ marginBottom: SPACING.MD }}
+            size="medium"
+            elevation="low"
+            style={{
+              marginBottom: SPACING.XL,
+              backgroundColor: theme.surfaceElevatedColor,
+            }}
           >
             <View style={{
               flexDirection: 'row',
               alignItems: 'center',
+              justifyContent: 'space-between',
             }}>
               <View style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: `${theme.primaryColor}15`,
-                justifyContent: 'center',
+                flexDirection: 'row',
                 alignItems: 'center',
-                marginRight: SPACING.MD,
+                flex: 1,
+              }}>
+                <View style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: BORDER_RADIUS.XL,
+                  backgroundColor: COLORS.PRIMARY_100,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  marginRight: SPACING.LG,
+                  ...SHADOWS.SUBTLE,
+                }}>
+                  <Icon
+                    name={ICON_NAMES.SETTINGS}
+                    size="XL"
+                    color={COLORS.PRIMARY_600}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[
+                    TEXT_STYLES.displaySmall,
+                    {
+                      color: theme.textPrimaryColor,
+                      marginBottom: SPACING.TINY,
+                    }
+                  ]}>
+                    {t('Settings')}
+                  </Text>
+                  <Text style={[
+                    TEXT_STYLES.bodyMedium,
+                    {
+                      color: theme.textSecondaryColor,
+                      fontWeight: '500',
+                    }
+                  ]}>
+                    Customize your experience
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </ElevatedCard>
+
+          {/* === GENERAL SETTINGS SECTION === */}
+          <SectionCard
+            header={
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
               }}>
                 <Icon
-                  name={ICON_NAMES.LANGUAGE || 'language'}
-                  size="MD"
+                  name={ICON_NAMES.SETTINGS}
+                  size="LG"
                   color={theme.primaryColor}
+                />
+                <Text style={[
+                  TEXT_STYLES.heading2,
+                  {
+                    color: theme.textPrimaryColor,
+                    marginLeft: SPACING.SM,
+                  }
+                ]}>
+                  {t('General Settings')}
+                </Text>
+              </View>
+            }
+            style={{ marginBottom: SPACING.XL }}
+          >
+
+            {/* Dark Mode Setting */}
+            <SettingSwitch
+              icon="MOON"
+              label={t('Dark Mode')}
+              description="Switch between light and dark themes"
+              value={darkMode}
+              onValueChange={toggleDarkMode}
+              variant="default"
+              style={{ marginBottom: SPACING.LG }}
+            />
+
+            {/* Language Setting */}
+            <TouchableOpacity
+              onPress={() => setShowLanguageModal(true)}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingVertical: SPACING.MD,
+                paddingHorizontal: SPACING.LG,
+                backgroundColor: COLORS.GRAY_50,
+                borderRadius: BORDER_RADIUS.MD,
+                marginBottom: SPACING.MD,
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={{
+                width: 48,
+                height: 48,
+                borderRadius: BORDER_RADIUS.XL,
+                backgroundColor: COLORS.PRIMARY_100,
+                justifyContent: 'center',
+                alignItems: 'center',
+                marginRight: SPACING.LG,
+              }}>
+                <Icon
+                  name="LANGUAGE"
+                  size="LG"
+                  color={COLORS.PRIMARY_600}
                 />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[
-                  TEXT_STYLES.body,
-                  { color: theme.textColor }
+                  TEXT_STYLES.bodyMedium,
+                  {
+                    color: theme.textPrimaryColor,
+                    fontWeight: '600',
+                    marginBottom: SPACING.TINY,
+                  }
                 ]}>
                   {t('Language')}
                 </Text>
                 <Text style={[
-                  TEXT_STYLES.caption,
+                  TEXT_STYLES.bodySmall,
                   {
-                    color: theme.subtextColor,
-                    marginTop: SPACING.XXS,
+                    color: theme.textSecondaryColor,
                   }
                 ]}>
                   {languages.find((lang) => lang.id === language)?.name}
                 </Text>
               </View>
               <Icon
-                name={ICON_NAMES.RIGHT}
-                size="SM"
-                color={theme.subtextColor}
-              />
-            </View>
-          </ElevatedCard>
-        </View>
-
-      {/* 2. Work Settings */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <MaterialIcons
-            name="work"
-            size={24}
-            color={theme.primaryColor}
-          />
-          <Text style={[styles.sectionTitle, { color: theme.textColor }]}>
-            {t('Work Settings')}
-          </Text>
-        </View>
-
-        <View style={styles.settingItem}>
-          <View style={styles.settingLabelContainer}>
-            <Text style={[styles.settingLabel, darkMode && styles.darkText]}>
-              {t('Only Go Work Mode')}
-            </Text>
-            <Text
-              style={[
-                styles.settingDescription,
-                darkMode && styles.darkSubtitle,
-              ]}
-            >
-              {t(
-                'Only show Go Work button instead of the full attendance flow'
-              )}
-            </Text>
-          </View>
-          <Switch
-            value={onlyGoWorkMode}
-            onValueChange={toggleOnlyGoWorkMode}
-            trackColor={{ false: '#767577', true: '#8a56ff' }}
-            thumbColor={onlyGoWorkMode ? '#fff' : '#f4f3f4'}
-          />
-        </View>
-      </View>
-
-      {/* 3. Notification Settings */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <MaterialIcons
-            name="notifications"
-            size={24}
-            color={theme.primaryColor}
-          />
-          <Text style={[styles.sectionTitle, { color: theme.textColor }]}>
-            {t('Notification Settings')}
-          </Text>
-        </View>
-
-        <View style={styles.settingItem}>
-          <View style={styles.settingLabelContainer}>
-            <Text style={[styles.settingLabel, darkMode && styles.darkText]}>
-              {t('Sound')}
-            </Text>
-          </View>
-          <Switch
-            value={notificationSound}
-            onValueChange={toggleNotificationSound}
-            trackColor={{ false: '#767577', true: '#8a56ff' }}
-            thumbColor={notificationSound ? '#fff' : '#f4f3f4'}
-          />
-        </View>
-
-        <View style={styles.settingItem}>
-          <View style={styles.settingLabelContainer}>
-            <Text style={[styles.settingLabel, darkMode && styles.darkText]}>
-              {t('Vibration')}
-            </Text>
-          </View>
-          <Switch
-            value={notificationVibration}
-            onValueChange={toggleNotificationVibration}
-            trackColor={{ false: '#767577', true: '#8a56ff' }}
-            thumbColor={notificationVibration ? '#fff' : '#f4f3f4'}
-          />
-        </View>
-
-        {/* Reminder Settings Card */}
-        <CardWrapper
-          onPress={() => navigation.navigate('ReminderSettings')}
-          padding={16}
-          marginBottom={16}
-          backgroundType="gradient"
-          overlay={true}
-          overlayOpacity={0.05}
-        >
-          <View style={styles.menuIconContainer}>
-            <MaterialIcons
-              name="alarm"
-              size={24}
-              color={theme.primaryColor}
-            />
-          </View>
-          <View style={styles.menuTextContainer}>
-            <Text style={[styles.menuTitle, { color: theme.textColor }]}>
-              {t('Reminder Settings')}
-            </Text>
-            <Text style={[styles.menuDescription, { color: theme.subtextColor }]}>
-              {t('Configure work reminders and notifications')}
-            </Text>
-          </View>
-        </CardWrapper>
-
-        {/* Active Reminders Card */}
-        <CardWrapper
-          onPress={() => navigation.navigate('EnhancedAlarmScreen')}
-          padding={16}
-          marginBottom={16}
-          backgroundType="gradient"
-          customColors={theme.gradientAccent}
-          overlay={true}
-          overlayOpacity={0.05}
-        >
-          <View style={styles.menuIconContainer}>
-            <MaterialIcons
-              name="notifications-active"
-              size={24}
-              color={theme.primaryColor}
-            />
-          </View>
-          <View style={styles.menuTextContainer}>
-            <Text style={[styles.menuTitle, { color: theme.textColor }]}>
-              {t('Active Reminders')}
-            </Text>
-            <Text style={[styles.menuDescription, { color: theme.subtextColor }]}>
-              {t('View and manage scheduled reminders')}
-            </Text>
-          </View>
-        </CardWrapper>
-      </View>
-
-      {/* 4. Weather Settings */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <MaterialIcons
-            name="cloud"
-            size={24}
-            color={theme.primaryColor}
-          />
-          <Text style={[styles.sectionTitle, { color: theme.textColor }]}>
-            {t('Weather Settings')}
-          </Text>
-        </View>
-
-        <View style={styles.settingItem}>
-          <View style={styles.settingLabelContainer}>
-            <Text style={[styles.settingLabel, darkMode && styles.darkText]}>
-              {t('Weather Alerts')}
-            </Text>
-          </View>
-          <Switch
-            value={weatherAlertsEnabled}
-            onValueChange={toggleWeatherAlerts}
-            trackColor={{ false: '#767577', true: '#8a56ff' }}
-            thumbColor={weatherAlertsEnabled ? '#fff' : '#f4f3f4'}
-          />
-        </View>
-      </View>
-
-      {/* 5. Debug Settings */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <MaterialIcons
-            name="bug-report"
-            size={24}
-            color={theme.primaryColor}
-          />
-          <Text style={[styles.sectionTitle, { color: theme.textColor }]}>
-            {t('Debug Settings')}
-          </Text>
-        </View>
-
-        <ElevatedCard
-          interactive
-          onPress={() => navigation.navigate('DesignSystemDemo')}
-          style={{ marginBottom: SPACING.MD }}
-        >
-          <View style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-          }}>
-            <View style={{
-              width: 40,
-              height: 40,
-              borderRadius: 20,
-              backgroundColor: `${theme.primaryColor}15`,
-              justifyContent: 'center',
-              alignItems: 'center',
-              marginRight: SPACING.MD,
-            }}>
-              <Icon
-                name="color-palette"
+                name="RIGHT"
                 size="MD"
-                color={theme.primaryColor}
+                color={theme.textSecondaryColor}
               />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[
-                TEXT_STYLES.body,
-                { color: theme.textColor }
-              ]}>
-                Design System Demo
-              </Text>
-              <Text style={[
-                TEXT_STYLES.caption,
-                {
-                  color: theme.subtextColor,
-                  marginTop: SPACING.XXS,
-                }
-              ]}>
-                Showcase all design system components
-              </Text>
-            </View>
-            <Icon
-              name={ICON_NAMES.RIGHT}
-              size="SM"
-              color={theme.subtextColor}
-            />
-          </View>
-        </ElevatedCard>
-
-        <CardWrapper
-          onPress={() => navigation.navigate('WeatherDebug')}
-          padding={16}
-          marginBottom={16}
-        >
-          <View style={styles.menuIconContainer}>
-            <MaterialIcons
-              name="cloud"
-              size={24}
-              color={theme.primaryColor}
-            />
-          </View>
-          <View style={styles.menuTextContainer}>
-            <Text style={[styles.menuTitle, { color: theme.textColor }]}>
-              {t('Weather Debug')}
-            </Text>
-            <Text style={[styles.menuDescription, { color: theme.subtextColor }]}>
-              {t('Debug weather API and location issues')}
-            </Text>
-          </View>
-        </CardWrapper>
-
-        <CardWrapper
-          onPress={handleResetData}
-          padding={16}
-          marginBottom={16}
-        >
-          <View style={styles.menuIconContainer}>
-            <MaterialIcons
-              name="refresh"
-              size={24}
-              color={theme.primaryColor}
-            />
-          </View>
-          <View style={styles.menuTextContainer}>
-            <Text style={[styles.menuTitle, { color: theme.textColor }]}>
-              {t('Reset All Data')}
-            </Text>
-            <Text style={[styles.menuDescription, { color: theme.subtextColor }]}>
-              {t('Reset shift data and work status for testing')}
-            </Text>
-          </View>
-        </CardWrapper>
-      </View>
-
-      {/* Language Selection Modal */}
-      <Modal
-        visible={showLanguageModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowLanguageModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: theme.cardColor }]}>
-            <Text style={[styles.modalTitle, { color: theme.textColor }]}>
-              {t('Select Language')}
-            </Text>
-
-            {languages.map((lang) => (
-              <TouchableOpacity
-                key={lang.id}
-                style={[
-                  styles.languageOption,
-                  { backgroundColor: theme.backgroundSecondaryColor },
-                  language === lang.id && { backgroundColor: theme.primaryColor + '20' },
-                ]}
-                onPress={() => handleLanguageChange(lang.id)}
-              >
-                <Text style={[styles.languageText, { color: theme.textColor }]}>
-                  {lang.name}
-                </Text>
-                {language === lang.id && (
-                  <MaterialIcons name="check" size={24} color={theme.primaryColor} />
-                )}
-              </TouchableOpacity>
-            ))}
-
-            <TouchableOpacity
-              style={[styles.cancelButton, { backgroundColor: theme.backgroundSecondaryColor }]}
-              onPress={() => setShowLanguageModal(false)}
-            >
-              <Text style={[styles.cancelButtonText, { color: theme.textColor }]}>{t('Cancel')}</Text>
             </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-      </ScrollView>
-    </ScreenWrapper>
+          </SectionCard>
+
+          {/* === WORK SETTINGS SECTION === */}
+          <SectionCard
+            header={
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+              }}>
+                <Icon
+                  name="WORK"
+                  size="LG"
+                  color={theme.primaryColor}
+                />
+                <Text style={[
+                  TEXT_STYLES.heading2,
+                  {
+                    color: theme.textPrimaryColor,
+                    marginLeft: SPACING.SM,
+                  }
+                ]}>
+                  {t('Work Settings')}
+                </Text>
+              </View>
+            }
+            style={{ marginBottom: SPACING.XL }}
+          >
+            {/* Only Go Work Mode Setting */}
+            <SettingSwitch
+              icon="BRIEFCASE"
+              label={t('Only Go Work Mode')}
+              description={t('Only show Go Work button instead of the full attendance flow')}
+              value={onlyGoWorkMode}
+              onValueChange={toggleOnlyGoWorkMode}
+              variant="success"
+            />
+          </SectionCard>
+
+          {/* === NOTIFICATION SETTINGS SECTION === */}
+          <SectionCard
+            header={
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+              }}>
+                <Icon
+                  name="NOTIFICATION"
+                  size="LG"
+                  color={theme.primaryColor}
+                />
+                <Text style={[
+                  TEXT_STYLES.heading2,
+                  {
+                    color: theme.textPrimaryColor,
+                    marginLeft: SPACING.SM,
+                  }
+                ]}>
+                  {t('Notification Settings')}
+                </Text>
+              </View>
+            }
+            style={{ marginBottom: SPACING.XL }}
+          >
+            {/* Sound Setting */}
+            <SettingSwitch
+              icon="VOLUME_UP"
+              label={t('Sound')}
+              description="Enable notification sounds"
+              value={notificationSound}
+              onValueChange={toggleNotificationSound}
+              variant="default"
+              style={{ marginBottom: SPACING.LG }}
+            />
+
+            {/* Vibration Setting */}
+            <SettingSwitch
+              icon="VIBRATE"
+              label={t('Vibration')}
+              description="Enable notification vibration"
+              value={notificationVibration}
+              onValueChange={toggleNotificationVibration}
+              variant="default"
+              style={{ marginBottom: SPACING.LG }}
+            />
+
+            {/* Weather Alerts Setting */}
+            <SettingSwitch
+              icon="CLOUD"
+              label={t('Weather Alerts')}
+              description="Receive weather-related notifications"
+              value={weatherAlertsEnabled}
+              onValueChange={toggleWeatherAlerts}
+              variant="warning"
+            />
+          </SectionCard>
+
+          {/* === QUICK ACTIONS SECTION === */}
+          <SectionCard
+            header={
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+              }}>
+                <Icon
+                  name="LIGHTNING"
+                  size="LG"
+                  color={theme.primaryColor}
+                />
+                <Text style={[
+                  TEXT_STYLES.heading2,
+                  {
+                    color: theme.textPrimaryColor,
+                    marginLeft: SPACING.SM,
+                  }
+                ]}>
+                  Quick Actions
+                </Text>
+              </View>
+            }
+            style={{ marginBottom: SPACING.XL }}
+          >
+            {/* Reminder Settings */}
+            <TouchableOpacity
+              onPress={() => navigation.navigate('ReminderSettings')}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingVertical: SPACING.MD,
+                paddingHorizontal: SPACING.LG,
+                backgroundColor: COLORS.PRIMARY_50,
+                borderRadius: BORDER_RADIUS.MD,
+                marginBottom: SPACING.MD,
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={{
+                width: 48,
+                height: 48,
+                borderRadius: BORDER_RADIUS.XL,
+                backgroundColor: COLORS.PRIMARY_100,
+                justifyContent: 'center',
+                alignItems: 'center',
+                marginRight: SPACING.LG,
+              }}>
+                <Icon
+                  name="ALARM"
+                  size="LG"
+                  color={COLORS.PRIMARY_600}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[
+                  TEXT_STYLES.bodyMedium,
+                  {
+                    color: theme.textPrimaryColor,
+                    fontWeight: '600',
+                    marginBottom: SPACING.TINY,
+                  }
+                ]}>
+                  {t('Reminder Settings')}
+                </Text>
+                <Text style={[
+                  TEXT_STYLES.bodySmall,
+                  {
+                    color: theme.textSecondaryColor,
+                  }
+                ]}>
+                  {t('Configure work reminders and notifications')}
+                </Text>
+              </View>
+              <Icon
+                name="RIGHT"
+                size="MD"
+                color={theme.textSecondaryColor}
+              />
+            </TouchableOpacity>
+
+            {/* Active Reminders */}
+            <TouchableOpacity
+              onPress={() => navigation.navigate('EnhancedAlarmScreen')}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingVertical: SPACING.MD,
+                paddingHorizontal: SPACING.LG,
+                backgroundColor: COLORS.SUCCESS_50,
+                borderRadius: BORDER_RADIUS.MD,
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={{
+                width: 48,
+                height: 48,
+                borderRadius: BORDER_RADIUS.XL,
+                backgroundColor: COLORS.SUCCESS_100,
+                justifyContent: 'center',
+                alignItems: 'center',
+                marginRight: SPACING.LG,
+              }}>
+                <Icon
+                  name="NOTIFICATION_ACTIVE"
+                  size="LG"
+                  color={COLORS.SUCCESS_600}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[
+                  TEXT_STYLES.bodyMedium,
+                  {
+                    color: theme.textPrimaryColor,
+                    fontWeight: '600',
+                    marginBottom: SPACING.TINY,
+                  }
+                ]}>
+                  {t('Active Reminders')}
+                </Text>
+                <Text style={[
+                  TEXT_STYLES.bodySmall,
+                  {
+                    color: theme.textSecondaryColor,
+                  }
+                ]}>
+                  {t('View and manage scheduled reminders')}
+                </Text>
+              </View>
+              <Icon
+                name="RIGHT"
+                size="MD"
+                color={theme.textSecondaryColor}
+              />
+            </TouchableOpacity>
+          </SectionCard>
+
+          {/* === DEBUG & DEVELOPER SECTION === */}
+          <SectionCard
+            header={
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+              }}>
+                <Icon
+                  name="BUG"
+                  size="LG"
+                  color={theme.primaryColor}
+                />
+                <Text style={[
+                  TEXT_STYLES.heading2,
+                  {
+                    color: theme.textPrimaryColor,
+                    marginLeft: SPACING.SM,
+                  }
+                ]}>
+                  {t('Debug & Developer')}
+                </Text>
+              </View>
+            }
+            style={{ marginBottom: SPACING.XL }}
+          >
+            {/* Design System Demo */}
+            <TouchableOpacity
+              onPress={() => navigation.navigate('DesignSystemDemo')}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingVertical: SPACING.MD,
+                paddingHorizontal: SPACING.LG,
+                backgroundColor: COLORS.INFO_50,
+                borderRadius: BORDER_RADIUS.MD,
+                marginBottom: SPACING.MD,
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={{
+                width: 48,
+                height: 48,
+                borderRadius: BORDER_RADIUS.XL,
+                backgroundColor: COLORS.INFO_100,
+                justifyContent: 'center',
+                alignItems: 'center',
+                marginRight: SPACING.LG,
+              }}>
+                <Icon
+                  name="PALETTE"
+                  size="LG"
+                  color={COLORS.INFO_600}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[
+                  TEXT_STYLES.bodyMedium,
+                  {
+                    color: theme.textPrimaryColor,
+                    fontWeight: '600',
+                    marginBottom: SPACING.TINY,
+                  }
+                ]}>
+                  Design System Demo
+                </Text>
+                <Text style={[
+                  TEXT_STYLES.bodySmall,
+                  {
+                    color: theme.textSecondaryColor,
+                  }
+                ]}>
+                  Showcase all design system components
+                </Text>
+              </View>
+              <Icon
+                name="RIGHT"
+                size="MD"
+                color={theme.textSecondaryColor}
+              />
+            </TouchableOpacity>
+
+            {/* Weather Debug */}
+            <TouchableOpacity
+              onPress={() => navigation.navigate('WeatherDebug')}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingVertical: SPACING.MD,
+                paddingHorizontal: SPACING.LG,
+                backgroundColor: COLORS.WARNING_50,
+                borderRadius: BORDER_RADIUS.MD,
+                marginBottom: SPACING.MD,
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={{
+                width: 48,
+                height: 48,
+                borderRadius: BORDER_RADIUS.XL,
+                backgroundColor: COLORS.WARNING_100,
+                justifyContent: 'center',
+                alignItems: 'center',
+                marginRight: SPACING.LG,
+              }}>
+                <Icon
+                  name="CLOUD"
+                  size="LG"
+                  color={COLORS.WARNING_600}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[
+                  TEXT_STYLES.bodyMedium,
+                  {
+                    color: theme.textPrimaryColor,
+                    fontWeight: '600',
+                    marginBottom: SPACING.TINY,
+                  }
+                ]}>
+                  {t('Weather Debug')}
+                </Text>
+                <Text style={[
+                  TEXT_STYLES.bodySmall,
+                  {
+                    color: theme.textSecondaryColor,
+                  }
+                ]}>
+                  {t('Debug weather API and location issues')}
+                </Text>
+              </View>
+              <Icon
+                name="RIGHT"
+                size="MD"
+                color={theme.textSecondaryColor}
+              />
+            </TouchableOpacity>
+
+            {/* Reset All Data */}
+            <TouchableOpacity
+              onPress={() => setShowResetModal(true)}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingVertical: SPACING.MD,
+                paddingHorizontal: SPACING.LG,
+                backgroundColor: COLORS.ERROR_50,
+                borderRadius: BORDER_RADIUS.MD,
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={{
+                width: 48,
+                height: 48,
+                borderRadius: BORDER_RADIUS.XL,
+                backgroundColor: COLORS.ERROR_100,
+                justifyContent: 'center',
+                alignItems: 'center',
+                marginRight: SPACING.LG,
+              }}>
+                <Icon
+                  name="REFRESH"
+                  size="LG"
+                  color={COLORS.ERROR_600}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[
+                  TEXT_STYLES.bodyMedium,
+                  {
+                    color: theme.textPrimaryColor,
+                    fontWeight: '600',
+                    marginBottom: SPACING.TINY,
+                  }
+                ]}>
+                  {t('Reset All Data')}
+                </Text>
+                <Text style={[
+                  TEXT_STYLES.bodySmall,
+                  {
+                    color: theme.textSecondaryColor,
+                  }
+                ]}>
+                  {t('Reset shift data and work status for testing')}
+                </Text>
+              </View>
+              <Icon
+                name="RIGHT"
+                size="MD"
+                color={theme.textSecondaryColor}
+              />
+            </TouchableOpacity>
+          </SectionCard>
+
+          {/* === ENHANCED MODALS === */}
+
+          {/* Language Selection Modal */}
+          <SelectionModal
+            visible={showLanguageModal}
+            onClose={() => setShowLanguageModal(false)}
+            onSelect={handleLanguageChange}
+            title={t('Select Language')}
+            options={languageOptions}
+            selectedValue={language}
+          />
+
+          {/* Reset Data Confirmation Modal */}
+          <ConfirmationModal
+            visible={showResetModal}
+            onClose={() => setShowResetModal(false)}
+            onConfirm={async () => {
+              setShowResetModal(false)
+              try {
+                const result = await resetAllDataForTesting()
+                if (result) {
+                  Alert.alert(
+                    'Thành công',
+                    'Đã reset tất cả dữ liệu thành công. Bây giờ bạn có thể kiểm tra tab "This Week" để xem dữ liệu mới.',
+                    [{ text: 'OK' }]
+                  )
+                } else {
+                  Alert.alert('Lỗi', 'Không thể reset dữ liệu', [{ text: 'OK' }])
+                }
+              } catch (error) {
+                console.error('Error resetting data:', error)
+                Alert.alert('Lỗi', 'Đã xảy ra lỗi khi reset dữ liệu', [{ text: 'OK' }])
+              }
+            }}
+            title="Xác nhận Reset Dữ liệu"
+            message="Bạn có chắc chắn muốn reset tất cả dữ liệu ca làm việc và trạng thái làm việc? Hành động này không thể hoàn tác."
+            confirmText="Reset"
+            cancelText="Hủy"
+            variant="error"
+          />
+        </ScrollView>
+      </ScreenWrapper>
+    </>
   )
 }
 
-const styles = StyleSheet.create({
-  section: {
-    marginBottom: 24,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginLeft: 8,
-  },
-  settingItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.1)',
-  },
-  settingLabelContainer: {
-    flex: 1,
-  },
-  settingLabel: {
-    fontSize: 16,
-    marginBottom: 4,
-  },
-  settingDescription: {
-    fontSize: 12,
-  },
-  menuIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.05)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  menuTextContainer: {
-    flex: 1,
-  },
-  menuTitle: {
-    fontSize: 16,
-    fontWeight: '500',
-    marginBottom: 4,
-  },
-  menuDescription: {
-    fontSize: 14,
-  },
-
-  modalOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1000,
-  },
-  modalContent: {
-    width: '80%',
-    borderRadius: 12,
-    padding: 20,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    maxHeight: '80%',
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  languageOption: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  languageText: {
-    fontSize: 16,
-  },
-  cancelButton: {
-    marginTop: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  cancelButtonText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-})
+// Styles are now handled by the design system components
 
 export default SettingsScreen
