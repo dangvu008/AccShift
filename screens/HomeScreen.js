@@ -390,116 +390,125 @@ const HomeScreen = ({ navigation, route }) => {
             </View>
           </FeatureCard>
 
-      {/* Hiển thị trạng thái làm việc nếu đang làm việc - Design System */}
-      {isWorking && (
-        <GradientCard
-          gradientColors={theme.gradientSuccess}
-          style={{ marginBottom: SPACING.LG }}
-        >
-          <View style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-          }}>
-            <View style={{
-              width: 56,
-              height: 56,
-              borderRadius: 28,
-              backgroundColor: 'rgba(255, 255, 255, 0.2)',
-              justifyContent: 'center',
-              alignItems: 'center',
-              marginRight: SPACING.MD,
-            }}>
-              <Icon
-                name={ICON_NAMES.SUCCESS}
-                size="XL"
-                color={COLORS.TEXT.INVERSE}
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[
-                TEXT_STYLES.header3,
-                { color: COLORS.TEXT.INVERSE }
-              ]}>
-                {t('Working')} {currentShift ? currentShift.name : ''}
-              </Text>
-              <Text style={[
-                TEXT_STYLES.body,
-                {
-                  color: 'rgba(255, 255, 255, 0.9)',
-                  marginTop: SPACING.XXS,
-                }
-              ]}>
-                {t('Worked for')} {formatDuration(workDuration)}
-              </Text>
-            </View>
-          </View>
-        </GradientCard>
-      )}
+          {/* === WORKING STATUS SECTION === */}
+          {isWorking && (
+            <StatusCard
+              variant="success"
+              style={{ marginBottom: SPACING.XL }}
+            >
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+              }}>
+                <View style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: BORDER_RADIUS.XL,
+                  backgroundColor: COLORS.SUCCESS_100,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  marginRight: SPACING.LG,
+                  ...SHADOWS.SM,
+                }}>
+                  <Icon
+                    name={ICON_NAMES.SUCCESS}
+                    size="XL"
+                    color={COLORS.SUCCESS_600}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[
+                    TEXT_STYLES.heading3,
+                    {
+                      color: COLORS.SUCCESS_800,
+                      marginBottom: SPACING.TINY,
+                    }
+                  ]}>
+                    {t('Working')} {currentShift ? currentShift.name : ''}
+                  </Text>
+                  <Text style={[
+                    TEXT_STYLES.bodyMedium,
+                    {
+                      color: COLORS.SUCCESS_700,
+                      fontWeight: '500',
+                    }
+                  ]}>
+                    {t('Worked for')} {formatDuration(workDuration)}
+                  </Text>
+                </View>
+              </View>
+            </StatusCard>
+          )}
 
-      {/* 4. Nút Đa Năng lớn */}
-      <MultiFunctionButton />
+          {/* === MULTI-FUNCTION BUTTON SECTION === */}
+          <MultiFunctionButton />
 
-      {/* 6. Lịch sử bấm nút (được hiển thị trong MultiFunctionButton) */}
-
-      {/* 7. Lưới trạng thái tuần - Design System */}
-      <GradientCard
-        gradientColors={theme.gradientCardDark}
-        style={{ marginBottom: SPACING.LG }}
-      >
-        <View style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: SPACING.MD,
-        }}>
-          <View style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            flex: 1,
-          }}>
-            <View style={{
-              width: 40,
-              height: 40,
-              borderRadius: 20,
-              backgroundColor: 'rgba(255, 255, 255, 0.2)',
-              justifyContent: 'center',
-              alignItems: 'center',
-              marginRight: SPACING.SM,
-            }}>
-              <Icon
-                name={ICON_NAMES.STATS}
-                size="MD"
-                color={COLORS.TEXT.INVERSE}
-              />
-            </View>
-            <Text style={[
-              TEXT_STYLES.header3,
-              { color: COLORS.TEXT.INVERSE }
-            ]}>
-              {t('Weekly Status')}
-            </Text>
-          </View>
-          <Button
-            variant="ghost"
-            size="small"
-            iconName={ICON_NAMES.RIGHT}
-            iconPosition="only"
-            onPress={() => navigation.navigate('AttendanceStats')}
+          {/* === WEEKLY STATUS SECTION === */}
+          <ElevatedCard
+            size="large"
+            elevation="medium"
             style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.1)',
-              borderRadius: 20,
-              width: 40,
-              height: 40,
+              marginBottom: SPACING.XL,
+              backgroundColor: theme.surfaceElevatedColor,
             }}
-          />
-        </View>
-        <WeeklyStatusGrid />
-      </GradientCard>
+          >
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: SPACING.LG,
+            }}>
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                flex: 1,
+              }}>
+                <View style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: BORDER_RADIUS.XL,
+                  backgroundColor: COLORS.PRIMARY_100,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  marginRight: SPACING.MD,
+                  ...SHADOWS.SUBTLE,
+                }}>
+                  <Icon
+                    name={ICON_NAMES.STATS}
+                    size="LG"
+                    color={COLORS.PRIMARY_600}
+                  />
+                </View>
+                <Text style={[
+                  TEXT_STYLES.heading3,
+                  {
+                    color: theme.textPrimaryColor,
+                    flex: 1,
+                  }
+                ]}>
+                  {t('Weekly Status')}
+                </Text>
+              </View>
 
-      {/* 8. Khu vực Ghi Chú Công Việc */}
-      <WorkNotesSection navigation={navigation} route={route} />
-      </ScrollView>
-    </ScreenWrapper>
+              <IconButton
+                variant="ghost"
+                size="medium"
+                iconName={ICON_NAMES.RIGHT}
+                onPress={() => navigation.navigate('AttendanceStats')}
+                style={{
+                  backgroundColor: COLORS.PRIMARY_50,
+                  borderRadius: BORDER_RADIUS.ROUND,
+                }}
+              />
+            </View>
+            <WeeklyStatusGrid />
+          </ElevatedCard>
+
+          {/* === WORK NOTES SECTION === */}
+          <WorkNotesSection navigation={navigation} route={route} />
+        </ScrollView>
+      </ScreenWrapper>
+    </>
   )
 }
 
