@@ -133,7 +133,6 @@ export const getTheme = (darkMode) => {
 
     // === DIMENSIONS SYSTEM ===
     dimensions: DIMENSIONS,
-    iconSizes: ICON_SIZES,
 
     // === LAYOUT SYSTEM ===
     zIndex: Z_INDEX,
@@ -174,7 +173,7 @@ export const getTheme = (darkMode) => {
     // Keep old property names for backward compatibility
     textColor: darkMode ? COLORS.TEXT_DARK_PRIMARY : COLORS.TEXT_LIGHT_PRIMARY,
     subtextColor: darkMode ? COLORS.TEXT_DARK_SECONDARY : COLORS.TEXT_LIGHT_SECONDARY,
-    borderColor: darkMode ? COLORS.BORDER_DARK : COLORS.BORDER_LIGHT,
+    legacyBorderColor: darkMode ? COLORS.BORDER_DARK : COLORS.BORDER_LIGHT,
     primaryGradientStart: COLORS.GRADIENT_PRIMARY[0],
     primaryGradientEnd: COLORS.GRADIENT_PRIMARY[1],
   }

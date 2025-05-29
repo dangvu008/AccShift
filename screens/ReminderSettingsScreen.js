@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { View, Text, ScrollView, Switch, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { AppContext } from '../context/AppContext';
@@ -41,15 +41,10 @@ const ReminderSettingsScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // Load settings khi component mount
-  useEffect(() => {
-    loadSettings();
-  }, [loadSettings]);
-
   /**
    * Load cài đặt từ storage
    */
-  const loadSettings = async () => {
+  const loadSettings = useCallback(async () => {
     try {
       setLoading(true);
       const userSettings = await storage.getUserSettings();
@@ -67,7 +62,12 @@ const ReminderSettingsScreen = ({ navigation }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
+
+  // Load settings khi component mount
+  useEffect(() => {
+    loadSettings();
+  }, [loadSettings]);
 
   /**
    * Lưu cài đặt

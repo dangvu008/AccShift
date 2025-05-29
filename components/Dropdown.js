@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, TextInput } from 'react-native';
 import { COLORS, SPACING, TEXT_STYLES, BORDER_RADIUS, SHADOWS } from '../styles';
 import Icon from './Icon';
 import Modal from './Modal';
@@ -8,7 +8,7 @@ import Modal from './Modal';
  * 📋 Enhanced Dropdown Component for AccShift
  * Modern, accessible dropdown component with comprehensive variants and features
  * Supports the new enhanced design system with improved user experience
- * 
+ *
  * @param {Object} props
  * @param {Array} props.options - Dropdown options array
  * @param {string|number} props.value - Selected value
@@ -130,7 +130,7 @@ const Dropdown = ({
       }
       return `${value.length} items selected`;
     }
-    
+
     const selectedOption = options.find(opt => opt.value === value);
     return selectedOption ? selectedOption.label : placeholder;
   };

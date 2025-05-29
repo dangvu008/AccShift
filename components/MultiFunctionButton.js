@@ -93,7 +93,7 @@ const MultiFunctionButton = () => {
     }
 
     initializeReminders()
-  }, [currentShift])
+  }, [currentShift, buttonState])
 
   // Effect để quản lý nhắc nhở khi button state thay đổi
   useEffect(() => {
@@ -102,12 +102,13 @@ const MultiFunctionButton = () => {
 
       try {
         switch (buttonState) {
-          case BUTTON_STATES.GO_WORK:
+          case BUTTON_STATES.GO_WORK: {
             // Lên lịch tất cả nhắc nhở cho ca làm việc
             await reminderManager.scheduleAllShiftReminders(currentShift)
             break
+          }
 
-          case BUTTON_STATES.CHECK_IN:
+          case BUTTON_STATES.CHECK_IN: {
             // Hủy nhắc nhở check-in vì đã check-in
             const checkInReminders = reminderManager.getActiveReminders(currentShift.id)
               .filter(r => r.type.includes('check_in'))
@@ -115,8 +116,9 @@ const MultiFunctionButton = () => {
               await reminderManager.cancelReminder(reminder.id)
             }
             break
+          }
 
-          case BUTTON_STATES.CHECK_OUT:
+          case BUTTON_STATES.CHECK_OUT: {
             // Hủy nhắc nhở check-out vì đã check-out
             const checkOutReminders = reminderManager.getActiveReminders(currentShift.id)
               .filter(r => r.type.includes('check_out'))
@@ -124,11 +126,13 @@ const MultiFunctionButton = () => {
               await reminderManager.cancelReminder(reminder.id)
             }
             break
+          }
 
-          case BUTTON_STATES.COMPLETED:
+          case BUTTON_STATES.COMPLETED: {
             // Hủy tất cả nhắc nhở của ca này vì đã hoàn thành
             await reminderManager.cancelShiftReminders(currentShift.id)
             break
+          }
         }
       } catch (error) {
         console.error('[MultiFunctionButton] Failed to manage reminders:', error)

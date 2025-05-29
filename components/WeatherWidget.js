@@ -565,7 +565,6 @@ const WeatherWidget = ({ onPress }) => {
       workLocation,
       locationPermissionGranted,
       t,
-      rotateApiKeyAndRetry,
       setCurrentWeather,
       setForecast,
       setWorkWeather,
@@ -574,7 +573,6 @@ const WeatherWidget = ({ onPress }) => {
       setLoading,
       setRefreshing,
       loading,
-      refreshing,
       generateSmartAlert,
     ]
   )

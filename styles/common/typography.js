@@ -274,7 +274,7 @@ export const TEXT_STYLES = {
     lineHeight: FONT_SIZES.BODY_MEDIUM * LINE_HEIGHTS.NORMAL,
     letterSpacing: LETTER_SPACING.NORMAL,
   },
-  bodySmall: {
+  legacyBodySmall: {
     fontSize: FONT_SIZES.BODY_SMALL,
     fontWeight: FONT_WEIGHTS.REGULAR,
     lineHeight: FONT_SIZES.BODY_SMALL * LINE_HEIGHTS.NORMAL,

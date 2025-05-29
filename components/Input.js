@@ -234,7 +234,6 @@ const Input = forwardRef(({
     flexDirection: 'row',
     alignItems: multiline ? 'flex-start' : 'center',
     height: multiline ? undefined : currentSize.height,
-    minHeight: multiline ? currentSize.height * numberOfLines : currentSize.height,
     paddingHorizontal: currentSize.paddingHorizontal,
     paddingVertical: multiline ? currentSize.paddingVertical : 0,
     borderWidth: currentVariant.borderWidth,

@@ -1,8 +1,8 @@
 import React from 'react';
-import { View, TouchableOpacity } from 'react-native';
+import { View, TouchableOpacity, Text } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '../styles/common/colors';
-import { SPACING, PADDING, BORDER_RADIUS, SHADOWS, DIMENSIONS, ANIMATION } from '../styles/common/spacing';
+import { SPACING, PADDING, BORDER_RADIUS, SHADOWS, DIMENSIONS, ANIMATION, OPACITY } from '../styles/common/spacing';
 
 /**
  * 🃏 Enhanced Card Component for AccShift
@@ -126,14 +126,14 @@ const Card = ({
     },
     glass: {
       backgroundColor: darkMode
-        ? `rgba(255, 255, 255, ${COLORS.OPACITY.LIGHT})`
-        : `rgba(255, 255, 255, ${COLORS.OPACITY.STRONG})`,
+        ? `rgba(255, 255, 255, ${OPACITY.LIGHT})`
+        : `rgba(255, 255, 255, ${OPACITY.STRONG})`,
       backgroundColorHover: darkMode
-        ? `rgba(255, 255, 255, ${COLORS.OPACITY.MEDIUM_LIGHT})`
-        : `rgba(255, 255, 255, ${COLORS.OPACITY.VERY_STRONG})`,
+        ? `rgba(255, 255, 255, ${OPACITY.MEDIUM_LIGHT})`
+        : `rgba(255, 255, 255, ${OPACITY.VERY_STRONG})`,
       borderColor: darkMode
-        ? `rgba(255, 255, 255, ${COLORS.OPACITY.MEDIUM_LIGHT})`
-        : `rgba(255, 255, 255, ${COLORS.OPACITY.MEDIUM})`,
+        ? `rgba(255, 255, 255, ${OPACITY.MEDIUM_LIGHT})`
+        : `rgba(255, 255, 255, ${OPACITY.MEDIUM})`,
       borderWidth: 1,
       textColor: darkMode ? COLORS.TEXT_DARK_PRIMARY : COLORS.TEXT_LIGHT_PRIMARY,
     },

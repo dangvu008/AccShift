@@ -1,13 +1,14 @@
 import React from 'react';
-import { View, Text, Modal as RNModal, TouchableOpacity, Pressable } from 'react-native';
+import { View, Text, Modal as RNModal, TouchableOpacity, Pressable, ScrollView } from 'react-native';
 import { COLORS, SPACING, TEXT_STYLES, BORDER_RADIUS, SHADOWS, ANIMATION } from '../styles';
 import Icon from './Icon';
+import { IconButton, SecondaryButton, PrimaryButton } from './Button';
 
 /**
  * 🪟 Enhanced Modal Component for AccShift
  * Modern, accessible modal component with comprehensive variants and animations
  * Supports the new enhanced design system with improved user experience
- * 
+ *
  * @param {Object} props
  * @param {boolean} props.visible - Whether modal is visible
  * @param {Function} props.onClose - Close callback
@@ -156,7 +157,7 @@ const Modal = ({
               {title && (
                 <Text style={[
                   TEXT_STYLES.heading2,
-                  { 
+                  {
                     color: COLORS.TEXT_LIGHT_PRIMARY,
                     flex: 1,
                   }
@@ -164,7 +165,7 @@ const Modal = ({
                   {title}
                 </Text>
               )}
-              
+
               {showCloseButton && (
                 <IconButton
                   variant="ghost"
@@ -193,16 +194,16 @@ const Modal = ({
 // === PRESET MODAL COMPONENTS ===
 
 // Confirmation Modal
-export const ConfirmationModal = ({ 
-  visible, 
-  onClose, 
-  onConfirm, 
-  title, 
-  message, 
+export const ConfirmationModal = ({
+  visible,
+  onClose,
+  onConfirm,
+  title,
+  message,
   confirmText = 'Confirm',
   cancelText = 'Cancel',
   variant = 'warning',
-  ...props 
+  ...props
 }) => (
   <Modal
     visible={visible}
@@ -213,7 +214,7 @@ export const ConfirmationModal = ({
   >
     <Text style={[
       TEXT_STYLES.bodyMedium,
-      { 
+      {
         color: COLORS.TEXT_LIGHT_SECONDARY,
         marginBottom: SPACING.XL,
         textAlign: 'center',
@@ -221,7 +222,7 @@ export const ConfirmationModal = ({
     ]}>
       {message}
     </Text>
-    
+
     <View style={{
       flexDirection: 'row',
       gap: SPACING.MD,
@@ -242,14 +243,14 @@ export const ConfirmationModal = ({
 );
 
 // Selection Modal
-export const SelectionModal = ({ 
-  visible, 
-  onClose, 
-  onSelect, 
-  title, 
-  options = [], 
+export const SelectionModal = ({
+  visible,
+  onClose,
+  onSelect,
+  title,
+  options = [],
   selectedValue,
-  ...props 
+  ...props
 }) => (
   <Modal
     visible={visible}
@@ -276,14 +277,14 @@ export const SelectionModal = ({
         >
           <Text style={[
             TEXT_STYLES.bodyMedium,
-            { 
+            {
               color: selectedValue === option.value ? COLORS.PRIMARY_700 : COLORS.TEXT_LIGHT_PRIMARY,
               fontWeight: selectedValue === option.value ? '600' : '400',
             }
           ]}>
             {option.label}
           </Text>
-          
+
           {selectedValue === option.value && (
             <Icon
               name="CHECK"
