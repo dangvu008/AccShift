@@ -1,168 +1,268 @@
 /**
- * Hệ thống màu sắc hiện đại cho ứng dụng AccShift
- * Cung cấp các màu sắc nhất quán và ấn tượng cho toàn bộ ứng dụng
+ * 🎨 Enhanced Color System for AccShift
+ * Modern, accessible color palette with comprehensive semantic tokens
+ * Supports both light and dark themes with optimal contrast ratios
  */
 
-// Màu sắc chính - Analytics App Inspired Purple Theme
+// === PRIMARY BRAND COLORS ===
 export const COLORS = {
-  // Màu chủ đạo - Purple Gradient Theme (inspired by Analytics App)
-  PRIMARY: '#6B46C1', // Purple-700 - Chính từ ảnh Analytics
-  PRIMARY_DARK: '#553C9A', // Purple-800 - Đậm hơn cho contrast
-  PRIMARY_LIGHT: '#8B5CF6', // Purple-500 - Sáng hơn cho highlights
-  PRIMARY_GRADIENT_START: '#6B46C1', // Purple gradient start
-  PRIMARY_GRADIENT_END: '#8B5CF6', // Purple gradient end
+  // Core Brand Colors - Purple Theme
+  PRIMARY: '#6B46C1',           // Purple-700 - Main brand color
+  PRIMARY_50: '#F3F0FF',        // Lightest purple tint
+  PRIMARY_100: '#E9E2FF',       // Very light purple
+  PRIMARY_200: '#D4C4FF',       // Light purple
+  PRIMARY_300: '#B794F6',       // Medium light purple
+  PRIMARY_400: '#9F7AEA',       // Medium purple
+  PRIMARY_500: '#8B5CF6',       // Base purple
+  PRIMARY_600: '#7C3AED',       // Medium dark purple
+  PRIMARY_700: '#6B46C1',       // Dark purple (main)
+  PRIMARY_800: '#553C9A',       // Darker purple
+  PRIMARY_900: '#44337A',       // Darkest purple
 
-  // Gradient backgrounds cho cards (như trong ảnh)
-  CARD_GRADIENT_START: '#7C3AED', // Purple-600
-  CARD_GRADIENT_END: '#6B46C1', // Purple-700
-  CARD_GRADIENT_SECONDARY_START: '#8B5CF6', // Purple-500
-  CARD_GRADIENT_SECONDARY_END: '#7C3AED', // Purple-600
+  // Secondary Brand Colors - Amber/Orange Accent
+  SECONDARY: '#F59E0B',         // Amber-500 - Secondary brand color
+  SECONDARY_50: '#FFFBEB',      // Lightest amber tint
+  SECONDARY_100: '#FEF3C7',     // Very light amber
+  SECONDARY_200: '#FDE68A',     // Light amber
+  SECONDARY_300: '#FCD34D',     // Medium light amber
+  SECONDARY_400: '#FBBF24',     // Medium amber
+  SECONDARY_500: '#F59E0B',     // Base amber (main)
+  SECONDARY_600: '#D97706',     // Medium dark amber
+  SECONDARY_700: '#B45309',     // Dark amber
+  SECONDARY_800: '#92400E',     // Darker amber
+  SECONDARY_900: '#78350F',     // Darkest amber
 
-  // Màu accent - Orange/Amber như trong ảnh
-  ACCENT: '#F59E0B', // Amber-500 - Màu cam/vàng từ ảnh
-  ACCENT_LIGHT: '#FCD34D', // Amber-300 - Sáng hơn
-  ACCENT_DARK: '#D97706', // Amber-600 - Đậm hơn
+  // === NEUTRAL COLORS ===
+  // Gray Scale - Modern neutral palette
+  GRAY_50: '#F8FAFC',           // Lightest gray
+  GRAY_100: '#F1F5F9',          // Very light gray
+  GRAY_200: '#E2E8F0',          // Light gray
+  GRAY_300: '#CBD5E1',          // Medium light gray
+  GRAY_400: '#94A3B8',          // Medium gray
+  GRAY_500: '#64748B',          // Base gray
+  GRAY_600: '#475569',          // Medium dark gray
+  GRAY_700: '#334155',          // Dark gray
+  GRAY_800: '#1E293B',          // Darker gray
+  GRAY_900: '#0F172A',          // Darkest gray
 
-  // Màu nền - Unified Background System
-  BACKGROUND_LIGHT: '#F8FAFC', // Slate-50 - Sáng và clean
-  BACKGROUND_DARK: '#0F0F23', // Darker purple - Đậm hơn để tránh conflict
-  BACKGROUND_SECONDARY_LIGHT: '#F1F5F9', // Slate-100
-  BACKGROUND_SECONDARY_DARK: '#1A1A2E', // Darker secondary - Đồng bộ hơn
+  // === SEMANTIC COLORS ===
+  // Success Colors - Green palette
+  SUCCESS: '#10B981',           // Emerald-500 - Main success color
+  SUCCESS_50: '#ECFDF5',        // Lightest success tint
+  SUCCESS_100: '#D1FAE5',       // Very light success
+  SUCCESS_200: '#A7F3D0',       // Light success
+  SUCCESS_300: '#6EE7B7',       // Medium light success
+  SUCCESS_400: '#34D399',       // Medium success
+  SUCCESS_500: '#10B981',       // Base success (main)
+  SUCCESS_600: '#059669',       // Medium dark success
+  SUCCESS_700: '#047857',       // Dark success
+  SUCCESS_800: '#065F46',       // Darker success
+  SUCCESS_900: '#064E3B',       // Darkest success
 
-  // Màu nền thẻ - Unified Card System
-  CARD_LIGHT: '#FFFFFF', // Trắng tinh khiết
-  CARD_DARK: '#16213E', // Solid dark card - Không dùng opacity để tránh chồng màu
-  CARD_ELEVATED_LIGHT: '#FFFFFF',
-  CARD_ELEVATED_DARK: '#1E3A8A', // Solid elevated dark - Đồng bộ với theme
+  // Warning Colors - Amber palette
+  WARNING: '#F59E0B',           // Amber-500 - Main warning color
+  WARNING_50: '#FFFBEB',        // Lightest warning tint
+  WARNING_100: '#FEF3C7',       // Very light warning
+  WARNING_200: '#FDE68A',       // Light warning
+  WARNING_300: '#FCD34D',       // Medium light warning
+  WARNING_400: '#FBBF24',       // Medium warning
+  WARNING_500: '#F59E0B',       // Base warning (main)
+  WARNING_600: '#D97706',       // Medium dark warning
+  WARNING_700: '#B45309',       // Dark warning
+  WARNING_800: '#92400E',       // Darker warning
+  WARNING_900: '#78350F',       // Darkest warning
 
-  // Màu nền thẻ thứ cấp - Consistent Secondary Cards
-  SECONDARY_CARD_LIGHT: '#F8FAFC', // Slate-50
-  SECONDARY_CARD_DARK: '#0F172A', // Solid secondary dark - Không dùng opacity
+  // Error Colors - Red palette
+  ERROR: '#EF4444',             // Red-500 - Main error color
+  ERROR_50: '#FEF2F2',          // Lightest error tint
+  ERROR_100: '#FEE2E2',         // Very light error
+  ERROR_200: '#FECACA',         // Light error
+  ERROR_300: '#FCA5A5',         // Medium light error
+  ERROR_400: '#F87171',         // Medium error
+  ERROR_500: '#EF4444',         // Base error (main)
+  ERROR_600: '#DC2626',         // Medium dark error
+  ERROR_700: '#B91C1C',         // Dark error
+  ERROR_800: '#991B1B',         // Darker error
+  ERROR_900: '#7F1D1D',         // Darkest error
 
-  // Màu văn bản - Font đậm và rõ ràng
-  TEXT_LIGHT: '#0f172a', // Slate-900 - Đậm tối đa cho readability
-  TEXT_DARK: '#f8fafc', // Slate-50 - Sáng tối đa
+  // Info Colors - Blue palette
+  INFO: '#3B82F6',              // Blue-500 - Main info color
+  INFO_50: '#EFF6FF',           // Lightest info tint
+  INFO_100: '#DBEAFE',          // Very light info
+  INFO_200: '#BFDBFE',          // Light info
+  INFO_300: '#93C5FD',          // Medium light info
+  INFO_400: '#60A5FA',          // Medium info
+  INFO_500: '#3B82F6',          // Base info (main)
+  INFO_600: '#2563EB',          // Medium dark info
+  INFO_700: '#1D4ED8',          // Dark info
+  INFO_800: '#1E40AF',          // Darker info
+  INFO_900: '#1E3A8A',          // Darkest info
 
-  // Màu văn bản phụ - Cải thiện hierarchy
-  SUBTEXT_LIGHT: '#475569', // Slate-600 - Đậm hơn nhưng vẫn readable
-  SUBTEXT_DARK: '#cbd5e1', // Slate-300 - Sáng hơn trong dark mode
+  // === BACKGROUND COLORS ===
+  // Light Theme Backgrounds
+  BACKGROUND_LIGHT: '#FFFFFF',      // Pure white
+  BACKGROUND_LIGHT_SECONDARY: '#F8FAFC',  // Slate-50 - Very light gray
+  BACKGROUND_LIGHT_TERTIARY: '#F1F5F9',   // Slate-100 - Light gray
 
-  // Màu đường viền - Modern borders
-  BORDER_LIGHT: '#e2e8f0', // Slate-200 - Subtle và clean
-  BORDER_DARK: '#475569', // Slate-600 - Visible trong dark mode
-  BORDER_ACCENT_LIGHT: '#cbd5e1', // Slate-300 - Cho focus states
-  BORDER_ACCENT_DARK: '#64748b', // Slate-500
+  // Dark Theme Backgrounds
+  BACKGROUND_DARK: '#0F172A',       // Slate-900 - Very dark
+  BACKGROUND_DARK_SECONDARY: '#1E293B',   // Slate-800 - Dark
+  BACKGROUND_DARK_TERTIARY: '#334155',    // Slate-700 - Medium dark
 
-  // Màu trạng thái - Vibrant và clear
-  SUCCESS: '#10b981', // Emerald-500 - Xanh lá modern
-  SUCCESS_LIGHT: '#34d399', // Emerald-400
-  SUCCESS_DARK: '#059669', // Emerald-600
+  // === SURFACE COLORS ===
+  // Card and Surface Colors
+  SURFACE_LIGHT: '#FFFFFF',         // White cards in light mode
+  SURFACE_LIGHT_ELEVATED: '#FFFFFF', // Elevated cards in light mode
+  SURFACE_DARK: '#1E293B',          // Dark cards in dark mode
+  SURFACE_DARK_ELEVATED: '#334155', // Elevated cards in dark mode
 
-  WARNING: '#f59e0b', // Amber-500 - Vàng cam ấm áp
-  WARNING_LIGHT: '#fbbf24', // Amber-400
-  WARNING_DARK: '#d97706', // Amber-600
+  // === TEXT COLORS ===
+  // Light Theme Text
+  TEXT_LIGHT_PRIMARY: '#0F172A',    // Slate-900 - Primary text
+  TEXT_LIGHT_SECONDARY: '#475569',  // Slate-600 - Secondary text
+  TEXT_LIGHT_TERTIARY: '#64748B',   // Slate-500 - Tertiary text
+  TEXT_LIGHT_DISABLED: '#94A3B8',   // Slate-400 - Disabled text
 
-  ERROR: '#ef4444', // Red-500 - Đỏ rõ ràng
-  ERROR_LIGHT: '#f87171', // Red-400
-  ERROR_DARK: '#dc2626', // Red-600
+  // Dark Theme Text
+  TEXT_DARK_PRIMARY: '#F8FAFC',     // Slate-50 - Primary text
+  TEXT_DARK_SECONDARY: '#CBD5E1',   // Slate-300 - Secondary text
+  TEXT_DARK_TERTIARY: '#94A3B8',    // Slate-400 - Tertiary text
+  TEXT_DARK_DISABLED: '#64748B',    // Slate-500 - Disabled text
 
-  INFO: '#3b82f6', // Blue-500 - Xanh dương tin cậy
-  INFO_LIGHT: '#60a5fa', // Blue-400
-  INFO_DARK: '#2563eb', // Blue-600
+  // === BORDER COLORS ===
+  // Light Theme Borders
+  BORDER_LIGHT: '#E2E8F0',          // Slate-200 - Default border
+  BORDER_LIGHT_STRONG: '#CBD5E1',   // Slate-300 - Strong border
+  BORDER_LIGHT_SUBTLE: '#F1F5F9',   // Slate-100 - Subtle border
 
-  // Màu vô hiệu hóa - Better contrast
-  DISABLED_LIGHT: '#d1d5db', // Gray-300
-  DISABLED_DARK: '#6b7280', // Gray-500
+  // Dark Theme Borders
+  BORDER_DARK: '#334155',           // Slate-700 - Default border
+  BORDER_DARK_STRONG: '#475569',    // Slate-600 - Strong border
+  BORDER_DARK_SUBTLE: '#1E293B',    // Slate-800 - Subtle border
 
-  // Màu trong suốt và overlay
+  // === UTILITY COLORS ===
   TRANSPARENT: 'transparent',
+  WHITE: '#FFFFFF',
+  BLACK: '#000000',
+
+  // Overlay Colors
   OVERLAY_LIGHT: 'rgba(0, 0, 0, 0.5)',
   OVERLAY_DARK: 'rgba(0, 0, 0, 0.7)',
+  OVERLAY_SUBTLE: 'rgba(0, 0, 0, 0.1)',
 
-  // Màu shadow - Enhanced depth
+  // Shadow Colors
   SHADOW: '#000000',
   SHADOW_LIGHT: 'rgba(0, 0, 0, 0.1)',
   SHADOW_MEDIUM: 'rgba(0, 0, 0, 0.15)',
   SHADOW_HEAVY: 'rgba(0, 0, 0, 0.25)',
 
-  // Màu gradient - Analytics App Inspired
-  GRADIENT_PRIMARY: ['#6B46C1', '#8B5CF6'], // Purple gradient chính
-  GRADIENT_ACCENT: ['#F59E0B', '#FCD34D'], // Amber gradient
-  GRADIENT_SUCCESS: ['#10B981', '#34D399'], // Emerald gradient
-  GRADIENT_CARD_LIGHT: ['#FFFFFF', '#F8FAFC'], // Light card gradient
-  GRADIENT_CARD_DARK: ['#16213E', '#1E3A8A'], // Solid dark card gradient - Không dùng opacity
+  // === GRADIENT COLORS ===
+  // Primary Brand Gradients
+  GRADIENT_PRIMARY: ['#6B46C1', '#8B5CF6'],           // Purple gradient
+  GRADIENT_PRIMARY_REVERSE: ['#8B5CF6', '#6B46C1'],   // Reverse purple gradient
+  GRADIENT_PRIMARY_SUBTLE: ['#F3F0FF', '#E9E2FF'],    // Subtle purple gradient
 
-  // Gradient cho background chính - Unified System với pattern
-  GRADIENT_BACKGROUND_DARK: ['#0F0F23', '#1A1A2E', '#16213E'], // Multi-stop dark gradient
-  GRADIENT_BACKGROUND_LIGHT: ['#F8FAFC', '#F1F5F9', '#E2E8F0'], // Multi-stop light gradient
+  // Secondary Brand Gradients
+  GRADIENT_SECONDARY: ['#F59E0B', '#FCD34D'],         // Amber gradient
+  GRADIENT_SECONDARY_REVERSE: ['#FCD34D', '#F59E0B'], // Reverse amber gradient
+  GRADIENT_SECONDARY_SUBTLE: ['#FFFBEB', '#FEF3C7'],  // Subtle amber gradient
 
-  // Background patterns cho texture
-  PATTERN_BACKGROUND_DARK: ['#0F0F23', '#1A1A2E', '#16213E', '#1E3A8A'], // 4-stop dark pattern
-  PATTERN_BACKGROUND_LIGHT: ['#F8FAFC', '#F1F5F9', '#E2E8F0', '#CBD5E1'], // 4-stop light pattern
+  // Semantic Gradients
+  GRADIENT_SUCCESS: ['#10B981', '#34D399'],           // Success gradient
+  GRADIENT_WARNING: ['#F59E0B', '#FBBF24'],           // Warning gradient
+  GRADIENT_ERROR: ['#EF4444', '#F87171'],             // Error gradient
+  GRADIENT_INFO: ['#3B82F6', '#60A5FA'],              // Info gradient
 
-  // Radial gradient backgrounds cho depth effect
-  RADIAL_BACKGROUND_DARK: ['#1A1A2E', '#0F0F23'], // Radial dark
-  RADIAL_BACKGROUND_LIGHT: ['#F1F5F9', '#F8FAFC'], // Radial light
+  // Background Gradients
+  GRADIENT_BACKGROUND_LIGHT: ['#FFFFFF', '#F8FAFC', '#F1F5F9'],     // Light theme background
+  GRADIENT_BACKGROUND_DARK: ['#0F172A', '#1E293B', '#334155'],      // Dark theme background
 
-  // Gradient cho các card đặc biệt
-  GRADIENT_CARD_WATER: ['#3B82F6', '#1D4ED8'], // Blue gradient cho Water
-  GRADIENT_CARD_HEATING: ['#EF4444', '#DC2626'], // Red gradient cho Heating
-  GRADIENT_CARD_ELECTRICITY: ['#F59E0B', '#D97706'], // Orange gradient cho Electricity
-  GRADIENT_CARD_INTERNET: ['#10B981', '#059669'], // Green gradient cho Internet
-  GRADIENT_CARD_RENOVATION: ['#8B5CF6', '#7C3AED'], // Purple gradient cho Renovation
+  // Surface Gradients
+  GRADIENT_SURFACE_LIGHT: ['#FFFFFF', '#F8FAFC'],     // Light surface gradient
+  GRADIENT_SURFACE_DARK: ['#1E293B', '#334155'],      // Dark surface gradient
 
-  // === SEMANTIC COLORS - Màu sắc theo ngữ nghĩa ===
+  // Special Purpose Gradients
+  GRADIENT_HERO: ['#6B46C1', '#8B5CF6', '#F59E0B'],   // Hero section gradient
+  GRADIENT_CARD_PREMIUM: ['#7C3AED', '#6B46C1'],      // Premium card gradient
+  GRADIENT_CARD_FEATURE: ['#3B82F6', '#1D4ED8'],      // Feature card gradient
 
-  // Interactive states - Trạng thái tương tác
+  // === SEMANTIC COLOR TOKENS ===
+  // These provide theme-aware color tokens that automatically adapt to light/dark mode
+
+  // Interactive States
   INTERACTIVE: {
-    DEFAULT: '#6B46C1',
-    HOVER: '#553C9A',
-    ACTIVE: '#4C1D95',
-    FOCUS: '#8B5CF6',
-    DISABLED: '#D1D5DB',
+    DEFAULT: '#6B46C1',           // Primary interactive color
+    HOVER: '#553C9A',             // Hover state
+    ACTIVE: '#44337A',            // Active/pressed state
+    FOCUS: '#8B5CF6',             // Focus state
+    DISABLED: '#94A3B8',          // Disabled state
   },
 
-  // Component states - Trạng thái component
-  COMPONENT: {
-    BACKGROUND_PRIMARY: '#FFFFFF',
-    BACKGROUND_SECONDARY: '#F8FAFC',
-    BACKGROUND_TERTIARY: '#F1F5F9',
-    SURFACE_ELEVATED: '#FFFFFF',
-    SURFACE_OVERLAY: 'rgba(0, 0, 0, 0.5)',
-  },
-
-  // Feedback colors - Màu phản hồi
-  FEEDBACK: {
-    SUCCESS_BG: '#ECFDF5',
-    SUCCESS_BORDER: '#A7F3D0',
-    WARNING_BG: '#FFFBEB',
-    WARNING_BORDER: '#FDE68A',
-    ERROR_BG: '#FEF2F2',
-    ERROR_BORDER: '#FECACA',
-    INFO_BG: '#EFF6FF',
-    INFO_BORDER: '#BFDBFE',
-  },
-
-  // Text colors semantic - Màu văn bản theo ngữ nghĩa
+  // Text Semantic Tokens
   TEXT: {
-    PRIMARY: '#0F172A',
-    SECONDARY: '#475569',
-    TERTIARY: '#64748B',
-    DISABLED: '#94A3B8',
-    INVERSE: '#FFFFFF',
-    LINK: '#3B82F6',
-    LINK_HOVER: '#2563EB',
+    PRIMARY: '#0F172A',           // Primary text (light mode)
+    SECONDARY: '#475569',         // Secondary text (light mode)
+    TERTIARY: '#64748B',          // Tertiary text (light mode)
+    DISABLED: '#94A3B8',          // Disabled text
+    INVERSE: '#FFFFFF',           // Inverse text (on dark backgrounds)
+    LINK: '#3B82F6',              // Link text
+    LINK_HOVER: '#2563EB',        // Link hover state
+    SUCCESS: '#059669',           // Success text
+    WARNING: '#D97706',           // Warning text
+    ERROR: '#DC2626',             // Error text
+    INFO: '#2563EB',              // Info text
   },
 
-  // Border colors semantic - Màu viền theo ngữ nghĩa
+  // Border Semantic Tokens
   BORDER: {
-    DEFAULT: '#E2E8F0',
-    STRONG: '#CBD5E1',
-    SUBTLE: '#F1F5F9',
-    FOCUS: '#3B82F6',
-    ERROR: '#EF4444',
-    SUCCESS: '#10B981',
+    DEFAULT: '#E2E8F0',           // Default border
+    STRONG: '#CBD5E1',            // Strong border
+    SUBTLE: '#F1F5F9',            // Subtle border
+    FOCUS: '#3B82F6',             // Focus border
+    ERROR: '#EF4444',             // Error border
+    SUCCESS: '#10B981',           // Success border
+    WARNING: '#F59E0B',           // Warning border
+    INFO: '#3B82F6',              // Info border
   },
+
+  // Background Semantic Tokens
+  BACKGROUND: {
+    PRIMARY: '#FFFFFF',           // Primary background
+    SECONDARY: '#F8FAFC',         // Secondary background
+    TERTIARY: '#F1F5F9',          // Tertiary background
+    ELEVATED: '#FFFFFF',          // Elevated surface
+    OVERLAY: 'rgba(0, 0, 0, 0.5)', // Overlay background
+    SUCCESS: '#ECFDF5',           // Success background
+    WARNING: '#FFFBEB',           // Warning background
+    ERROR: '#FEF2F2',             // Error background
+    INFO: '#EFF6FF',              // Info background
+  },
+
+  // Surface Semantic Tokens
+  SURFACE: {
+    DEFAULT: '#FFFFFF',           // Default surface
+    ELEVATED: '#FFFFFF',          // Elevated surface
+    OVERLAY: 'rgba(255, 255, 255, 0.9)', // Overlay surface
+    DISABLED: '#F1F5F9',          // Disabled surface
+  },
+
+  // === LEGACY COMPATIBILITY ===
+  // Keep old color names for backward compatibility during migration
+  PRIMARY_DARK: '#553C9A',
+  PRIMARY_LIGHT: '#8B5CF6',
+  ACCENT: '#F59E0B',
+  ACCENT_LIGHT: '#FCD34D',
+  ACCENT_DARK: '#D97706',
+  SUCCESS_LIGHT: '#34D399',
+  SUCCESS_DARK: '#059669',
+  WARNING_LIGHT: '#FBBF24',
+  WARNING_DARK: '#D97706',
+  ERROR_LIGHT: '#F87171',
+  ERROR_DARK: '#DC2626',
+  INFO_LIGHT: '#60A5FA',
+  INFO_DARK: '#2563EB',
+  DISABLED_LIGHT: '#D1D5DB',
+  DISABLED_DARK: '#6B7280',
 }
 
 export default COLORS;

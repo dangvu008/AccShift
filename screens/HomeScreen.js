@@ -1,22 +1,29 @@
 'use client'
 
 import { useContext, useState, useEffect, useRef, useMemo } from 'react'
-import { View, Text, TouchableOpacity, ScrollView, Alert } from 'react-native'
+import { View, Text, TouchableOpacity, ScrollView, Alert, StatusBar } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
-// Legacy styles - sẽ được thay thế dần
-import styles from '../styles/screens/homeScreen'
-import { Ionicons } from '@expo/vector-icons'
 import { AppContext } from '../context/AppContext'
 import { formatDuration } from '../utils/helpers'
 import MultiFunctionButton from '../components/MultiFunctionButton'
 import WeeklyStatusGrid from '../components/WeeklyStatusGrid'
 // import WeatherWidget from '../components/WeatherWidget' // TẠM THỜI ẨN
 import WorkNotesSection from '../components/WorkNotesSection'
-// Legacy components
-import { ScreenWrapper, CardWrapper, ViewWrapper } from '../components'
-// Design System components
-import { Card, GradientCard, Icon, Button } from '../components'
-import { COLORS, SPACING, TEXT_STYLES, ICON_NAMES } from '../styles'
+// Enhanced Design System components
+import {
+  Card,
+  ElevatedCard,
+  GradientCard,
+  FeatureCard,
+  StatusCard,
+  Icon,
+  Button,
+  PrimaryButton,
+  SecondaryButton,
+  IconButton,
+  ScreenWrapper
+} from '../components'
+import { COLORS, SPACING, TEXT_STYLES, ICON_NAMES, SHADOWS, BORDER_RADIUS } from '../styles'
 import timeManager from '../utils/timeManager'
 
 const HomeScreen = ({ navigation, route }) => {
@@ -165,144 +172,223 @@ const HomeScreen = ({ navigation, route }) => {
   }, [currentTime, t])
 
   return (
-    <ScreenWrapper
-      backgroundType="pattern"
-      patternType="dots"
-      patternOpacity={0.08}
-      overlay={true}
-      overlayOpacity={0.05}
-    >
-      <ScrollView
-        style={{ flex: 1, padding: SPACING.MD }}
-        showsVerticalScrollIndicator={false}
+    <>
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor={COLORS.PRIMARY_700}
+        translucent={false}
+      />
+      <ScreenWrapper
+        backgroundType="gradient"
+        gradientColors={theme.gradientBackground}
+        overlay={true}
+        overlayOpacity={0.02}
       >
-      {/* 1. Thanh trên cùng (Ngày/giờ) - Design System */}
-      <View style={{
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: SPACING.LG,
-      }}>
-        <View style={{ alignItems: 'flex-start' }}>
-          <Text style={[
-            TEXT_STYLES.header1,
-            {
-              color: theme.textColor,
-              letterSpacing: -0.5,
-            }
-          ]}>
-            {formattedTime}
-          </Text>
-          <Text style={[
-            TEXT_STYLES.bodySmall,
-            {
-              color: theme.subtextColor,
-              marginTop: SPACING.XXS,
-            }
-          ]}>
-            {formattedDate}
-          </Text>
-        </View>
-
-        {/* Header actions với Design System */}
-        <View style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: SPACING.SM,
-        }}>
-          <Button
-            variant="ghost"
-            size="small"
-            iconName={ICON_NAMES.NOTIFICATION}
-            iconPosition="only"
-            onPress={() => navigation.navigate('ReminderSettings')}
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ padding: SPACING.MD }}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* === ENHANCED HEADER SECTION === */}
+          <ElevatedCard
+            size="medium"
+            elevation="low"
             style={{
-              backgroundColor: `${theme.primaryColor}15`,
-              borderRadius: 22,
-              width: 44,
-              height: 44,
+              marginBottom: SPACING.XL,
+              backgroundColor: theme.surfaceElevatedColor,
             }}
-          />
-          <Button
-            variant="ghost"
-            size="small"
-            iconName={ICON_NAMES.SETTINGS}
-            iconPosition="only"
-            onPress={() => navigation.navigate('Settings')}
-            style={{
-              backgroundColor: `${theme.primaryColor}15`,
-              borderRadius: 22,
-              width: 44,
-              height: 44,
-            }}
-          />
-        </View>
-      </View>
-
-      {/* 2. Khu vực Thời tiết Hiện tại & Dự báo Ngắn hạn - TẠM THỜI ẨN */}
-      {/* <WeatherWidget onPress={() => navigation.navigate('WeatherDetail')} /> */}
-
-      {/* Vùng Cảnh báo Thời tiết (nếu có) - Đã được tích hợp vào WeatherWidget */}
-
-      {/* 3. Tên ca làm việc đang áp dụng - Design System */}
-      <GradientCard
-        interactive
-        onPress={() => navigation.navigate('ShiftsStack')}
-        gradientColors={theme.gradientPrimary}
-        style={{ marginBottom: SPACING.LG }}
-      >
-        <View style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}>
-          <View style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            flex: 1,
-          }}>
+          >
             <View style={{
-              width: 48,
-              height: 48,
-              borderRadius: 24,
-              backgroundColor: 'rgba(255, 255, 255, 0.2)',
-              justifyContent: 'center',
-              alignItems: 'center',
-              marginRight: SPACING.MD,
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start',
             }}>
-              <Icon
-                name={ICON_NAMES.TIME}
-                size="LG"
-                color={COLORS.TEXT.INVERSE}
-              />
+              {/* Time and Date Display */}
+              <View style={{ flex: 1 }}>
+                <Text style={[
+                  TEXT_STYLES.displayMedium,
+                  {
+                    color: theme.textPrimaryColor,
+                    letterSpacing: -1,
+                    marginBottom: SPACING.TINY,
+                  }
+                ]}>
+                  {formattedTime}
+                </Text>
+                <Text style={[
+                  TEXT_STYLES.bodyMedium,
+                  {
+                    color: theme.textSecondaryColor,
+                    fontWeight: '500',
+                  }
+                ]}>
+                  {formattedDate}
+                </Text>
+
+                {/* Quick Status Indicator */}
+                {isWorking && (
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    marginTop: SPACING.SM,
+                    paddingHorizontal: SPACING.SM,
+                    paddingVertical: SPACING.XS,
+                    backgroundColor: COLORS.SUCCESS_100,
+                    borderRadius: BORDER_RADIUS.PILL,
+                    alignSelf: 'flex-start',
+                  }}>
+                    <Icon
+                      name={ICON_NAMES.SUCCESS}
+                      size="XS"
+                      color={COLORS.SUCCESS_600}
+                    />
+                    <Text style={[
+                      TEXT_STYLES.caption,
+                      {
+                        color: COLORS.SUCCESS_700,
+                        marginLeft: SPACING.TINY,
+                        fontWeight: '600',
+                      }
+                    ]}>
+                      Đang làm việc
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Header Actions */}
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: SPACING.XS,
+              }}>
+                <IconButton
+                  variant="ghost"
+                  size="medium"
+                  iconName={ICON_NAMES.NOTIFICATION}
+                  onPress={() => navigation.navigate('ReminderSettings')}
+                  style={{
+                    backgroundColor: COLORS.PRIMARY_50,
+                    borderRadius: BORDER_RADIUS.ROUND,
+                  }}
+                />
+                <IconButton
+                  variant="ghost"
+                  size="medium"
+                  iconName={ICON_NAMES.SETTINGS}
+                  onPress={() => navigation.navigate('Settings')}
+                  style={{
+                    backgroundColor: COLORS.PRIMARY_50,
+                    borderRadius: BORDER_RADIUS.ROUND,
+                  }}
+                />
+              </View>
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[
-                TEXT_STYLES.header3,
-                { color: COLORS.TEXT.INVERSE }
-              ]}>
-                {currentShift ? currentShift.name : t('No shift selected')}
-              </Text>
-              <Text style={[
-                TEXT_STYLES.body,
-                {
-                  color: 'rgba(255, 255, 255, 0.9)',
-                  marginTop: SPACING.XXS,
-                }
-              ]}>
-                {currentShift
-                  ? `${currentShift.startTime} - ${currentShift.endTime}`
-                  : t('Tap to select shift')}
-              </Text>
+          </ElevatedCard>
+
+          {/* === CURRENT SHIFT SECTION === */}
+          <FeatureCard
+            interactive
+            onPress={() => navigation.navigate('ShiftsStack')}
+            style={{ marginBottom: SPACING.XL }}
+          >
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}>
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                flex: 1,
+              }}>
+                <View style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: BORDER_RADIUS.XL,
+                  backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  marginRight: SPACING.LG,
+                  ...SHADOWS.SM,
+                }}>
+                  <Icon
+                    name={ICON_NAMES.SHIFT}
+                    size="XL"
+                    color={COLORS.WHITE}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[
+                    TEXT_STYLES.heading3,
+                    {
+                      color: COLORS.WHITE,
+                      marginBottom: SPACING.TINY,
+                    }
+                  ]}>
+                    {currentShift ? currentShift.name : t('No shift selected')}
+                  </Text>
+                  <Text style={[
+                    TEXT_STYLES.bodyMedium,
+                    {
+                      color: 'rgba(255, 255, 255, 0.85)',
+                      fontWeight: '500',
+                    }
+                  ]}>
+                    {currentShift
+                      ? `${currentShift.startTime} - ${currentShift.endTime}`
+                      : t('Tap to select shift')
+                    }
+                  </Text>
+
+                  {/* Shift Status Badge */}
+                  {currentShift && (
+                    <View style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      marginTop: SPACING.SM,
+                      paddingHorizontal: SPACING.SM,
+                      paddingVertical: SPACING.TINY,
+                      backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                      borderRadius: BORDER_RADIUS.PILL,
+                      alignSelf: 'flex-start',
+                    }}>
+                      <Icon
+                        name={ICON_NAMES.CALENDAR}
+                        size="XS"
+                        color={COLORS.WHITE}
+                      />
+                      <Text style={[
+                        TEXT_STYLES.caption,
+                        {
+                          color: COLORS.WHITE,
+                          marginLeft: SPACING.TINY,
+                          fontWeight: '600',
+                        }
+                      ]}>
+                        Ca hiện tại
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+
+              <View style={{
+                width: 40,
+                height: 40,
+                borderRadius: BORDER_RADIUS.ROUND,
+                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}>
+                <Icon
+                  name={ICON_NAMES.RIGHT}
+                  size="MD"
+                  color="rgba(255, 255, 255, 0.8)"
+                />
+              </View>
             </View>
-          </View>
-          <Icon
-            name={ICON_NAMES.RIGHT}
-            size="MD"
-            color="rgba(255, 255, 255, 0.8)"
-          />
-        </View>
-      </GradientCard>
+          </FeatureCard>
 
       {/* Hiển thị trạng thái làm việc nếu đang làm việc - Design System */}
       {isWorking && (

@@ -1,116 +1,219 @@
 import { COLORS } from './colors';
 import { TEXT_STYLES, FONT_SIZES, FONT_WEIGHTS, LINE_HEIGHTS, LETTER_SPACING } from './typography';
+import { SPACING, PADDING, MARGIN, BORDER_RADIUS, SHADOWS, DIMENSIONS, Z_INDEX, OPACITY, ANIMATION } from './spacing';
+import { ICON_NAMES, ICON_SIZES } from './icons';
 
 /**
- * Lấy theme hiện đại với màu sắc và typography cải thiện dựa trên chế độ sáng/tối
- * @param {boolean} darkMode Chế độ tối
- * @returns {Object} Theme object với màu sắc, typography và effects
+ * 🎨 Enhanced Theme System for AccShift
+ * Modern theme system with comprehensive design tokens and semantic color mapping
+ * @param {boolean} darkMode - Whether to use dark mode
+ * @returns {Object} Complete theme object with all design tokens
  */
 export const getTheme = (darkMode) => {
   return {
-    // Màu nền chính - Cải thiện với secondary backgrounds
+    // === BACKGROUND COLORS ===
     backgroundColor: darkMode ? COLORS.BACKGROUND_DARK : COLORS.BACKGROUND_LIGHT,
-    backgroundSecondaryColor: darkMode ? COLORS.BACKGROUND_SECONDARY_DARK : COLORS.BACKGROUND_SECONDARY_LIGHT,
+    backgroundSecondaryColor: darkMode ? COLORS.BACKGROUND_DARK_SECONDARY : COLORS.BACKGROUND_LIGHT_SECONDARY,
+    backgroundTertiaryColor: darkMode ? COLORS.BACKGROUND_DARK_TERTIARY : COLORS.BACKGROUND_LIGHT_TERTIARY,
 
-    // Màu nền thẻ - Thêm elevated cards
-    cardColor: darkMode ? COLORS.CARD_DARK : COLORS.CARD_LIGHT,
-    cardElevatedColor: darkMode ? COLORS.CARD_ELEVATED_DARK : COLORS.CARD_ELEVATED_LIGHT,
-    secondaryCardColor: darkMode ? COLORS.SECONDARY_CARD_DARK : COLORS.SECONDARY_CARD_LIGHT,
+    // === SURFACE COLORS ===
+    surfaceColor: darkMode ? COLORS.SURFACE_DARK : COLORS.SURFACE_LIGHT,
+    surfaceElevatedColor: darkMode ? COLORS.SURFACE_DARK_ELEVATED : COLORS.SURFACE_LIGHT_ELEVATED,
+    cardColor: darkMode ? COLORS.SURFACE_DARK : COLORS.SURFACE_LIGHT,
+    cardElevatedColor: darkMode ? COLORS.SURFACE_DARK_ELEVATED : COLORS.SURFACE_LIGHT_ELEVATED,
 
-    // Màu văn bản - Cải thiện contrast
-    textColor: darkMode ? COLORS.TEXT_DARK : COLORS.TEXT_LIGHT,
-    subtextColor: darkMode ? COLORS.SUBTEXT_DARK : COLORS.SUBTEXT_LIGHT,
+    // === TEXT COLORS ===
+    textPrimaryColor: darkMode ? COLORS.TEXT_DARK_PRIMARY : COLORS.TEXT_LIGHT_PRIMARY,
+    textSecondaryColor: darkMode ? COLORS.TEXT_DARK_SECONDARY : COLORS.TEXT_LIGHT_SECONDARY,
+    textTertiaryColor: darkMode ? COLORS.TEXT_DARK_TERTIARY : COLORS.TEXT_LIGHT_TERTIARY,
+    textDisabledColor: darkMode ? COLORS.TEXT_DARK_DISABLED : COLORS.TEXT_LIGHT_DISABLED,
+    textInverseColor: darkMode ? COLORS.TEXT_LIGHT_PRIMARY : COLORS.TEXT_DARK_PRIMARY,
+    textLinkColor: COLORS.TEXT.LINK,
+    textLinkHoverColor: COLORS.TEXT.LINK_HOVER,
 
-    // Màu đường viền - Thêm accent borders
+    // === BORDER COLORS ===
     borderColor: darkMode ? COLORS.BORDER_DARK : COLORS.BORDER_LIGHT,
-    borderAccentColor: darkMode ? COLORS.BORDER_ACCENT_DARK : COLORS.BORDER_ACCENT_LIGHT,
+    borderStrongColor: darkMode ? COLORS.BORDER_DARK_STRONG : COLORS.BORDER_LIGHT_STRONG,
+    borderSubtleColor: darkMode ? COLORS.BORDER_DARK_SUBTLE : COLORS.BORDER_LIGHT_SUBTLE,
+    borderFocusColor: COLORS.BORDER.FOCUS,
 
-    // Màu chủ đạo - Thêm gradient support
-    primaryColor: COLORS.PRIMARY,
-    primaryDarkColor: COLORS.PRIMARY_DARK,
-    primaryLightColor: COLORS.PRIMARY_LIGHT,
-    primaryGradientStart: COLORS.PRIMARY_GRADIENT_START,
-    primaryGradientEnd: COLORS.PRIMARY_GRADIENT_END,
+    // === PRIMARY BRAND COLORS ===
+    primaryColor: COLORS.PRIMARY_700,
+    primaryHoverColor: COLORS.PRIMARY_800,
+    primaryActiveColor: COLORS.PRIMARY_900,
+    primarySubtleColor: COLORS.PRIMARY_50,
+    primaryMutedColor: COLORS.PRIMARY_100,
+    primaryLightColor: COLORS.PRIMARY_500,
+    primaryDarkColor: COLORS.PRIMARY_800,
 
-    // Màu accent - Mới thêm
-    accentColor: COLORS.ACCENT,
-    accentLightColor: COLORS.ACCENT_LIGHT,
-    accentDarkColor: COLORS.ACCENT_DARK,
+    // === SECONDARY BRAND COLORS ===
+    secondaryColor: COLORS.SECONDARY_500,
+    secondaryHoverColor: COLORS.SECONDARY_600,
+    secondaryActiveColor: COLORS.SECONDARY_700,
+    secondarySubtleColor: COLORS.SECONDARY_50,
+    secondaryMutedColor: COLORS.SECONDARY_100,
+    accentColor: COLORS.SECONDARY_500,
+    accentLightColor: COLORS.SECONDARY_400,
+    accentDarkColor: COLORS.SECONDARY_600,
 
-    // Màu trạng thái - Thêm light/dark variants
-    successColor: COLORS.SUCCESS,
-    successLightColor: COLORS.SUCCESS_LIGHT,
-    successDarkColor: COLORS.SUCCESS_DARK,
+    // === SEMANTIC COLORS ===
+    // Success Colors
+    successColor: COLORS.SUCCESS_500,
+    successHoverColor: COLORS.SUCCESS_600,
+    successActiveColor: COLORS.SUCCESS_700,
+    successSubtleColor: COLORS.SUCCESS_50,
+    successMutedColor: COLORS.SUCCESS_100,
+    successLightColor: COLORS.SUCCESS_400,
+    successDarkColor: COLORS.SUCCESS_600,
 
-    warningColor: COLORS.WARNING,
-    warningLightColor: COLORS.WARNING_LIGHT,
-    warningDarkColor: COLORS.WARNING_DARK,
+    // Warning Colors
+    warningColor: COLORS.WARNING_500,
+    warningHoverColor: COLORS.WARNING_600,
+    warningActiveColor: COLORS.WARNING_700,
+    warningSubtleColor: COLORS.WARNING_50,
+    warningMutedColor: COLORS.WARNING_100,
+    warningLightColor: COLORS.WARNING_400,
+    warningDarkColor: COLORS.WARNING_600,
 
-    errorColor: COLORS.ERROR,
-    errorLightColor: COLORS.ERROR_LIGHT,
-    errorDarkColor: COLORS.ERROR_DARK,
+    // Error Colors
+    errorColor: COLORS.ERROR_500,
+    errorHoverColor: COLORS.ERROR_600,
+    errorActiveColor: COLORS.ERROR_700,
+    errorSubtleColor: COLORS.ERROR_50,
+    errorMutedColor: COLORS.ERROR_100,
+    errorLightColor: COLORS.ERROR_400,
+    errorDarkColor: COLORS.ERROR_600,
 
-    infoColor: COLORS.INFO,
-    infoLightColor: COLORS.INFO_LIGHT,
-    infoDarkColor: COLORS.INFO_DARK,
+    // Info Colors
+    infoColor: COLORS.INFO_500,
+    infoHoverColor: COLORS.INFO_600,
+    infoActiveColor: COLORS.INFO_700,
+    infoSubtleColor: COLORS.INFO_50,
+    infoMutedColor: COLORS.INFO_100,
+    infoLightColor: COLORS.INFO_400,
+    infoDarkColor: COLORS.INFO_600,
 
-    // Màu khác - Thêm overlay support
-    disabledColor: darkMode ? COLORS.DISABLED_DARK : COLORS.DISABLED_LIGHT,
+    // === UTILITY COLORS ===
+    disabledColor: COLORS.GRAY_400,
     transparentColor: COLORS.TRANSPARENT,
     overlayColor: darkMode ? COLORS.OVERLAY_DARK : COLORS.OVERLAY_LIGHT,
+    overlaySubtleColor: COLORS.OVERLAY_SUBTLE,
+    whiteColor: COLORS.WHITE,
+    blackColor: COLORS.BLACK,
 
-    // Màu header - Sử dụng gradient
-    headerBackgroundColor: COLORS.PRIMARY,
-    headerTintColor: COLORS.TEXT_DARK,
+    // === NAVIGATION COLORS ===
+    headerBackgroundColor: COLORS.PRIMARY_700,
+    headerTintColor: COLORS.WHITE,
+    headerBorderColor: darkMode ? COLORS.BORDER_DARK : COLORS.BORDER_LIGHT,
 
-    // Màu tab bar - Cải thiện với elevated background
-    tabBarBackgroundColor: darkMode ? COLORS.CARD_ELEVATED_DARK : COLORS.CARD_ELEVATED_LIGHT,
+    // Tab Bar Colors
+    tabBarBackgroundColor: darkMode ? COLORS.SURFACE_DARK_ELEVATED : COLORS.SURFACE_LIGHT_ELEVATED,
     tabBarBorderColor: darkMode ? COLORS.BORDER_DARK : COLORS.BORDER_LIGHT,
-    tabBarActiveColor: COLORS.PRIMARY,
-    tabBarInactiveColor: darkMode ? COLORS.SUBTEXT_DARK : COLORS.SUBTEXT_LIGHT,
+    tabBarActiveColor: COLORS.PRIMARY_700,
+    tabBarInactiveColor: darkMode ? COLORS.TEXT_DARK_SECONDARY : COLORS.TEXT_LIGHT_SECONDARY,
 
-    // Typography - Thêm đầy đủ typography system
+    // === TYPOGRAPHY SYSTEM ===
     textStyles: TEXT_STYLES,
     fontSizes: FONT_SIZES,
     fontWeights: FONT_WEIGHTS,
     lineHeights: LINE_HEIGHTS,
     letterSpacing: LETTER_SPACING,
 
-    // Shadow effects - Thêm cho depth
+    // === SPACING SYSTEM ===
+    spacing: SPACING,
+    padding: PADDING,
+    margin: MARGIN,
+    borderRadius: BORDER_RADIUS,
+
+    // === SHADOW SYSTEM ===
+    shadows: SHADOWS,
     shadowLight: COLORS.SHADOW_LIGHT,
     shadowMedium: COLORS.SHADOW_MEDIUM,
     shadowHeavy: COLORS.SHADOW_HEAVY,
 
-    // Gradient arrays - Analytics App Style
+    // === DIMENSIONS SYSTEM ===
+    dimensions: DIMENSIONS,
+    iconSizes: ICON_SIZES,
+
+    // === LAYOUT SYSTEM ===
+    zIndex: Z_INDEX,
+    opacity: OPACITY,
+    animation: ANIMATION,
+
+    // === GRADIENT SYSTEM ===
+    // Primary Gradients
     gradientPrimary: COLORS.GRADIENT_PRIMARY,
-    gradientAccent: COLORS.GRADIENT_ACCENT,
+    gradientPrimaryReverse: COLORS.GRADIENT_PRIMARY_REVERSE,
+    gradientPrimarySubtle: COLORS.GRADIENT_PRIMARY_SUBTLE,
+
+    // Secondary Gradients
+    gradientSecondary: COLORS.GRADIENT_SECONDARY,
+    gradientSecondaryReverse: COLORS.GRADIENT_SECONDARY_REVERSE,
+    gradientSecondarySubtle: COLORS.GRADIENT_SECONDARY_SUBTLE,
+
+    // Semantic Gradients
     gradientSuccess: COLORS.GRADIENT_SUCCESS,
-    gradientCardLight: darkMode ? COLORS.GRADIENT_CARD_DARK : COLORS.GRADIENT_CARD_LIGHT,
-    gradientCardDark: COLORS.GRADIENT_CARD_DARK,
+    gradientWarning: COLORS.GRADIENT_WARNING,
+    gradientError: COLORS.GRADIENT_ERROR,
+    gradientInfo: COLORS.GRADIENT_INFO,
 
-    // Background gradients - Unified pattern system
+    // Background Gradients
     gradientBackground: darkMode ? COLORS.GRADIENT_BACKGROUND_DARK : COLORS.GRADIENT_BACKGROUND_LIGHT,
-    patternBackground: darkMode ? COLORS.PATTERN_BACKGROUND_DARK : COLORS.PATTERN_BACKGROUND_LIGHT,
-    radialBackground: darkMode ? COLORS.RADIAL_BACKGROUND_DARK : COLORS.RADIAL_BACKGROUND_LIGHT,
+    gradientSurface: darkMode ? COLORS.GRADIENT_SURFACE_DARK : COLORS.GRADIENT_SURFACE_LIGHT,
 
-    // Card gradients đặc biệt - Cho các loại card khác nhau
-    gradientCardWater: COLORS.GRADIENT_CARD_WATER,
-    gradientCardHeating: COLORS.GRADIENT_CARD_HEATING,
-    gradientCardElectricity: COLORS.GRADIENT_CARD_ELECTRICITY,
-    gradientCardInternet: COLORS.GRADIENT_CARD_INTERNET,
-    gradientCardRenovation: COLORS.GRADIENT_CARD_RENOVATION,
+    // Special Purpose Gradients
+    gradientHero: COLORS.GRADIENT_HERO,
+    gradientCardPremium: COLORS.GRADIENT_CARD_PREMIUM,
+    gradientCardFeature: COLORS.GRADIENT_CARD_FEATURE,
+
+    // === ICON SYSTEM ===
+    iconNames: ICON_NAMES,
+    iconSizes: ICON_SIZES,
+
+    // === LEGACY COMPATIBILITY ===
+    // Keep old property names for backward compatibility
+    textColor: darkMode ? COLORS.TEXT_DARK_PRIMARY : COLORS.TEXT_LIGHT_PRIMARY,
+    subtextColor: darkMode ? COLORS.TEXT_DARK_SECONDARY : COLORS.TEXT_LIGHT_SECONDARY,
+    borderColor: darkMode ? COLORS.BORDER_DARK : COLORS.BORDER_LIGHT,
+    primaryGradientStart: COLORS.GRADIENT_PRIMARY[0],
+    primaryGradientEnd: COLORS.GRADIENT_PRIMARY[1],
   }
 }
 
-// Re-export COLORS for convenience
+// === CONVENIENCE EXPORTS ===
+// Re-export all design tokens for easy access
 export { COLORS };
+export { TEXT_STYLES, FONT_SIZES, FONT_WEIGHTS, LINE_HEIGHTS, LETTER_SPACING };
+export { SPACING, PADDING, MARGIN, BORDER_RADIUS, SHADOWS, DIMENSIONS, Z_INDEX, OPACITY, ANIMATION };
+export { ICON_NAMES, ICON_SIZES };
 
+// === THEME VARIANTS ===
+// Pre-configured theme variants for common use cases
+export const LIGHT_THEME = getTheme(false);
+export const DARK_THEME = getTheme(true);
+
+// === DEFAULT EXPORT ===
 export default {
   getTheme,
+  LIGHT_THEME,
+  DARK_THEME,
+
+  // Design Tokens
   COLORS,
   TEXT_STYLES,
   FONT_SIZES,
   FONT_WEIGHTS,
   LINE_HEIGHTS,
   LETTER_SPACING,
+  SPACING,
+  PADDING,
+  MARGIN,
+  BORDER_RADIUS,
+  SHADOWS,
+  DIMENSIONS,
+  Z_INDEX,
+  OPACITY,
+  ANIMATION,
+  ICON_NAMES,
+  ICON_SIZES,
 };

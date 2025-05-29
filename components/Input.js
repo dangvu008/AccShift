@@ -2,33 +2,42 @@ import React, { useState, forwardRef } from 'react';
 import { View, TextInput, Text, TouchableOpacity } from 'react-native';
 import Icon from './Icon';
 import { COLORS } from '../styles/common/colors';
-import { SPACING, PADDING, BORDER_RADIUS, DIMENSIONS } from '../styles/common/spacing';
+import { SPACING, PADDING, BORDER_RADIUS, DIMENSIONS, SHADOWS, ANIMATION } from '../styles/common/spacing';
 import { TEXT_STYLES, FONT_SIZES } from '../styles/common/typography';
 
 /**
- * Input component thống nhất với design system
- * Hỗ trợ nhiều variants, states, và accessories
- * 
+ * 📝 Enhanced Input Component for AccShift
+ * Modern, accessible input component with comprehensive variants and states
+ * Supports the new enhanced design system with improved user experience
+ *
  * @param {Object} props
- * @param {string} props.label - Label hiển thị phía trên input
+ * @param {string} props.label - Label displayed above input
  * @param {string} props.placeholder - Placeholder text
- * @param {string} props.value - Giá trị input
- * @param {Function} props.onChangeText - Callback khi text thay đổi
- * @param {string} props.variant - Loại input: 'default', 'outlined', 'filled'
- * @param {string} props.size - Kích thước: 'small', 'medium', 'large'
- * @param {string} props.state - Trạng thái: 'default', 'error', 'success', 'disabled'
- * @param {string} props.leftIcon - Icon bên trái
- * @param {string} props.rightIcon - Icon bên phải
- * @param {Function} props.onRightIconPress - Callback khi nhấn right icon
- * @param {string} props.helperText - Text hướng dẫn phía dưới
- * @param {string} props.errorText - Text lỗi (override helperText khi có lỗi)
- * @param {boolean} props.required - Trường bắt buộc (hiển thị *)
- * @param {boolean} props.multiline - Input nhiều dòng
- * @param {number} props.numberOfLines - Số dòng cho multiline
- * @param {Object} props.style - Custom style cho container
- * @param {Object} props.inputStyle - Custom style cho TextInput
- * @param {Object} props.labelStyle - Custom style cho label
- * @param {string} props.testID - Test ID
+ * @param {string} props.value - Input value
+ * @param {Function} props.onChangeText - Text change callback
+ * @param {string} props.variant - Input variant: 'default', 'outlined', 'filled', 'underlined', 'floating'
+ * @param {string} props.size - Input size: 'tiny', 'small', 'medium', 'large', 'xlarge'
+ * @param {string} props.state - Input state: 'default', 'error', 'success', 'warning', 'disabled'
+ * @param {string} props.leftIcon - Left icon name
+ * @param {string} props.rightIcon - Right icon name
+ * @param {Function} props.onRightIconPress - Right icon press callback
+ * @param {Function} props.onLeftIconPress - Left icon press callback
+ * @param {string} props.helperText - Helper text below input
+ * @param {string} props.errorText - Error text (overrides helperText when present)
+ * @param {string} props.successText - Success text (overrides helperText when present)
+ * @param {boolean} props.required - Whether field is required (shows *)
+ * @param {boolean} props.optional - Whether field is optional (shows "optional")
+ * @param {boolean} props.multiline - Whether input supports multiple lines
+ * @param {number} props.numberOfLines - Number of lines for multiline input
+ * @param {number} props.maxLength - Maximum character length
+ * @param {boolean} props.showCharCount - Whether to show character count
+ * @param {boolean} props.fullWidth - Whether input should take full width
+ * @param {Object} props.style - Custom container style
+ * @param {Object} props.inputStyle - Custom TextInput style
+ * @param {Object} props.labelStyle - Custom label style
+ * @param {string} props.testID - Test ID for testing
+ * @param {string} props.accessibilityLabel - Accessibility label
+ * @param {string} props.accessibilityHint - Accessibility hint
  */
 const Input = forwardRef(({
   label,
@@ -41,114 +50,186 @@ const Input = forwardRef(({
   leftIcon,
   rightIcon,
   onRightIconPress,
+  onLeftIconPress,
   helperText,
   errorText,
+  successText,
   required = false,
+  optional = false,
   multiline = false,
   numberOfLines = 1,
+  maxLength,
+  showCharCount = false,
+  fullWidth = false,
   style,
   inputStyle,
   labelStyle,
   testID,
+  accessibilityLabel,
+  accessibilityHint,
   ...props
 }, ref) => {
   const [isFocused, setIsFocused] = useState(false);
 
-  // Size configurations
+  // === SIZE CONFIGURATIONS ===
+  // Enhanced size system with comprehensive options
   const sizeConfig = {
+    tiny: {
+      height: DIMENSIONS.INPUT.tiny.height,
+      paddingHorizontal: PADDING.INPUT.tiny.horizontal,
+      paddingVertical: PADDING.INPUT.tiny.vertical,
+      fontSize: FONT_SIZES.BODY_SMALL,
+      iconSize: 'XS',
+      borderRadius: BORDER_RADIUS.SM,
+    },
     small: {
-      height: 36,
-      paddingHorizontal: PADDING.INPUT.horizontal - 4,
-      paddingVertical: PADDING.INPUT.vertical - 2,
+      height: DIMENSIONS.INPUT.small.height,
+      paddingHorizontal: PADDING.INPUT.small.horizontal,
+      paddingVertical: PADDING.INPUT.small.vertical,
       fontSize: FONT_SIZES.BODY_SMALL,
       iconSize: 'SM',
+      borderRadius: BORDER_RADIUS.SM,
     },
     medium: {
-      height: DIMENSIONS.INPUT.height,
-      paddingHorizontal: PADDING.INPUT.horizontal,
-      paddingVertical: PADDING.INPUT.vertical,
-      fontSize: FONT_SIZES.BODY,
+      height: DIMENSIONS.INPUT.medium.height,
+      paddingHorizontal: PADDING.INPUT.medium.horizontal,
+      paddingVertical: PADDING.INPUT.medium.vertical,
+      fontSize: FONT_SIZES.BODY_MEDIUM,
       iconSize: 'MD',
+      borderRadius: BORDER_RADIUS.MD,
     },
     large: {
-      height: 56,
-      paddingHorizontal: PADDING.INPUT.horizontal + 4,
-      paddingVertical: PADDING.INPUT.vertical + 2,
+      height: DIMENSIONS.INPUT.large.height,
+      paddingHorizontal: PADDING.INPUT.large.horizontal,
+      paddingVertical: PADDING.INPUT.large.vertical,
       fontSize: FONT_SIZES.BODY_LARGE,
       iconSize: 'LG',
+      borderRadius: BORDER_RADIUS.MD,
+    },
+    xlarge: {
+      height: DIMENSIONS.INPUT.xlarge.height,
+      paddingHorizontal: PADDING.INPUT.large.horizontal,
+      paddingVertical: PADDING.INPUT.large.vertical,
+      fontSize: FONT_SIZES.BODY_LARGE,
+      iconSize: 'XL',
+      borderRadius: BORDER_RADIUS.LG,
     },
   };
 
-  // State configurations
+  // === STATE CONFIGURATIONS ===
+  // Enhanced state system with comprehensive styling
   const stateConfig = {
     default: {
-      borderColor: isFocused ? COLORS.BORDER.FOCUS : COLORS.BORDER.DEFAULT,
-      backgroundColor: COLORS.COMPONENT.BACKGROUND_PRIMARY,
-      textColor: COLORS.TEXT.PRIMARY,
-      placeholderColor: COLORS.TEXT.TERTIARY,
-      iconColor: COLORS.TEXT.SECONDARY,
+      borderColor: isFocused ? COLORS.BORDER.FOCUS : COLORS.BORDER_LIGHT,
+      borderColorHover: COLORS.BORDER_LIGHT_STRONG,
+      backgroundColor: COLORS.BACKGROUND.PRIMARY,
+      textColor: COLORS.TEXT_LIGHT_PRIMARY,
+      placeholderColor: COLORS.TEXT_LIGHT_TERTIARY,
+      iconColor: COLORS.TEXT_LIGHT_SECONDARY,
+      labelColor: COLORS.TEXT_LIGHT_SECONDARY,
+      helperColor: COLORS.TEXT_LIGHT_TERTIARY,
     },
     error: {
-      borderColor: COLORS.BORDER.ERROR,
-      backgroundColor: COLORS.FEEDBACK.ERROR_BG,
-      textColor: COLORS.TEXT.PRIMARY,
-      placeholderColor: COLORS.TEXT.TERTIARY,
-      iconColor: COLORS.ERROR,
+      borderColor: COLORS.ERROR_500,
+      borderColorHover: COLORS.ERROR_600,
+      backgroundColor: COLORS.ERROR_50,
+      textColor: COLORS.TEXT_LIGHT_PRIMARY,
+      placeholderColor: COLORS.TEXT_LIGHT_TERTIARY,
+      iconColor: COLORS.ERROR_500,
+      labelColor: COLORS.ERROR_700,
+      helperColor: COLORS.ERROR_600,
     },
     success: {
-      borderColor: COLORS.BORDER.SUCCESS,
-      backgroundColor: COLORS.FEEDBACK.SUCCESS_BG,
-      textColor: COLORS.TEXT.PRIMARY,
-      placeholderColor: COLORS.TEXT.TERTIARY,
-      iconColor: COLORS.SUCCESS,
+      borderColor: COLORS.SUCCESS_500,
+      borderColorHover: COLORS.SUCCESS_600,
+      backgroundColor: COLORS.SUCCESS_50,
+      textColor: COLORS.TEXT_LIGHT_PRIMARY,
+      placeholderColor: COLORS.TEXT_LIGHT_TERTIARY,
+      iconColor: COLORS.SUCCESS_500,
+      labelColor: COLORS.SUCCESS_700,
+      helperColor: COLORS.SUCCESS_600,
+    },
+    warning: {
+      borderColor: COLORS.WARNING_500,
+      borderColorHover: COLORS.WARNING_600,
+      backgroundColor: COLORS.WARNING_50,
+      textColor: COLORS.TEXT_LIGHT_PRIMARY,
+      placeholderColor: COLORS.TEXT_LIGHT_TERTIARY,
+      iconColor: COLORS.WARNING_500,
+      labelColor: COLORS.WARNING_700,
+      helperColor: COLORS.WARNING_600,
     },
     disabled: {
-      borderColor: COLORS.BORDER.DEFAULT,
-      backgroundColor: COLORS.COMPONENT.BACKGROUND_TERTIARY,
-      textColor: COLORS.TEXT.DISABLED,
-      placeholderColor: COLORS.TEXT.DISABLED,
-      iconColor: COLORS.TEXT.DISABLED,
-    },
-  };
-
-  // Variant configurations
-  const variantConfig = {
-    default: {
-      borderWidth: 1,
-      borderRadius: BORDER_RADIUS.MD,
-    },
-    outlined: {
-      borderWidth: 2,
-      borderRadius: BORDER_RADIUS.MD,
-    },
-    filled: {
-      borderWidth: 0,
-      borderRadius: BORDER_RADIUS.SM,
-      backgroundColor: COLORS.COMPONENT.BACKGROUND_SECONDARY,
+      borderColor: COLORS.GRAY_300,
+      borderColorHover: COLORS.GRAY_300,
+      backgroundColor: COLORS.GRAY_100,
+      textColor: COLORS.TEXT_LIGHT_DISABLED,
+      placeholderColor: COLORS.TEXT_LIGHT_DISABLED,
+      iconColor: COLORS.TEXT_LIGHT_DISABLED,
+      labelColor: COLORS.TEXT_LIGHT_DISABLED,
+      helperColor: COLORS.TEXT_LIGHT_DISABLED,
     },
   };
 
   const currentSize = sizeConfig[size];
+
+  // === VARIANT CONFIGURATIONS ===
+  // Enhanced variant system with comprehensive styling options
+  const variantConfig = {
+    default: {
+      borderWidth: 1,
+      borderRadius: currentSize.borderRadius,
+      shadow: SHADOWS.NONE,
+    },
+    outlined: {
+      borderWidth: 2,
+      borderRadius: currentSize.borderRadius,
+      shadow: SHADOWS.NONE,
+    },
+    filled: {
+      borderWidth: 0,
+      borderRadius: currentSize.borderRadius,
+      backgroundColor: COLORS.GRAY_100,
+      shadow: SHADOWS.SUBTLE,
+    },
+    underlined: {
+      borderWidth: 0,
+      borderBottomWidth: 2,
+      borderRadius: 0,
+      backgroundColor: 'transparent',
+      shadow: SHADOWS.NONE,
+    },
+    floating: {
+      borderWidth: 1,
+      borderRadius: currentSize.borderRadius,
+      shadow: SHADOWS.SM,
+      elevation: 2,
+    },
+  };
+
   const currentState = stateConfig[state];
   const currentVariant = variantConfig[variant];
 
-  // Determine final state (error overrides others)
-  const finalState = errorText ? 'error' : state;
+  // === STATE MANAGEMENT ===
+  // Determine final state (error overrides others, then success)
+  const finalState = errorText ? 'error' : successText ? 'success' : state;
   const finalStateConfig = stateConfig[finalState];
+  const isDisabled = state === 'disabled';
 
-  // Container style
+  // === CONTAINER STYLE ===
   const containerStyle = {
-    marginBottom: (helperText || errorText) ? SPACING.SM : 0,
+    width: fullWidth ? '100%' : undefined,
+    marginBottom: (helperText || errorText || successText || showCharCount) ? SPACING.SM : 0,
   };
 
-  // Label style
+  // === LABEL STYLE ===
   const baseLabelStyle = {
-    ...TEXT_STYLES.bodySmall,
-    color: finalStateConfig.textColor,
+    ...TEXT_STYLES.labelMedium,
+    color: finalStateConfig.labelColor,
     marginBottom: SPACING.XS,
   };
 
-  // Input container style
+  // === INPUT CONTAINER STYLE ===
   const inputContainerStyle = {
     flexDirection: 'row',
     alignItems: multiline ? 'flex-start' : 'center',
@@ -157,12 +238,20 @@ const Input = forwardRef(({
     paddingHorizontal: currentSize.paddingHorizontal,
     paddingVertical: multiline ? currentSize.paddingVertical : 0,
     borderWidth: currentVariant.borderWidth,
+    borderBottomWidth: currentVariant.borderBottomWidth || currentVariant.borderWidth,
     borderRadius: currentVariant.borderRadius,
     borderColor: finalStateConfig.borderColor,
     backgroundColor: currentVariant.backgroundColor || finalStateConfig.backgroundColor,
+    // Apply shadow for floating variant
+    ...(currentVariant.shadow && currentVariant.shadow),
+    // Ensure minimum touch target for accessibility
+    minHeight: Math.max(
+      multiline ? currentSize.height * numberOfLines : currentSize.height,
+      DIMENSIONS.TOUCH_TARGET.minimum
+    ),
   };
 
-  // TextInput style
+  // === TEXT INPUT STYLE ===
   const baseInputStyle = {
     flex: 1,
     fontSize: currentSize.fontSize,
@@ -171,35 +260,70 @@ const Input = forwardRef(({
     paddingVertical: multiline ? SPACING.XS : 0,
     marginLeft: leftIcon ? SPACING.XS : 0,
     marginRight: rightIcon ? SPACING.XS : 0,
+    // Ensure proper line height for readability
+    lineHeight: currentSize.fontSize * 1.4,
   };
 
-  // Helper text style
+  // === HELPER TEXT STYLE ===
   const helperTextStyle = {
-    ...TEXT_STYLES.captionSmall,
-    color: errorText ? COLORS.ERROR : COLORS.TEXT.SECONDARY,
+    ...TEXT_STYLES.caption,
+    color: finalStateConfig.helperColor,
     marginTop: SPACING.XS,
     marginLeft: SPACING.XS,
   };
 
+  // === CHARACTER COUNT STYLE ===
+  const charCountStyle = {
+    ...TEXT_STYLES.caption,
+    color: finalStateConfig.helperColor,
+    textAlign: 'right',
+    marginTop: SPACING.XS,
+    marginRight: SPACING.XS,
+  };
+
+  // === HELPER FUNCTIONS ===
+  const getDisplayText = () => {
+    if (errorText) return errorText;
+    if (successText) return successText;
+    return helperText;
+  };
+
+  const getCurrentCharCount = () => {
+    return value ? value.length : 0;
+  };
+
+  const isCharLimitExceeded = () => {
+    return maxLength && getCurrentCharCount() > maxLength;
+  };
+
   return (
     <View style={[containerStyle, style]} testID={testID}>
-      {/* Label */}
+      {/* === LABEL SECTION === */}
       {label && (
-        <Text style={[baseLabelStyle, labelStyle]}>
-          {label}
-          {required && <Text style={{ color: COLORS.ERROR }}> *</Text>}
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: SPACING.XS }}>
+          <Text style={[baseLabelStyle, labelStyle]}>
+            {label}
+            {required && <Text style={{ color: COLORS.ERROR_500 }}> *</Text>}
+            {optional && <Text style={{ color: finalStateConfig.helperColor }}> (optional)</Text>}
+          </Text>
+        </View>
       )}
 
-      {/* Input Container */}
+      {/* === INPUT CONTAINER === */}
       <View style={inputContainerStyle}>
         {/* Left Icon */}
         {leftIcon && (
-          <Icon
-            name={leftIcon}
-            size={currentSize.iconSize}
-            color={finalStateConfig.iconColor}
-          />
+          <TouchableOpacity
+            onPress={onLeftIconPress}
+            disabled={!onLeftIconPress || isDisabled}
+            activeOpacity={0.7}
+          >
+            <Icon
+              name={leftIcon}
+              size={currentSize.iconSize}
+              color={finalStateConfig.iconColor}
+            />
+          </TouchableOpacity>
         )}
 
         {/* TextInput */}
@@ -211,11 +335,15 @@ const Input = forwardRef(({
           placeholderTextColor={finalStateConfig.placeholderColor}
           multiline={multiline}
           numberOfLines={multiline ? numberOfLines : 1}
-          editable={state !== 'disabled'}
+          maxLength={maxLength}
+          editable={!isDisabled}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           style={[baseInputStyle, inputStyle]}
           testID={testID ? `${testID}-input` : undefined}
+          accessibilityLabel={accessibilityLabel || label}
+          accessibilityHint={accessibilityHint}
+          accessibilityState={{ disabled: isDisabled }}
           {...props}
         />
 
@@ -223,8 +351,10 @@ const Input = forwardRef(({
         {rightIcon && (
           <TouchableOpacity
             onPress={onRightIconPress}
-            disabled={!onRightIconPress || state === 'disabled'}
+            disabled={!onRightIconPress || isDisabled}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={`${rightIcon} button`}
           >
             <Icon
               name={rightIcon}
@@ -235,17 +365,39 @@ const Input = forwardRef(({
         )}
       </View>
 
-      {/* Helper/Error Text */}
-      {(helperText || errorText) && (
-        <Text style={helperTextStyle}>
-          {errorText || helperText}
-        </Text>
+      {/* === FOOTER SECTION === */}
+      {(getDisplayText() || showCharCount) && (
+        <View style={{
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+        }}>
+          {/* Helper/Error/Success Text */}
+          {getDisplayText() && (
+            <Text style={[helperTextStyle, { flex: 1 }]}>
+              {getDisplayText()}
+            </Text>
+          )}
+
+          {/* Character Count */}
+          {showCharCount && maxLength && (
+            <Text style={[
+              charCountStyle,
+              isCharLimitExceeded() && { color: COLORS.ERROR_500 }
+            ]}>
+              {getCurrentCharCount()}/{maxLength}
+            </Text>
+          )}
+        </View>
       )}
     </View>
   );
 });
 
-// Preset input components
+// === PRESET INPUT COMPONENTS ===
+// Convenient preset components for common input variants
+
+// Basic Variants
 export const DefaultInput = (props) => (
   <Input variant="default" {...props} />
 );
@@ -258,7 +410,17 @@ export const FilledInput = (props) => (
   <Input variant="filled" {...props} />
 );
 
-// Specialized inputs
+export const UnderlinedInput = (props) => (
+  <Input variant="underlined" {...props} />
+);
+
+export const FloatingInput = (props) => (
+  <Input variant="floating" {...props} />
+);
+
+// === SPECIALIZED INPUT COMPONENTS ===
+
+// Search Input
 export const SearchInput = (props) => (
   <Input
     leftIcon="SEARCH"
@@ -268,23 +430,29 @@ export const SearchInput = (props) => (
   />
 );
 
+// Password Input with toggle visibility
 export const PasswordInput = ({ showPassword, onTogglePassword, ...props }) => (
   <Input
     secureTextEntry={!showPassword}
     rightIcon={showPassword ? "EYE_OFF" : "EYE"}
     onRightIconPress={onTogglePassword}
+    accessibilityHint={showPassword ? "Ẩn mật khẩu" : "Hiển thị mật khẩu"}
     {...props}
   />
 );
 
+// Text Area for multiline input
 export const TextArea = (props) => (
   <Input
     multiline={true}
     numberOfLines={4}
+    variant="outlined"
+    showCharCount={true}
     {...props}
   />
 );
 
+// Email Input with validation
 export const EmailInput = (props) => (
   <Input
     leftIcon="MAIL"
@@ -296,11 +464,69 @@ export const EmailInput = (props) => (
   />
 );
 
+// Phone Input
 export const PhoneInput = (props) => (
   <Input
     leftIcon="CALL"
     keyboardType="phone-pad"
     placeholder="Số điện thoại"
+    {...props}
+  />
+);
+
+// === ENHANCED SPECIALIZED INPUTS ===
+
+// OTP Input for verification codes
+export const OTPInput = (props) => (
+  <Input
+    keyboardType="number-pad"
+    maxLength={6}
+    showCharCount={true}
+    textAlign="center"
+    variant="outlined"
+    size="large"
+    {...props}
+  />
+);
+
+// Currency Input
+export const CurrencyInput = (props) => (
+  <Input
+    leftIcon="CARD"
+    keyboardType="numeric"
+    placeholder="0"
+    {...props}
+  />
+);
+
+// URL Input
+export const URLInput = (props) => (
+  <Input
+    leftIcon="LINK"
+    keyboardType="url"
+    autoCapitalize="none"
+    autoCorrect={false}
+    placeholder="https://example.com"
+    {...props}
+  />
+);
+
+// Date Input (for display purposes)
+export const DateInput = (props) => (
+  <Input
+    leftIcon="CALENDAR"
+    editable={false}
+    rightIcon="CHEVRON_DOWN"
+    {...props}
+  />
+);
+
+// Time Input (for display purposes)
+export const TimeInput = (props) => (
+  <Input
+    leftIcon="CLOCK"
+    editable={false}
+    rightIcon="CHEVRON_DOWN"
     {...props}
   />
 );
