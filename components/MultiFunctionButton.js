@@ -12,7 +12,7 @@ import reminderManager from '../utils/reminderManager'
 // Legacy component
 import GradientButton from './GradientButton'
 // Design System components
-import { Button, Card, Icon } from '../components'
+import { Button, Card, Icon, CircularActionButton } from '../components'
 import { SPACING, TEXT_STYLES, ICON_NAMES } from '../styles'
 
 const MultiFunctionButton = () => {
@@ -370,34 +370,39 @@ const MultiFunctionButton = () => {
 
   return (
     <View style={{ marginBottom: SPACING.LG }}>
-      {/* Main Multi-Function Button với Design System */}
+      {/* Main Multi-Function Button với Circular Design */}
       <View style={{
-        flexDirection: 'row',
         alignItems: 'center',
-        gap: SPACING.SM,
+        marginBottom: SPACING.MD,
       }}>
-        {/* Main Button */}
-        <View style={{ flex: 1 }}>
-          <Button
-            title={buttonConfig.text}
+        {/* Circular Main Button */}
+        <View style={{
+          alignItems: 'center',
+          position: 'relative',
+        }}>
+          <CircularActionButton
             iconName={buttonConfig.icon}
-            iconPosition="left"
-            variant="gradient"
-            size="xlarge"
             onPress={handleMultiFunctionButton}
             disabled={buttonConfig.disabled}
+            size="xxlarge"
+            elevation="highest"
             style={{
-              minHeight: 80,
-            }}
-            buttonStyle={{
-              paddingVertical: SPACING.LG,
-              paddingHorizontal: SPACING.XL,
-            }}
-            textStyle={{
-              ...TEXT_STYLES.header3,
-              color: COLORS.TEXT.INVERSE,
+              marginBottom: SPACING.SM,
             }}
           />
+
+          {/* Button Text */}
+          <Text style={[
+            TEXT_STYLES.header3,
+            {
+              color: theme.textColor,
+              textAlign: 'center',
+              fontWeight: '600',
+              marginBottom: SPACING.XS,
+            }
+          ]}>
+            {buttonConfig.text}
+          </Text>
 
           {/* Button description */}
           {buttonConfig.description && (
@@ -406,29 +411,37 @@ const MultiFunctionButton = () => {
               {
                 color: theme.subtextColor,
                 textAlign: 'center',
-                marginTop: SPACING.XS,
+                maxWidth: 200,
               }
             ]}>
               {buttonConfig.description}
             </Text>
           )}
-        </View>
 
-        {/* Reset button (only show if there are logs) */}
-        {attendanceLogs.length > 0 && (
-          <Button
-            iconName={ICON_NAMES.REFRESH}
-            iconPosition="only"
-            variant="outline"
-            size="medium"
-            onPress={confirmReset}
-            style={{
-              width: 56,
-              height: 56,
-              borderRadius: 28,
-            }}
-          />
-        )}
+          {/* Reset button (positioned at top-right of circular button) */}
+          {attendanceLogs.length > 0 && (
+            <View style={{
+              position: 'absolute',
+              top: -8,
+              right: -8,
+            }}>
+              <Button
+                iconName={ICON_NAMES.REFRESH}
+                iconPosition="only"
+                variant="outline"
+                size="small"
+                onPress={confirmReset}
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  backgroundColor: theme.backgroundColor,
+                  borderColor: theme.borderColor,
+                }}
+              />
+            </View>
+          )}
+        </View>
       </View>
 
       {/* Punch Button (only show in WORKING state if enabled) */}

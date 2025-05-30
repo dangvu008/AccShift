@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, Modal as RNModal, TouchableOpacity, Pressable, ScrollView } from 'react-native';
-import { COLORS, SPACING, TEXT_STYLES, BORDER_RADIUS, SHADOWS, ANIMATION } from '../styles';
+import { COLORS, SPACING, TEXT_STYLES, BORDER_RADIUS, SHADOWS, ANIMATION, OPACITY } from '../styles';
 import Icon from './Icon';
 import { IconButton, SecondaryButton, PrimaryButton } from './Button';
 
@@ -96,7 +96,7 @@ const Modal = ({
   // === BACKDROP STYLE ===
   const backdropStyle = {
     flex: 1,
-    backgroundColor: `rgba(0, 0, 0, ${COLORS.OPACITY.STRONG})`,
+    backgroundColor: `rgba(0, 0, 0, ${OPACITY.STRONG})`,
     ...currentVariant,
   };
 

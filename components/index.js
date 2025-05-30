@@ -15,7 +15,8 @@ export {
   WarningButton,
   ErrorButton,
   IconButton,
-  FloatingActionButton
+  FloatingActionButton,
+  CircularActionButton
 } from './Button'
 export {
   default as Card,

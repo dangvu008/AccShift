@@ -398,6 +398,83 @@ export const FloatingActionButton = (props) => (
   />
 );
 
+// Circular Action Button - Enhanced circular button for main actions
+export const CircularActionButton = ({
+  size = 'xlarge',
+  elevation = 'high',
+  iconName,
+  style,
+  buttonStyle,
+  ...props
+}) => {
+  // Size configurations for circular buttons
+  const circularSizeConfig = {
+    large: { width: 80, height: 80, iconSize: 'LG' },
+    xlarge: { width: 120, height: 120, iconSize: 'XL' },
+    xxlarge: { width: 160, height: 160, iconSize: 'XXXL' },
+  };
+
+  // Elevation configurations
+  const elevationConfig = {
+    medium: SHADOWS.MD,
+    high: SHADOWS.LG,
+    highest: SHADOWS.XL,
+  };
+
+  const currentCircularSize = circularSizeConfig[size] || circularSizeConfig.xlarge;
+  const currentElevation = elevationConfig[elevation] || elevationConfig.high;
+
+  // Custom render function for larger icon
+  const renderCustomIcon = () => {
+    if (iconName) {
+      return (
+        <Icon
+          name={iconName}
+          size={currentCircularSize.iconSize}
+          color={COLORS.WHITE}
+        />
+      );
+    }
+    return null;
+  };
+
+  return (
+    <View style={style}>
+      <TouchableOpacity
+        onPress={props.onPress}
+        onLongPress={props.onLongPress}
+        disabled={props.disabled}
+        activeOpacity={0.8}
+        style={{
+          borderRadius: BORDER_RADIUS.ROUND,
+          ...currentElevation,
+        }}
+        testID={props.testID}
+        accessibilityLabel={props.accessibilityLabel}
+        accessibilityHint={props.accessibilityHint}
+        accessibilityRole="button"
+        accessibilityState={{ disabled: props.disabled }}
+      >
+        <LinearGradient
+          colors={COLORS.GRADIENT_PRIMARY}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{
+            borderRadius: BORDER_RADIUS.ROUND,
+            width: currentCircularSize.width,
+            height: currentCircularSize.height,
+            justifyContent: 'center',
+            alignItems: 'center',
+            ...buttonStyle,
+          }}
+        >
+          {renderCustomIcon()}
+        </LinearGradient>
+      </TouchableOpacity>
+    </View>
+  );
+};
+
 // Full Width Button
 export const FullWidthButton = (props) => (
   <Button fullWidth {...props} />
