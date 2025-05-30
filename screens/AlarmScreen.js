@@ -19,6 +19,7 @@ import { AppContext } from '../context/AppContext'
 import { formatTime, formatDate } from '../utils/helpers'
 import { addCheckInRecord } from '../utils/database'
 import alarmManager from '../utils/alarmManager'
+import { COLORS } from '../styles'
 
 const { width, height } = Dimensions.get('window')
 
@@ -222,21 +223,21 @@ const AlarmScreen = ({ navigation, route }) => {
         }
       case 'shift':
         return {
-          backgroundColor: '#8a56ff', // Tím
+          backgroundColor: COLORS.PRIMARY, // Blue
           icon: 'alarm',
-          color: '#8a56ff',
+          color: COLORS.PRIMARY,
         }
       case 'note':
         return {
-          backgroundColor: '#f39c12', // Cam
+          backgroundColor: COLORS.WARNING, // Orange
           icon: 'document-text',
-          color: '#f39c12',
+          color: COLORS.WARNING,
         }
       default:
         return {
-          backgroundColor: '#8a56ff', // Tím
+          backgroundColor: COLORS.PRIMARY, // Blue
           icon: 'alarm',
-          color: '#8a56ff',
+          color: COLORS.PRIMARY,
         }
     }
   }
@@ -439,10 +440,10 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
   },
   snoozeButton: {
-    backgroundColor: '#f39c12',
+    backgroundColor: COLORS.WARNING,
   },
   dismissButton: {
-    backgroundColor: '#8a56ff',
+    backgroundColor: COLORS.PRIMARY,
   },
   buttonText: {
     color: '#fff',

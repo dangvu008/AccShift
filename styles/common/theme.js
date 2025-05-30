@@ -160,6 +160,10 @@ export const getTheme = (darkMode) => {
     gradientBackground: darkMode ? COLORS.GRADIENT_BACKGROUND_DARK : COLORS.GRADIENT_BACKGROUND_LIGHT,
     gradientSurface: darkMode ? COLORS.GRADIENT_SURFACE_DARK : COLORS.GRADIENT_SURFACE_LIGHT,
 
+    // Pattern and Radial Backgrounds
+    patternBackground: darkMode ? COLORS.GRADIENT_BACKGROUND_DARK : COLORS.GRADIENT_BACKGROUND_LIGHT,
+    radialBackground: darkMode ? COLORS.GRADIENT_BACKGROUND_DARK : COLORS.GRADIENT_BACKGROUND_LIGHT,
+
     // Special Purpose Gradients
     gradientHero: COLORS.GRADIENT_HERO,
     gradientCardPremium: COLORS.GRADIENT_CARD_PREMIUM,

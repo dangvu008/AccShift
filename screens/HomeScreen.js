@@ -175,7 +175,7 @@ const HomeScreen = ({ navigation, route }) => {
     <>
       <StatusBar
         barStyle="light-content"
-        backgroundColor={COLORS.PRIMARY_700}
+        backgroundColor={theme.headerBackgroundColor}
         translucent={false}
       />
       <ScreenWrapper

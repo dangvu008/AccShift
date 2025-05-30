@@ -6,31 +6,31 @@
 
 // === PRIMARY BRAND COLORS ===
 export const COLORS = {
-  // Core Brand Colors - Purple Theme
-  PRIMARY: '#6B46C1',           // Purple-700 - Main brand color
-  PRIMARY_50: '#F3F0FF',        // Lightest purple tint
-  PRIMARY_100: '#E9E2FF',       // Very light purple
-  PRIMARY_200: '#D4C4FF',       // Light purple
-  PRIMARY_300: '#B794F6',       // Medium light purple
-  PRIMARY_400: '#9F7AEA',       // Medium purple
-  PRIMARY_500: '#8B5CF6',       // Base purple
-  PRIMARY_600: '#7C3AED',       // Medium dark purple
-  PRIMARY_700: '#6B46C1',       // Dark purple (main)
-  PRIMARY_800: '#553C9A',       // Darker purple
-  PRIMARY_900: '#44337A',       // Darkest purple
+  // Core Brand Colors - Modern Blue/Teal Theme
+  PRIMARY: '#0EA5E9',           // Sky-500 - Main brand color
+  PRIMARY_50: '#F0F9FF',        // Lightest blue tint
+  PRIMARY_100: '#E0F2FE',       // Very light blue
+  PRIMARY_200: '#BAE6FD',       // Light blue
+  PRIMARY_300: '#7DD3FC',       // Medium light blue
+  PRIMARY_400: '#38BDF8',       // Medium blue
+  PRIMARY_500: '#0EA5E9',       // Base blue (main)
+  PRIMARY_600: '#0284C7',       // Medium dark blue
+  PRIMARY_700: '#0369A1',       // Dark blue
+  PRIMARY_800: '#075985',       // Darker blue
+  PRIMARY_900: '#0C4A6E',       // Darkest blue
 
-  // Secondary Brand Colors - Amber/Orange Accent
-  SECONDARY: '#F59E0B',         // Amber-500 - Secondary brand color
-  SECONDARY_50: '#FFFBEB',      // Lightest amber tint
-  SECONDARY_100: '#FEF3C7',     // Very light amber
-  SECONDARY_200: '#FDE68A',     // Light amber
-  SECONDARY_300: '#FCD34D',     // Medium light amber
-  SECONDARY_400: '#FBBF24',     // Medium amber
-  SECONDARY_500: '#F59E0B',     // Base amber (main)
-  SECONDARY_600: '#D97706',     // Medium dark amber
-  SECONDARY_700: '#B45309',     // Dark amber
-  SECONDARY_800: '#92400E',     // Darker amber
-  SECONDARY_900: '#78350F',     // Darkest amber
+  // Secondary Brand Colors - Teal Accent
+  SECONDARY: '#06B6D4',         // Cyan-500 - Secondary brand color
+  SECONDARY_50: '#ECFEFF',      // Lightest teal tint
+  SECONDARY_100: '#CFFAFE',     // Very light teal
+  SECONDARY_200: '#A5F3FC',     // Light teal
+  SECONDARY_300: '#67E8F9',     // Medium light teal
+  SECONDARY_400: '#22D3EE',     // Medium teal
+  SECONDARY_500: '#06B6D4',     // Base teal (main)
+  SECONDARY_600: '#0891B2',     // Medium dark teal
+  SECONDARY_700: '#0E7490',     // Dark teal
+  SECONDARY_800: '#155E75',     // Darker teal
+  SECONDARY_900: '#164E63',     // Darkest teal
 
   // === NEUTRAL COLORS ===
   // Gray Scale - Modern neutral palette
@@ -158,14 +158,14 @@ export const COLORS = {
 
   // === GRADIENT COLORS ===
   // Primary Brand Gradients
-  GRADIENT_PRIMARY: ['#6B46C1', '#8B5CF6'],           // Purple gradient
-  GRADIENT_PRIMARY_REVERSE: ['#8B5CF6', '#6B46C1'],   // Reverse purple gradient
-  GRADIENT_PRIMARY_SUBTLE: ['#F3F0FF', '#E9E2FF'],    // Subtle purple gradient
+  GRADIENT_PRIMARY: ['#0EA5E9', '#06B6D4'],           // Blue to Teal gradient
+  GRADIENT_PRIMARY_REVERSE: ['#06B6D4', '#0EA5E9'],   // Reverse blue gradient
+  GRADIENT_PRIMARY_SUBTLE: ['#F0F9FF', '#E0F2FE'],    // Subtle blue gradient
 
   // Secondary Brand Gradients
-  GRADIENT_SECONDARY: ['#F59E0B', '#FCD34D'],         // Amber gradient
-  GRADIENT_SECONDARY_REVERSE: ['#FCD34D', '#F59E0B'], // Reverse amber gradient
-  GRADIENT_SECONDARY_SUBTLE: ['#FFFBEB', '#FEF3C7'],  // Subtle amber gradient
+  GRADIENT_SECONDARY: ['#06B6D4', '#22D3EE'],         // Teal gradient
+  GRADIENT_SECONDARY_REVERSE: ['#22D3EE', '#06B6D4'], // Reverse teal gradient
+  GRADIENT_SECONDARY_SUBTLE: ['#ECFEFF', '#CFFAFE'],  // Subtle teal gradient
 
   // Semantic Gradients
   GRADIENT_SUCCESS: ['#10B981', '#34D399'],           // Success gradient
@@ -174,7 +174,7 @@ export const COLORS = {
   GRADIENT_INFO: ['#3B82F6', '#60A5FA'],              // Info gradient
 
   // Background Gradients
-  GRADIENT_BACKGROUND_LIGHT: ['#FFFFFF', '#F8FAFC', '#F1F5F9'],     // Light theme background
+  GRADIENT_BACKGROUND_LIGHT: ['#F8FAFC', '#E2E8F0', '#F1F5F9'],     // Light theme background
   GRADIENT_BACKGROUND_DARK: ['#0F172A', '#1E293B', '#334155'],      // Dark theme background
 
   // Surface Gradients
@@ -182,19 +182,19 @@ export const COLORS = {
   GRADIENT_SURFACE_DARK: ['#1E293B', '#334155'],      // Dark surface gradient
 
   // Special Purpose Gradients
-  GRADIENT_HERO: ['#6B46C1', '#8B5CF6', '#F59E0B'],   // Hero section gradient
-  GRADIENT_CARD_PREMIUM: ['#7C3AED', '#6B46C1'],      // Premium card gradient
-  GRADIENT_CARD_FEATURE: ['#3B82F6', '#1D4ED8'],      // Feature card gradient
+  GRADIENT_HERO: ['#0EA5E9', '#06B6D4', '#22D3EE'],   // Hero section gradient
+  GRADIENT_CARD_PREMIUM: ['#0284C7', '#0EA5E9'],      // Premium card gradient
+  GRADIENT_CARD_FEATURE: ['#0369A1', '#0284C7'],      // Feature card gradient
 
   // === SEMANTIC COLOR TOKENS ===
   // These provide theme-aware color tokens that automatically adapt to light/dark mode
 
   // Interactive States
   INTERACTIVE: {
-    DEFAULT: '#6B46C1',           // Primary interactive color
-    HOVER: '#553C9A',             // Hover state
-    ACTIVE: '#44337A',            // Active/pressed state
-    FOCUS: '#8B5CF6',             // Focus state
+    DEFAULT: '#0EA5E9',           // Primary interactive color
+    HOVER: '#0284C7',             // Hover state
+    ACTIVE: '#0369A1',            // Active/pressed state
+    FOCUS: '#38BDF8',             // Focus state
     DISABLED: '#94A3B8',          // Disabled state
   },
 
@@ -248,11 +248,11 @@ export const COLORS = {
 
   // === LEGACY COMPATIBILITY ===
   // Keep old color names for backward compatibility during migration
-  PRIMARY_DARK: '#553C9A',
-  PRIMARY_LIGHT: '#8B5CF6',
-  ACCENT: '#F59E0B',
-  ACCENT_LIGHT: '#FCD34D',
-  ACCENT_DARK: '#D97706',
+  PRIMARY_DARK: '#0284C7',
+  PRIMARY_LIGHT: '#38BDF8',
+  ACCENT: '#06B6D4',
+  ACCENT_LIGHT: '#22D3EE',
+  ACCENT_DARK: '#0891B2',
   SUCCESS_LIGHT: '#34D399',
   SUCCESS_DARK: '#059669',
   WARNING_LIGHT: '#FBBF24',

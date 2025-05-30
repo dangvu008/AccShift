@@ -13,6 +13,7 @@ import { Ionicons, Feather, MaterialIcons } from '@expo/vector-icons'
 import { AppContext } from '../context/AppContext'
 import { getShifts, deleteShift, getCurrentShift } from '../utils/database'
 import ShiftRotationSettings from '../components/ShiftRotationSettings'
+import { COLORS } from '../styles'
 
 const ShiftListScreen = ({ navigation }) => {
   const { t, darkMode, setCurrentShift } = useContext(AppContext)
@@ -248,12 +249,12 @@ const styles = StyleSheet.create({
   currentShiftItem: {
     backgroundColor: '#f0f7ff',
     borderWidth: 2,
-    borderColor: '#8a56ff',
+    borderColor: COLORS.PRIMARY,
   },
   darkCurrentShiftItem: {
     backgroundColor: '#1a1a2e',
     borderWidth: 2,
-    borderColor: '#8a56ff',
+    borderColor: COLORS.PRIMARY,
   },
   shiftInfo: {
     flex: 1,
@@ -270,7 +271,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   currentBadge: {
-    backgroundColor: '#8a56ff',
+    backgroundColor: COLORS.PRIMARY,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 10,
@@ -304,7 +305,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#27ae60',
   },
   appliedButton: {
-    backgroundColor: '#8a56ff',
+    backgroundColor: COLORS.PRIMARY,
   },
   editButton: {
     backgroundColor: '#3498db',
@@ -319,7 +320,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#8a56ff',
+    backgroundColor: COLORS.PRIMARY,
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 4,

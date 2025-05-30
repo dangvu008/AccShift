@@ -17,6 +17,7 @@ import { AppContext } from '../context/AppContext'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { STORAGE_KEYS } from '../config/appConfig'
 import { recalculateWorkStatusForDateRange } from '../utils/workStatusCalculator'
+import { COLORS } from '../styles'
 
 const StatisticsScreen = ({ navigation }) => {
   const { t, darkMode, language, lastWorkStatusUpdateTime } =
@@ -883,7 +884,7 @@ const StatisticsScreen = ({ navigation }) => {
 
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#8a56ff" />
+          <ActivityIndicator size="large" color={COLORS.PRIMARY} />
           <Text style={[styles.loadingText, darkMode && styles.darkText]}>
             {t('Loading statistics...')}
           </Text>
@@ -1109,13 +1110,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#e0e0e0',
   },
   activePeriodButton: {
-    backgroundColor: '#8a56ff',
+    backgroundColor: COLORS.PRIMARY,
   },
   darkPeriodButton: {
     backgroundColor: '#333',
   },
   darkActivePeriodButton: {
-    backgroundColor: '#6a3aff',
+    backgroundColor: COLORS.PRIMARY_600,
   },
   periodButtonText: {
     fontSize: 14,
@@ -1177,7 +1178,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   retryButton: {
-    backgroundColor: '#8a56ff',
+    backgroundColor: COLORS.PRIMARY,
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,

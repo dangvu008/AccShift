@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { AppContext } from '../context/AppContext'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { WORK_STATUS } from '../config/appConfig'
+import { COLORS } from '../styles'
 
 const AttendanceStatsScreen = ({ navigation }) => {
   const { t, darkMode, theme } = useContext(AppContext)
@@ -726,7 +727,7 @@ const AttendanceStatsScreen = ({ navigation }) => {
 
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#8a56ff" />
+          <ActivityIndicator size="large" color={COLORS.PRIMARY} />
           <Text style={[styles.loadingText, darkMode && styles.darkText]}>
             {t('Loading statistics...')}
           </Text>
@@ -866,7 +867,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#2a2a2a',
   },
   darkActiveTimeRangeButton: {
-    backgroundColor: '#8a56ff',
+    backgroundColor: COLORS.PRIMARY,
   },
   timeRangeButton: {
     flex: 1,
@@ -875,7 +876,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   activeTimeRangeButton: {
-    backgroundColor: '#8a56ff',
+    backgroundColor: COLORS.PRIMARY,
   },
   timeRangeButtonText: {
     fontWeight: '500',
@@ -913,7 +914,7 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   retryButton: {
-    backgroundColor: '#8a56ff',
+    backgroundColor: COLORS.PRIMARY,
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,
@@ -943,7 +944,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   attendanceRateValue: {
-    color: '#8a56ff',
+    color: COLORS.PRIMARY,
   },
   workDaysValue: {
     color: '#3498db',
